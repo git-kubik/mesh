@@ -60,7 +60,6 @@ services:
     container_name: mesh_ansible
     restart: unless-stopped
     volumes:
-      - ../openwrt-mesh-ansible:/ansible
       - ssh-keys:/root/.ssh
       - backups:/backups
     networks:
