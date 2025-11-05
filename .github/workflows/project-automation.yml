@@ -1,0 +1,227 @@
+name: Project Automation
+
+on:
+  issues:
+    types: [opened, reopened, labeled, assigned, closed]
+  pull_request:
+    types: [opened, ready_for_review, review_requested, closed]
+  pull_request_review:
+    types: [submitted]
+
+# Note: GitHub Projects (Beta) automation is currently done through the project UI
+# This workflow provides additional automation that complements project workflows
+
+jobs:
+  # Auto-label issues based on title prefix
+  auto-label-by-title:
+    name: Auto-label by title
+    runs-on: ubuntu-latest
+    if: github.event_name == 'issues' && github.event.action == 'opened'
+    permissions:
+      issues: write
+    steps:
+      - name: Add phase label
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = context.payload.issue.title;
+            const labels = [];
+
+            // Extract phase from title like "[Phase 1]" or "[Phase 10]"
+            const phaseMatch = title.match(/\[Phase (\d+)\]/i);
+            if (phaseMatch) {
+              const phase = parseInt(phaseMatch[1]);
+              const phaseLabels = {
+                1: 'phase-1-docker',
+                2: 'phase-2-webui',
+                3: 'phase-3-ansible',
+                4: 'phase-4-webui-setup',
+                5: 'phase-5-unit-tests',
+                6: 'phase-6-integration-tests',
+                7: 'phase-7-functional-tests',
+                8: 'phase-8-performance-tests',
+                9: 'phase-9-failover-tests',
+                10: 'phase-10-automation',
+                11: 'phase-11-monitoring',
+                12: 'phase-12-documentation'
+              };
+
+              if (phaseLabels[phase]) {
+                labels.push(phaseLabels[phase]);
+              }
+            }
+
+            // Add type labels based on title keywords
+            if (title.match(/\[Test\]/i)) labels.push('type-testing');
+            if (title.match(/\[Bug\]/i)) labels.push('type-bug');
+            if (title.match(/\[Docs\]/i)) labels.push('type-documentation');
+            if (title.match(/\[Enhancement\]/i)) labels.push('type-enhancement');
+
+            if (labels.length > 0) {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.payload.issue.number,
+                labels: labels
+              });
+            }
+
+  # Comment on milestone completion
+  milestone-completion:
+    name: Milestone completion notification
+    runs-on: ubuntu-latest
+    if: github.event_name == 'issues' && github.event.action == 'closed' && github.event.issue.milestone
+    permissions:
+      issues: write
+    steps:
+      - name: Check milestone completion
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const milestone = context.payload.issue.milestone;
+
+            // Get milestone details
+            const { data: milestoneData } = await github.rest.issues.getMilestone({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              milestone_number: milestone.number
+            });
+
+            // Check if all issues are closed
+            if (milestoneData.open_issues === 0 && milestoneData.closed_issues > 0) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.payload.issue.number,
+                body: `🎉 **Milestone "${milestone.title}" is now complete!**\n\nAll ${milestoneData.closed_issues} tasks have been closed.\n\nGreat work! 🚀`
+              });
+            }
+
+  # Track phase progress
+  phase-progress-comment:
+    name: Phase progress tracking
+    runs-on: ubuntu-latest
+    if: github.event_name == 'issues' && github.event.action == 'closed'
+    permissions:
+      issues: write
+    steps:
+      - name: Comment on phase progress
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const labels = context.payload.issue.labels.map(l => l.name);
+            const phaseLabel = labels.find(l => l.startsWith('phase-'));
+
+            if (!phaseLabel) return;
+
+            // Get all issues with this phase label
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'all',
+              labels: phaseLabel,
+              per_page: 100
+            });
+
+            const total = issues.length;
+            const closed = issues.filter(i => i.state === 'closed').length;
+            const open = total - closed;
+            const percentage = Math.round((closed / total) * 100);
+
+            if (percentage === 100) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.payload.issue.number,
+                body: `✅ **Phase Complete!**\n\nThis was the last task in ${phaseLabel}.\n\nAll ${total} tasks are now complete! 🎉`
+              });
+            } else if (percentage >= 50 && percentage < 100) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.payload.issue.number,
+                body: `📊 **Phase Progress**: ${percentage}% complete (${closed}/${total} tasks)\n\n${open} tasks remaining.`
+              });
+            }
+
+  # Auto-assign based on label
+  auto-assign-by-label:
+    name: Auto-assign based on label
+    runs-on: ubuntu-latest
+    if: github.event_name == 'issues' && github.event.action == 'labeled'
+    permissions:
+      issues: write
+    steps:
+      - name: Assign issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const label = context.payload.label.name;
+
+            // Only auto-assign if no one is assigned yet
+            if (context.payload.issue.assignees.length > 0) return;
+
+            // Auto-assign critical priority issues to repo owner
+            if (label === 'priority-critical') {
+              await github.rest.issues.addAssignees({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.payload.issue.number,
+                assignees: [context.repo.owner]
+              });
+            }
+
+  # Welcome message for first-time contributors
+  first-contribution:
+    name: Welcome first-time contributors
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && github.event.action == 'opened'
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Check if first contribution
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const author = context.payload.pull_request.user.login;
+
+            // Get all PRs by this author
+            const { data: prs } = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'all',
+              per_page: 100
+            });
+
+            const authorPRs = prs.filter(pr => pr.user.login === author);
+
+            // If this is their first PR
+            if (authorPRs.length === 1) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.payload.pull_request.number,
+                body: `👋 Welcome to the project, @${author}!\n\nThank you for your first contribution! 🎉\n\nA maintainer will review your PR soon. In the meantime, please ensure:\n- [ ] Pre-commit hooks pass\n- [ ] Tests are passing\n- [ ] Documentation is updated\n\nIf you have any questions, feel free to ask!`
+              });
+            }
+
+  # Remind about stale PRs
+  stale-pr-reminder:
+    name: Stale PR reminder
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request_review' && github.event.review.state == 'changes_requested'
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Add stale reminder
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // This will be picked up by a scheduled workflow
+            // For now, just add a label
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              labels: ['needs-changes']
+            });

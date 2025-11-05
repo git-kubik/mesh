@@ -1,0 +1,418 @@
+# GitHub Project Configuration for Mesh Network Deployment
+# This file documents the recommended GitHub Project setup
+# Note: GitHub Projects (Beta) doesn't support full YAML configuration yet,
+# so this serves as documentation and reference for manual setup
+
+name: "Mesh Network Deployment"
+description: "Track all implementation phases for OpenWrt mesh network deployment"
+
+# Project Views
+views:
+  - name: "Board"
+    type: "board"
+    layout: "kanban"
+    description: "Main Kanban board for tracking work"
+    columns:
+      - name: "Backlog"
+        automation: none
+        description: "Tasks not yet scheduled"
+
+      - name: "To Do"
+        automation:
+          - trigger: "item_added"
+            action: "set_status"
+            value: "Todo"
+        description: "Tasks ready to work on"
+
+      - name: "In Progress"
+        automation:
+          - trigger: "pull_request_opened"
+            action: "move_here"
+          - trigger: "status_changed"
+            condition: "status == 'In Progress'"
+            action: "move_here"
+        description: "Currently being worked on"
+
+      - name: "In Review"
+        automation:
+          - trigger: "pull_request_review_requested"
+            action: "move_here"
+        description: "Awaiting code review"
+
+      - name: "Done"
+        automation:
+          - trigger: "issue_closed"
+            action: "move_here"
+          - trigger: "pull_request_merged"
+            action: "move_here"
+        description: "Completed tasks"
+
+  - name: "Table"
+    type: "table"
+    description: "Spreadsheet view of all items"
+    fields:
+      - "title"
+      - "status"
+      - "assignees"
+      - "labels"
+      - "milestone"
+      - "phase"
+      - "priority"
+      - "estimated_hours"
+      - "actual_hours"
+
+  - name: "Roadmap"
+    type: "roadmap"
+    description: "Timeline view by milestone"
+    group_by: "milestone"
+    sort_by: "start_date"
+
+  - name: "By Phase"
+    type: "table"
+    description: "Group tasks by implementation phase"
+    group_by: "phase"
+    sort_by: "priority"
+
+  - name: "Current Sprint"
+    type: "board"
+    description: "Focus on current 2-week sprint"
+    filters:
+      - field: "milestone"
+        operator: "is"
+        value: "current"
+      - field: "status"
+        operator: "in"
+        values: ["Todo", "In Progress", "In Review"]
+
+# Custom Fields
+custom_fields:
+  - name: "Phase"
+    type: "single_select"
+    description: "Implementation phase (1-12)"
+    options:
+      - name: "1 - Docker Infrastructure"
+        color: "green"
+      - name: "2 - Web Interface Integration"
+        color: "green"
+      - name: "3 - Ansible Configuration"
+        color: "green"
+      - name: "4 - Web Interface Setup"
+        color: "green"
+      - name: "5 - Unit Tests"
+        color: "blue"
+      - name: "6 - Integration Tests"
+        color: "blue"
+      - name: "7 - Functional Tests"
+        color: "blue"
+      - name: "8 - Performance Tests"
+        color: "blue"
+      - name: "9 - Failover Tests"
+        color: "blue"
+      - name: "10 - Test Automation"
+        color: "purple"
+      - name: "11 - Monitoring (Optional)"
+        color: "purple"
+      - name: "12 - Documentation"
+        color: "yellow"
+
+  - name: "Priority"
+    type: "single_select"
+    description: "Task priority level"
+    options:
+      - name: "Critical"
+        color: "red"
+      - name: "High"
+        color: "orange"
+      - name: "Medium"
+        color: "yellow"
+      - name: "Low"
+        color: "green"
+
+  - name: "Acceptance Criteria Met"
+    type: "single_select"
+    description: "Are acceptance criteria satisfied?"
+    options:
+      - name: "Yes"
+        color: "green"
+      - name: "Partial"
+        color: "yellow"
+      - name: "No"
+        color: "red"
+      - name: "N/A"
+        color: "gray"
+
+  - name: "Estimated Hours"
+    type: "number"
+    description: "Estimated effort in hours"
+
+  - name: "Actual Hours"
+    type: "number"
+    description: "Actual time spent in hours"
+
+  - name: "Blocked Reason"
+    type: "text"
+    description: "Why is this task blocked?"
+
+  - name: "Test Coverage Impact"
+    type: "single_select"
+    description: "Impact on code coverage"
+    options:
+      - name: "Increases"
+        color: "green"
+      - name: "Maintains"
+        color: "yellow"
+      - name: "Decreases"
+        color: "red"
+      - name: "N/A"
+        color: "gray"
+
+# Workflows (Automation)
+workflows:
+  - name: "Auto-add issues to project"
+    triggers:
+      - type: "issue_opened"
+      - type: "issue_reopened"
+    actions:
+      - type: "add_to_project"
+        column: "Backlog"
+
+  - name: "Auto-add pull requests to project"
+    triggers:
+      - type: "pull_request_opened"
+    actions:
+      - type: "add_to_project"
+        column: "In Progress"
+
+  - name: "Move to In Progress when assigned"
+    triggers:
+      - type: "issue_assigned"
+    conditions:
+      - field: "status"
+        value: "Todo"
+    actions:
+      - type: "set_status"
+        value: "In Progress"
+
+  - name: "Move to In Review when PR ready"
+    triggers:
+      - type: "pull_request_review_requested"
+    actions:
+      - type: "move_to_column"
+        column: "In Review"
+
+  - name: "Move to Done when closed"
+    triggers:
+      - type: "issue_closed"
+      - type: "pull_request_merged"
+    actions:
+      - type: "move_to_column"
+        column: "Done"
+
+  - name: "Add phase label to phase field"
+    triggers:
+      - type: "issue_labeled"
+    conditions:
+      - field: "label"
+        pattern: "^phase-"
+    actions:
+      - type: "extract_phase"
+        from: "label"
+        to: "custom_field.phase"
+
+  - name: "Add priority label to priority field"
+    triggers:
+      - type: "issue_labeled"
+    conditions:
+      - field: "label"
+        pattern: "^priority-"
+    actions:
+      - type: "extract_priority"
+        from: "label"
+        to: "custom_field.priority"
+
+# Filters for common views
+filters:
+  critical_issues:
+    name: "Critical Issues"
+    conditions:
+      - field: "priority"
+        value: "Critical"
+      - field: "status"
+        operator: "not"
+        value: "Done"
+
+  blocked_items:
+    name: "Blocked Items"
+    conditions:
+      - field: "labels"
+        contains: "status-blocked"
+
+  phase_1_tasks:
+    name: "Phase 1: Docker Infrastructure"
+    conditions:
+      - field: "labels"
+        contains: "phase-1-docker"
+
+  needs_review:
+    name: "Needs Review"
+    conditions:
+      - field: "status"
+        value: "In Review"
+
+  overdue:
+    name: "Overdue"
+    conditions:
+      - field: "milestone.due_date"
+        operator: "before"
+        value: "today"
+      - field: "status"
+        operator: "not"
+        value: "Done"
+
+# Milestones integration
+milestones:
+  - number: 1
+    title: "Docker Infrastructure (Phases 1-4)"
+    due_date: "2025-11-19"
+    tasks: 23
+
+  - number: 2
+    title: "Unit & Integration Tests (Phases 5-6)"
+    due_date: "2025-11-26"
+    tasks: 9
+
+  - number: 3
+    title: "Functional & Performance Tests (Phases 7-8)"
+    due_date: "2025-12-03"
+    tasks: 7
+
+  - number: 4
+    title: "Failover Tests (Phase 9)"
+    due_date: "2025-12-10"
+    tasks: 4
+
+  - number: 5
+    title: "Test Automation & CI/CD (Phase 10)"
+    due_date: "2025-12-17"
+    tasks: 8
+
+  - number: 6
+    title: "Documentation (Phase 12)"
+    due_date: "2025-12-24"
+    tasks: 6
+
+  - number: 7
+    title: "Continuous Monitoring (Phase 11) - Optional"
+    due_date: null
+    tasks: 4
+
+# Team settings
+team:
+  default_assignee: "git-kubik"
+  require_review: true
+  auto_merge: false
+  branch_protection:
+    - branch: "main"
+      required_reviews: 1
+      require_passing_checks: true
+      checks:
+        - "pre-commit"
+        - "tests"
+
+# Notifications
+notifications:
+  milestone_progress:
+    - trigger: "milestone_25_percent"
+      message: "Milestone {{ milestone.title }} is 25% complete!"
+    - trigger: "milestone_50_percent"
+      message: "Milestone {{ milestone.title }} is halfway done!"
+    - trigger: "milestone_75_percent"
+      message: "Milestone {{ milestone.title }} is 75% complete!"
+    - trigger: "milestone_complete"
+      message: "🎉 Milestone {{ milestone.title }} is complete!"
+
+  overdue_tasks:
+    - trigger: "daily"
+      condition: "has_overdue_tasks"
+      message: "{{ count }} tasks are overdue"
+
+  blocked_tasks:
+    - trigger: "task_blocked"
+      message: "Task {{ task.title }} is blocked: {{ blocked_reason }}"
+
+# Integration with PM commands
+pm_integration:
+  status_command: "/pm-status"
+  next_command: "/pm-next"
+  validate_command: "/pm-validate"
+  blockers_command: "/pm-blockers"
+  report_command: "/pm-report"
+
+# Success metrics
+metrics:
+  velocity:
+    - measure: "tasks_completed_per_week"
+    - measure: "story_points_per_sprint"
+
+  quality:
+    - measure: "test_coverage_percentage"
+      target: 80
+    - measure: "code_review_time_hours"
+      target: 24
+
+  timeline:
+    - measure: "milestone_on_time_percentage"
+      target: 100
+    - measure: "average_cycle_time_days"
+      target: 3
+
+# Labels mapping
+label_mapping:
+  phase_labels:
+    - "phase-1-docker"
+    - "phase-2-webui"
+    - "phase-3-ansible"
+    - "phase-4-webui-setup"
+    - "phase-5-unit-tests"
+    - "phase-6-integration-tests"
+    - "phase-7-functional-tests"
+    - "phase-8-performance-tests"
+    - "phase-9-failover-tests"
+    - "phase-10-automation"
+    - "phase-11-monitoring"
+    - "phase-12-documentation"
+
+  priority_labels:
+    - "priority-critical"
+    - "priority-high"
+    - "priority-medium"
+    - "priority-low"
+
+  type_labels:
+    - "type-feature"
+    - "type-bug"
+    - "type-enhancement"
+    - "type-documentation"
+    - "type-testing"
+    - "type-infrastructure"
+
+  status_labels:
+    - "status-blocked"
+    - "status-in-progress"
+    - "status-needs-review"
+
+# Notes
+notes: |
+  This configuration file serves as documentation for the GitHub Project setup.
+
+  GitHub Projects (Beta) currently doesn't support full YAML-based configuration,
+  so many of these settings must be configured manually through the web UI.
+
+  To set up the project:
+  1. Create new project at https://github.com/git-kubik/mesh/projects
+  2. Add custom fields as defined above
+  3. Configure automation workflows
+  4. Set up views (Board, Table, Roadmap)
+  5. Enable auto-add for new issues/PRs
+
+  For detailed instructions, see: docs/GITHUB-SETUP.md

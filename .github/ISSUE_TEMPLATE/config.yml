@@ -1,0 +1,11 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Question or Discussion
+    url: https://github.com/git-kubik/mesh/discussions
+    about: Ask questions or discuss ideas in GitHub Discussions
+  - name: Documentation
+    url: https://github.com/git-kubik/mesh/blob/main/README.md
+    about: Check the project documentation
+  - name: Project Management Commands
+    url: https://github.com/git-kubik/mesh/blob/main/.claude/commands/README.md
+    about: Learn about project management slash commands
