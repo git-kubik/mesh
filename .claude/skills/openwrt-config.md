@@ -43,6 +43,7 @@ uci revert network
 ```
 
 **UCI configuration files** (in /etc/config/):
+
 - `network` - Network interfaces, bridges, VLANs
 - `wireless` - WiFi radios and interfaces
 - `dhcp` - DHCP and DNS (dnsmasq)
@@ -50,6 +51,7 @@ uci revert network
 - `system` - System settings (hostname, timezone, etc.)
 
 **UCI file format:**
+
 ```
 config <type> '<name>'
     option <key> '<value>'
@@ -59,6 +61,7 @@ config <type> '<name>'
 ### 2. Network Configuration
 
 **Interface types:**
+
 - `static` - Static IP address
 - `dhcp` - DHCP client
 - `batadv` - Batman-adv mesh interface
@@ -66,6 +69,7 @@ config <type> '<name>'
 - `bridge` - Bridge interface (deprecated, use device)
 
 **Example network config for mesh:**
+
 ```
 config interface 'lan'
     option device 'br-lan'
@@ -94,6 +98,7 @@ config interface 'bat0_hardif_lan3'
 ```
 
 **Device naming on DIR-1960:**
+
 - `wan` - WAN port
 - `lan1`, `lan2`, `lan3`, `lan4` - LAN ports
 - `wlan0` - 2.4GHz radio interface
@@ -104,17 +109,20 @@ config interface 'bat0_hardif_lan3'
 ### 3. Wireless Configuration
 
 **Radio identification:**
+
 - Radio paths are hardware-specific
 - DIR-1960: `platform/soc/1e140000.pcie/pci0000:00/0000:00:01.0/0000:01:00.0` (2.4GHz)
 - DIR-1960: `platform/soc/1e140000.pcie/pci0000:00/0000:00:01.0/0000:02:00.0` (5GHz)
 
 **Wireless modes:**
+
 - `ap` - Access Point
 - `sta` - Station (client)
 - `mesh` - 802.11s mesh
 - `adhoc` - Ad-hoc network
 
 **2.4GHz mesh interface config:**
+
 ```
 config wifi-device 'radio0'
     option type 'mac80211'
@@ -136,6 +144,7 @@ config wifi-iface 'mesh0'
 ```
 
 **5GHz client AP config:**
+
 ```
 config wifi-device 'radio1'
     option type 'mac80211'
@@ -162,6 +171,7 @@ config wifi-iface 'ap0'
 ### 4. DHCP and DNS Configuration
 
 **DHCP server (dnsmasq):**
+
 ```
 config dnsmasq 'main'
     option domainneeded '1'
@@ -187,6 +197,7 @@ config host
 ```
 
 **DNS forwarders:**
+
 - Add in `config dnsmasq` section
 - `list server '1.1.1.1'`
 - `list server '8.8.8.8'`
@@ -194,6 +205,7 @@ config host
 ### 5. Firewall Configuration
 
 **Firewall zones:**
+
 ```
 config zone
     option name 'lan'
@@ -217,6 +229,7 @@ config forwarding
 ```
 
 **Port forwarding:**
+
 ```
 config redirect
     option name 'SSH'
@@ -231,6 +244,7 @@ config redirect
 ### 6. Package Management (opkg)
 
 **Common commands:**
+
 ```bash
 # Update package list
 opkg update
@@ -256,12 +270,14 @@ opkg upgrade <package>
 ```
 
 **Required packages for mesh:**
+
 ```bash
 opkg update
 opkg install kmod-batman-adv batctl wpad-mesh-mbedtls ip-full
 ```
 
 **Package repositories:**
+
 - Configured in `/etc/opkg/distfeeds.conf`
 - Default: downloads.openwrt.org
 - Ensure correct architecture (ramips/mt7621)
@@ -269,6 +285,7 @@ opkg install kmod-batman-adv batctl wpad-mesh-mbedtls ip-full
 ### 7. System Administration
 
 **Service management:**
+
 ```bash
 # Start/stop/restart service
 /etc/init.d/network start
@@ -288,6 +305,7 @@ ls /etc/init.d/
 ```
 
 **System info:**
+
 ```bash
 # View system log
 logread
@@ -318,6 +336,7 @@ lsmod | grep batman
 ```
 
 **Persistence:**
+
 - `/etc/` - Persistent configuration
 - `/tmp/` - Temporary (RAM, lost on reboot)
 - `/overlay/` - Writable overlay on read-only root filesystem
@@ -325,6 +344,7 @@ lsmod | grep batman
 ### 8. Network Debugging
 
 **Interface status:**
+
 ```bash
 # Show interface status
 ip addr show
@@ -340,6 +360,7 @@ ip link set lan3 down
 ```
 
 **Connectivity testing:**
+
 ```bash
 # Ping test
 ping -c 4 10.11.12.2
@@ -355,6 +376,7 @@ nc -zv 10.11.12.1 22  # If netcat installed
 ```
 
 **Traffic monitoring:**
+
 ```bash
 # Install tcpdump
 opkg update && opkg install tcpdump
@@ -372,6 +394,7 @@ cat /proc/net/dev
 ### 9. Backup and Restore
 
 **Configuration backup:**
+
 ```bash
 # Backup using sysupgrade
 sysupgrade -b /tmp/backup-$(date +%Y%m%d).tar.gz
@@ -388,6 +411,7 @@ tar -czf /tmp/config-backup.tar.gz /etc/config/
 ```
 
 **Factory reset:**
+
 ```bash
 # Reset to defaults (keep network settings)
 firstboot -y && reboot
@@ -401,6 +425,7 @@ reboot
 ### 10. Hardware-Specific Notes
 
 **DIR-1960 A1:**
+
 - **Switch chip**: MT7530
 - **LAN ports**: Switched (lan1-4)
 - **Port naming**: Physical port 1 = lan1, etc.
@@ -409,6 +434,7 @@ reboot
 - **Flash size**: Check with `df -h` (typically 128MB NAND)
 
 **Radio capabilities:**
+
 - **2.4GHz (radio0)**: 802.11n (HT20/HT40), 2x2 MIMO
 - **5GHz (radio1)**: 802.11ac (VHT20/40/80), 4x4 MIMO
 - **Max TX power**: Region-dependent (check `iw reg get`)
@@ -485,24 +511,28 @@ cat /tmp/dhcp.leases
 ## Best Practices
 
 ### Configuration Management
+
 - **Always commit**: Run `uci commit` after changes
 - **Test before commit**: Verify changes before committing
 - **Backup first**: Create backup before major changes
 - **Use Ansible**: Automate configuration for consistency
 
 ### Security
+
 - **Change default password**: First thing after flashing
 - **Disable WAN SSH**: Unless needed
 - **Update regularly**: Keep packages up to date
 - **Firewall rules**: Minimal exposure on WAN
 
 ### Performance
+
 - **MTU settings**: 1560 for wired mesh, 1532 for wireless
 - **TX power**: Don't exceed regulatory limits
 - **Channel selection**: Use non-overlapping channels (1/6/11 for 2.4GHz)
 - **Bridge optimization**: Minimize bridge members for performance
 
 ### Maintenance
+
 - **Monitor logs**: Regularly check `logread`
 - **Check disk space**: `/overlay` can fill up
 - **Reboot periodically**: If long uptime causes issues
@@ -511,6 +541,7 @@ cat /tmp/dhcp.leases
 ## Common Issues and Solutions
 
 ### Network interface not coming up
+
 ```bash
 # Check if module loaded
 lsmod | grep batman
@@ -527,6 +558,7 @@ ip link show lan3
 ```
 
 ### Wireless not starting
+
 ```bash
 # Check radio is not disabled
 uci get wireless.radio0.disabled
@@ -544,6 +576,7 @@ wifi reload
 ```
 
 ### DHCP not working
+
 ```bash
 # Check dnsmasq running
 ps | grep dnsmasq
@@ -562,6 +595,7 @@ udhcpc -i br-lan -n  # Request DHCP
 ```
 
 ### Can't reach internet
+
 ```bash
 # Check default route
 ip route show
@@ -598,10 +632,12 @@ You should be able to:
 ## Reference
 
 See `/home/m/repos/mesh/CLAUDE.md` sections:
+
 - "Hardware Specifics" - Device details
 - "Important Implementation Notes" - Initial deployment
 - "Troubleshooting Common Issues" - Problem solving
 
 See `/home/m/repos/mesh/docs/openwrt-batman-mesh-setup.md`:
+
 - Complete OpenWrt configuration guide
 - Step-by-step setup instructions

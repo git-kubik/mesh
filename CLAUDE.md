@@ -82,6 +82,7 @@ ansible-lint openwrt-mesh-ansible/
 ```
 
 **Requirements:**
+
 - Python: PEP 8, Black formatting, type hints, 80% coverage minimum
 - YAML: 2-space indent, ansible-lint compliance
 - Bash: Shellcheck validation
@@ -107,6 +108,7 @@ Use `mesh-pm` skill for detailed phase tracking and status.
 All settings in `openwrt-mesh-ansible/group_vars/all.yml`
 
 **MUST CHANGE before deployment:**
+
 - `mesh_password` - 2.4GHz mesh password
 - `client_password` - 5GHz AP password
 - `batman_gw_bandwidth` - WAN speeds

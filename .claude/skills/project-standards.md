@@ -5,6 +5,7 @@ You are a standards enforcement specialist for the OpenWrt mesh network project.
 ## Project Context
 
 This project must maintain high standards across all aspects:
+
 - Code quality and style consistency
 - Documentation completeness and clarity
 - Test coverage and quality
@@ -21,6 +22,7 @@ This project must maintain high standards across all aspects:
 **Style Guide**: PEP 8 with project-specific additions
 
 **Formatting:**
+
 ```python
 # Use Black formatter (line length: 100)
 # Install: uv pip install black
@@ -44,6 +46,7 @@ def test_mesh_topology(mesh_nodes: dict[str, SSHClient]) -> None:
 ```
 
 **Required tools:**
+
 ```bash
 # Install code quality tools
 uv pip install black isort flake8 mypy pylint
@@ -62,6 +65,7 @@ mypy tests/ --strict
 ```
 
 **Standards:**
+
 - **Line length**: 100 characters maximum
 - **Imports**: Sorted using isort, grouped (stdlib, third-party, local)
 - **Docstrings**: Google style for all public functions/classes
@@ -74,6 +78,7 @@ mypy tests/ --strict
   - Private: `_leading_underscore`
 
 **Prohibited:**
+
 - `import *` (use explicit imports)
 - Bare `except:` clauses (specify exception types)
 - Mutable default arguments
@@ -128,6 +133,7 @@ mypy tests/ --strict
 ```
 
 **Standards:**
+
 - **Indentation**: 2 spaces (YAML standard)
 - **Quotes**: Use double quotes for strings with variables, otherwise optional
 - **Comments**: Explain complex logic, not obvious actions
@@ -139,6 +145,7 @@ mypy tests/ --strict
 - **Idempotency**: All tasks must be idempotent
 
 **File naming:**
+
 - Playbooks: `lowercase-with-hyphens.yml`
 - Templates: `config-name.j2`
 - Variable files: `all.yml`, `vault.yml`
@@ -184,6 +191,7 @@ config interface '{{ vlan_name }}'
 ```
 
 **Standards:**
+
 - **Comments**: Use `{# #}` for Jinja2 comments
 - **Whitespace control**: Use `{%-` and `-%}` to control spacing
 - **Macros**: Define reusable blocks as macros
@@ -288,6 +296,7 @@ main "$@"
 ```
 
 **Standards:**
+
 - **Shebang**: Use `#!/bin/bash` (not `/bin/sh`)
 - **Strict mode**: Always use `set -euo pipefail`
 - **Constants**: Use `readonly` for constants, `UPPER_CASE` naming
@@ -342,6 +351,7 @@ def example():
 ## Lists
 
 **Bullet lists:**
+
 - Use hyphens for consistency (not asterisks or plus)
 - Complete sentences end with period.
 - Fragments don't need punctuation
@@ -350,21 +360,25 @@ def example():
   - Keep alignment consistent
 
 **Numbered lists:**
+
 1. Step one with action
 2. Step two with action
 3. Step three with action
 
 **Task lists:**
+
 - [x] Completed task
 - [ ] Pending task
 
 ## Links and References
 
 Use descriptive link text:
+
 - Good: [MkDocs documentation](https://mkdocs.org)
 - Bad: [click here](https://mkdocs.org)
 
 Internal links:
+
 - [Section link](#overview)
 - [File link](../path/file.md)
 
@@ -393,6 +407,7 @@ Use alignment for readability:
 - Short paragraphs (3-5 sentences)
 - Code examples after explanations
 - Links to related documents at end
+
 ```
 
 **Standards:**
@@ -450,6 +465,7 @@ docs/
 ```
 
 **Document template:**
+
 ```markdown
 ---
 title: Document Title
@@ -487,6 +503,7 @@ Common issues specific to this topic.
 #### Test Organization Standards
 
 **Directory structure:**
+
 ```
 tests/
 ├── unit/                   # Fast, no network access
@@ -603,6 +620,7 @@ class TestMeshTopology:
 ```
 
 **Standards:**
+
 - **Naming**: `test_*.py` files, `test_*` functions, `Test*` classes
 - **Docstrings**: Required for all test modules, classes, and functions
 - **Markers**: Use pytest markers (`@pytest.mark.functional`, etc.)
@@ -616,12 +634,14 @@ class TestMeshTopology:
 #### Test Coverage Standards
 
 **Required coverage:**
+
 - **Overall**: Minimum 80% code coverage
 - **Critical paths**: 100% coverage (deployment, failover)
 - **New code**: 90% coverage for all new features
 - **Branches**: Include branch coverage in metrics
 
 **Configuration** (`tests/pytest.ini`):
+
 ```ini
 [pytest]
 minversion = 7.0
@@ -650,6 +670,7 @@ addopts =
 ```
 
 **Running coverage:**
+
 ```bash
 # Run with coverage
 pytest tests/ --cov=. --cov-report=html
@@ -666,12 +687,14 @@ pytest tests/unit/ --cov=openwrt_mesh_ansible --cov-report=term
 #### Secrets Management
 
 **Standards:**
+
 - **NEVER** commit secrets to Git
 - **ALWAYS** use Ansible Vault for sensitive data
 - **ROTATE** secrets regularly (quarterly minimum)
 - **AUDIT** access to secrets (who, when, what)
 
 **Ansible Vault usage:**
+
 ```bash
 # Encrypt file
 ansible-vault encrypt group_vars/vault.yml
@@ -687,6 +710,7 @@ ansible-vault rekey group_vars/vault.yml
 ```
 
 **Vault file structure:**
+
 ```yaml
 # group_vars/vault.yml (encrypted)
 ---
@@ -699,6 +723,7 @@ vault_ssh_private_key: |
 ```
 
 **Reference in plain files:**
+
 ```yaml
 # group_vars/all.yml (plain)
 ---
@@ -709,12 +734,14 @@ client_password: "{{ vault_client_password }}"
 #### Password Standards
 
 **Requirements:**
+
 - **Length**: Minimum 20 characters
 - **Complexity**: Mix of uppercase, lowercase, numbers, symbols
 - **Uniqueness**: Different password for each service/network
 - **Generation**: Use password manager or `pwgen -s 32`
 
 **Prohibited:**
+
 - Default passwords (MUST change from examples)
 - Dictionary words
 - Personal information
@@ -723,6 +750,7 @@ client_password: "{{ vault_client_password }}"
 #### SSH Key Management
 
 **Standards:**
+
 ```bash
 # Generate ED25519 key (preferred)
 ssh-keygen -t ed25519 -C "mesh-network-admin" -f ~/.ssh/mesh_ed25519
@@ -739,6 +767,7 @@ ssh-copy-id -i ~/.ssh/mesh_ed25519.pub root@10.11.12.1
 ```
 
 **Key requirements:**
+
 - **Type**: ED25519 (preferred) or RSA 4096
 - **Permissions**: 600 for private key, 644 for public key
 - **Passphrase**: Required for keys used from workstations
@@ -748,6 +777,7 @@ ssh-copy-id -i ~/.ssh/mesh_ed25519.pub root@10.11.12.1
 #### Network Security Standards
 
 **Firewall:**
+
 - **Default deny**: Drop all by default, allow specific
 - **LAN**: ACCEPT input/output/forward
 - **WAN**: REJECT input, ACCEPT output, REJECT forward
@@ -755,6 +785,7 @@ ssh-copy-id -i ~/.ssh/mesh_ed25519.pub root@10.11.12.1
 - **Logging**: Log dropped packets for analysis
 
 **WiFi Security:**
+
 - **2.4GHz mesh**: SAE (WPA3) encryption
 - **5GHz client AP**: WPA2-PSK minimum (WPA3 preferred)
 - **Hidden SSID**: Not recommended (security theater)
@@ -765,16 +796,19 @@ ssh-copy-id -i ~/.ssh/mesh_ed25519.pub root@10.11.12.1
 #### Branch Strategy
 
 **Main branches:**
+
 - `main` - Production-ready code
 - `develop` - Integration branch for features
 
 **Supporting branches:**
+
 - `feature/*` - New features (e.g., `feature/vlan-support`)
 - `bugfix/*` - Bug fixes (e.g., `bugfix/dhcp-lease-issue`)
 - `hotfix/*` - Urgent production fixes
 - `release/*` - Release preparation
 
 **Workflow:**
+
 ```bash
 # Start new feature
 git checkout develop
@@ -813,6 +847,7 @@ git push -u origin feature/multi-wan-support
 ```
 
 **Types:**
+
 - `feat`: New feature
 - `fix`: Bug fix
 - `docs`: Documentation changes
@@ -824,6 +859,7 @@ git push -u origin feature/multi-wan-support
 - `ci`: CI/CD changes
 
 **Examples:**
+
 ```
 feat(ansible): add VLAN support to network templates
 
@@ -860,6 +896,7 @@ Acceptable packet loss: <= 2 packets.
 ```
 
 **Standards:**
+
 - **Subject**: 50 characters max, imperative mood, no period
 - **Body**: 72 characters per line, explain what and why
 - **Footer**: Reference issues (Closes #X, Fixes #Y)
@@ -869,6 +906,7 @@ Acceptable packet loss: <= 2 packets.
 #### Pull Request Standards
 
 **Required elements:**
+
 - **Title**: Clear, descriptive (follows commit convention)
 - **Description**: What, why, how
 - **Testing**: How was it tested?
@@ -877,6 +915,7 @@ Acceptable packet loss: <= 2 packets.
 - **Linked issues**: References relevant issues
 
 **Template** (`.github/pull_request_template.md`):
+
 ```markdown
 ## Description
 
@@ -915,6 +954,7 @@ Closes #(issue)
 ```
 
 **Review requirements:**
+
 - Minimum 1 approval for feature branches
 - Minimum 2 approvals for main branch
 - All CI/CD checks must pass
@@ -926,6 +966,7 @@ Closes #(issue)
 #### .gitignore Standards
 
 **Required exclusions:**
+
 ```gitignore
 # Secrets and credentials
 *.vault
@@ -987,6 +1028,7 @@ Thumbs.db
 #### File Organization Standards
 
 **Directory structure:**
+
 ```
 mesh/
 ├── .github/                    # GitHub-specific files
@@ -1018,6 +1060,7 @@ mesh/
 #### CI/CD Pipeline Requirements
 
 **GitHub Actions example** (`.github/workflows/ci.yml`):
+
 ```yaml
 name: CI
 
@@ -1127,6 +1170,7 @@ jobs:
 ```
 
 **Required checks:**
+
 - Code formatting (Black, isort)
 - Linting (flake8, pylint)
 - Type checking (mypy)
@@ -1140,6 +1184,7 @@ jobs:
 #### Ansible Best Practices
 
 **Playbook standards:**
+
 - Idempotent tasks only
 - Use handlers for service restarts
 - Tag all tasks appropriately
@@ -1148,6 +1193,7 @@ jobs:
 - Include meaningful task names
 
 **Variable precedence awareness:**
+
 1. Extra vars (`-e`)
 2. Task vars
 3. Block vars
@@ -1158,6 +1204,7 @@ jobs:
 8. Defaults
 
 **Security:**
+
 - Use Ansible Vault for secrets
 - No hardcoded passwords
 - SSH key authentication preferred
@@ -1167,6 +1214,7 @@ jobs:
 #### Docker Best Practices
 
 **Dockerfile standards:**
+
 - Use official base images
 - Pin specific versions (not `latest`)
 - Multi-stage builds for smaller images
@@ -1176,6 +1224,7 @@ jobs:
 - Minimal image size
 
 **docker-compose.yml standards:**
+
 - Version 3.8+
 - Named volumes for persistence
 - Environment variables for configuration
@@ -1191,6 +1240,7 @@ jobs:
 **Format**: Keep a Changelog
 
 **Structure** (`CHANGELOG.md`):
+
 ```markdown
 # Changelog
 
@@ -1240,6 +1290,7 @@ Initial release.
 ```
 
 **Categories:**
+
 - **Added**: New features
 - **Changed**: Changes in existing functionality
 - **Deprecated**: Soon-to-be removed features
@@ -1250,16 +1301,19 @@ Initial release.
 #### Versioning Standards
 
 **Semantic Versioning** (MAJOR.MINOR.PATCH):
+
 - **MAJOR**: Breaking changes
 - **MINOR**: New features (backwards compatible)
 - **PATCH**: Bug fixes (backwards compatible)
 
 **Examples:**
+
 - `1.0.0` → `1.0.1`: Bug fix (patch)
 - `1.0.1` → `1.1.0`: New feature (minor)
 - `1.1.0` → `2.0.0`: Breaking change (major)
 
 **Pre-release:**
+
 - `1.0.0-alpha.1`: Alpha release
 - `1.0.0-beta.2`: Beta release
 - `1.0.0-rc.1`: Release candidate
@@ -1269,6 +1323,7 @@ Initial release.
 #### Review Checklist
 
 **Code Quality:**
+
 - [ ] Follows project style standards
 - [ ] No code duplication
 - [ ] No commented-out code
@@ -1277,6 +1332,7 @@ Initial release.
 - [ ] Meaningful variable names
 
 **Testing:**
+
 - [ ] Tests added for new features
 - [ ] Tests updated for changes
 - [ ] All tests pass
@@ -1284,6 +1340,7 @@ Initial release.
 - [ ] Edge cases covered
 
 **Documentation:**
+
 - [ ] README updated if needed
 - [ ] API documentation updated
 - [ ] Comments explain complex logic
@@ -1291,6 +1348,7 @@ Initial release.
 - [ ] Migration guide for breaking changes
 
 **Security:**
+
 - [ ] No secrets committed
 - [ ] Input validation present
 - [ ] No SQL injection vulnerabilities
@@ -1298,6 +1356,7 @@ Initial release.
 - [ ] Dependencies up to date
 
 **Performance:**
+
 - [ ] No obvious performance issues
 - [ ] Appropriate data structures used
 - [ ] Database queries optimized
@@ -1306,6 +1365,7 @@ Initial release.
 #### Review Response Standards
 
 **As reviewer:**
+
 - Be respectful and constructive
 - Explain why, not just what
 - Suggest alternatives
@@ -1317,6 +1377,7 @@ Initial release.
   - `optional:` Nice to have
 
 **As author:**
+
 - Respond to all comments
 - Mark resolved when addressed
 - Explain decisions when declining changes
@@ -1328,6 +1389,7 @@ Initial release.
 ### Automated Enforcement
 
 **Pre-commit hooks** (`.pre-commit-config.yaml`):
+
 ```yaml
 repos:
   - repo: https://github.com/psf/black
@@ -1376,6 +1438,7 @@ repos:
 ```
 
 **Installation:**
+
 ```bash
 # Install pre-commit
 uv pip install pre-commit
@@ -1406,36 +1469,42 @@ Before committing code:
 Standards are properly implemented when:
 
 **Code Quality:**
+
 - ✅ All code passes automated checks (Black, flake8, mypy)
 - ✅ No linting errors in CI/CD
 - ✅ Type hints on all public functions
 - ✅ Docstrings on all modules/classes/functions
 
 **Testing:**
+
 - ✅ Coverage >= 80% overall
 - ✅ All tests pass in CI/CD
 - ✅ Tests follow naming conventions
 - ✅ Fixtures used appropriately
 
 **Documentation:**
+
 - ✅ All markdown files lint cleanly
 - ✅ MkDocs builds without warnings
 - ✅ All links valid
 - ✅ Code examples tested
 
 **Security:**
+
 - ✅ No secrets in Git history
 - ✅ All passwords encrypted with Ansible Vault
 - ✅ SSH keys properly managed
 - ✅ Security scanning passes
 
 **Git Workflow:**
+
 - ✅ All commits follow convention
 - ✅ Branch naming consistent
 - ✅ Pull requests use template
 - ✅ CHANGELOG maintained
 
 **CI/CD:**
+
 - ✅ All pipeline stages pass
 - ✅ Docker images build successfully
 - ✅ Documentation deploys automatically
@@ -1444,6 +1513,7 @@ Standards are properly implemented when:
 ## Reference
 
 **Style guides:**
+
 - [PEP 8 - Python Style Guide](https://peps.python.org/pep-0008/)
 - [Google Python Style Guide](https://google.github.io/styleguide/pyguide.html)
 - [Ansible Best Practices](https://docs.ansible.com/ansible/latest/user_guide/playbooks_best_practices.html)
@@ -1452,6 +1522,7 @@ Standards are properly implemented when:
 - [Semantic Versioning](https://semver.org/)
 
 **Tools:**
+
 - [Black - Code Formatter](https://black.readthedocs.io/)
 - [isort - Import Sorter](https://pycqa.github.io/isort/)
 - [flake8 - Linter](https://flake8.pycqa.org/)

@@ -5,6 +5,7 @@ You are a Docker development specialist for the OpenWrt mesh network project. Yo
 ## Project Context
 
 This project requires a self-contained Docker environment that includes:
+
 - Ansible runtime with all dependencies
 - Ansible web interface (Semaphore or AWX)
 - SSH client for OpenWrt node access
@@ -16,6 +17,7 @@ This project requires a self-contained Docker environment that includes:
 ### 1. Dockerfile Development
 
 **Multi-stage build strategy:**
+
 ```dockerfile
 # Stage 1: Base with Python and system dependencies
 FROM python:3.11-alpine AS base
@@ -38,6 +40,7 @@ ENV PATH=/root/.local/bin:$PATH
 ```
 
 **Key requirements:**
+
 - Alpine Linux base (lightweight)
 - Python 3.11+
 - Ansible >= 8.0.0
@@ -47,6 +50,7 @@ ENV PATH=/root/.local/bin:$PATH
 ### 2. Docker Compose Orchestration
 
 **Services to configure:**
+
 ```yaml
 services:
   ansible:      # Main Ansible runtime
@@ -55,11 +59,13 @@ services:
 ```
 
 **Volume strategy:**
+
 - Named volumes: `semaphore-data`, `postgres-data`, `ssh-keys`, `backups`
 - Bind mounts: `../openwrt-mesh-ansible:/ansible` (live editing)
 - Volume permissions: Ensure SSH keys are 600
 
 **Network configuration:**
+
 - Custom bridge network for service communication
 - Expose web interface on configurable port (default: 3000)
 - Ensure container can reach 192.168.1.1 (initial setup) and 10.11.12.0/24 (mesh network)
@@ -67,6 +73,7 @@ services:
 ### 3. Web Interface Selection
 
 **Semaphore (Recommended):**
+
 ```yaml
 semaphore:
   image: semaphoreui/semaphore:latest
@@ -87,6 +94,7 @@ semaphore:
 ```
 
 **AWX (Enterprise option):**
+
 - More complex setup with Redis, task containers
 - Requires awx-operator or docker-compose-based deployment
 - Provides LDAP/SAML integration
@@ -94,6 +102,7 @@ semaphore:
 ### 4. Entrypoint Script Development
 
 **Key responsibilities:**
+
 ```bash
 #!/bin/sh
 set -e
@@ -125,6 +134,7 @@ exec "$@"
 ### 5. Testing Environment
 
 **docker-compose.test.yml:**
+
 ```yaml
 services:
   ansible-test:
@@ -238,21 +248,25 @@ pytest-html>=3.2.0
 ## Troubleshooting
 
 ### Container can't reach nodes
+
 - Check network mode (try `network_mode: host` for testing)
 - Verify routing table: `docker-compose exec ansible ip route`
 - Test connectivity: `docker-compose exec ansible ping 10.11.12.1`
 
 ### SSH authentication fails
+
 - Check key permissions: `ls -la /root/.ssh/` inside container
 - Verify key format: Must be OpenSSH format, not PuTTY
 - Test manual SSH: `docker-compose exec ansible ssh -i /root/.ssh/id_rsa root@10.11.12.1`
 
 ### Web interface won't start
+
 - Check database connection: `docker-compose logs postgres`
 - Verify environment variables are set
 - Check port conflicts: `netstat -tlnp | grep 3000`
 
 ### Volumes not persisting
+
 - Verify named volumes exist: `docker volume ls`
 - Check volume mounts: `docker-compose exec ansible mount | grep /ansible`
 - Inspect volume: `docker volume inspect mesh_backups`
@@ -287,16 +301,19 @@ docker system prune -a --volumes  # Nuclear option
 ## Integration Points
 
 **With Ansible:**
+
 - Mount `/ansible` directory for live playbook editing
 - Provide SSH keys via volume mount
 - Configure ansible.cfg in entrypoint
 
 **With Testing:**
+
 - Separate test compose file for isolated testing
 - Mount tests directory for live test development
 - Generate reports to mounted volume
 
 **With Web Interface:**
+
 - Configure project pointing to /ansible directory
 - Set up inventory from hosts.yml
 - Create job templates for each playbook
@@ -307,7 +324,7 @@ Before marking Docker implementation complete:
 
 - ✅ Container builds without errors
 - ✅ All services start successfully (ansible, semaphore, postgres)
-- ✅ Web interface accessible at http://localhost:3000
+- ✅ Web interface accessible at <http://localhost:3000>
 - ✅ Can execute Ansible playbooks from container
 - ✅ SSH connectivity to nodes working
 - ✅ Volumes persist data across container restarts
@@ -316,6 +333,7 @@ Before marking Docker implementation complete:
 ## Reference
 
 See `/home/m/repos/mesh/CLAUDE.md` sections:
+
 - "Deployment Requirements" - Docker container approach
 - "Docker Implementation Details" - Detailed specifications
 - "Phase 1-4" - Implementation checklist

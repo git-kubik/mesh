@@ -11,6 +11,7 @@ This directory contains custom Claude Code skills for managing the OpenWrt mesh 
 **Purpose**: Comprehensive project management for the OpenWrt mesh network deployment.
 
 **Usage**:
+
 ```
 User: pm status
 User: pm next
@@ -21,6 +22,7 @@ User: pm ready?
 ```
 
 **What it does**:
+
 - Tracks progress across all 12 implementation phases
 - Identifies next priority tasks
 - Validates phase completion
@@ -37,6 +39,7 @@ User: pm ready?
 **Purpose**: Docker container development, Docker Compose orchestration, and web interface integration.
 
 **Expertise**:
+
 - Multi-stage Dockerfile development
 - Docker Compose service orchestration
 - Semaphore/AWX web interface setup
@@ -53,6 +56,7 @@ User: pm ready?
 **Purpose**: Python test development using pytest and UV package management.
 
 **Expertise**:
+
 - pytest test suite development (unit, integration, functional, performance, failover)
 - UV dependency management and virtual environments
 - Test fixtures and conftest.py configuration
@@ -68,6 +72,7 @@ User: pm ready?
 **Purpose**: Ansible playbook development and automation for OpenWrt configuration.
 
 **Expertise**:
+
 - Playbook creation and debugging
 - Jinja2 template development for OpenWrt UCI configs
 - Inventory and group_vars management
@@ -84,6 +89,7 @@ User: pm ready?
 **Purpose**: OpenWrt system configuration and administration.
 
 **Expertise**:
+
 - UCI (Unified Configuration Interface) system
 - Package management with opkg
 - Network interface configuration
@@ -100,6 +106,7 @@ User: pm ready?
 **Purpose**: Batman-adv mesh protocol configuration and optimization.
 
 **Expertise**:
+
 - B.A.T.M.A.N. V protocol understanding
 - Mesh topology design and troubleshooting
 - Gateway selection and failover
@@ -116,6 +123,7 @@ User: pm ready?
 **Purpose**: Creating comprehensive technical documentation.
 
 **Expertise**:
+
 - User guides (deployment, operation, troubleshooting)
 - Developer guides (testing, contributing)
 - API/configuration reference
@@ -132,6 +140,7 @@ User: pm ready?
 **Purpose**: Network testing, performance benchmarking, and failover validation.
 
 **Expertise**:
+
 - Network connectivity testing (ping, traceroute, etc.)
 - Performance benchmarking (iperf3, latency tests)
 - Mesh-specific validation (batman topology, TQ values)
@@ -148,6 +157,7 @@ User: pm ready?
 **Purpose**: Code quality, documentation standards, testing requirements, security practices, and development workflows.
 
 **Expertise**:
+
 - Code style standards (Python PEP 8, YAML, Jinja2, Bash)
 - Documentation standards (Markdown, MkDocs)
 - Testing standards (pytest, coverage requirements)
@@ -171,6 +181,7 @@ Claude Code skills are reusable command sets that give Claude specific context a
 Skills are automatically invoked when you ask questions or request actions related to their domain:
 
 **Examples**:
+
 - "Help me write a Dockerfile" → Invokes `docker-dev`
 - "Create a pytest test for the mesh topology" → Invokes `python-test`
 - "How do I configure UCI on OpenWrt?" → Invokes `openwrt-config`
@@ -179,6 +190,7 @@ Skills are automatically invoked when you ask questions or request actions relat
 - "Benchmark throughput between nodes" → Invokes `mesh-test`
 
 You can also explicitly request a skill:
+
 ```
 User: Use the docker-dev skill to help me with containers
 User: I need the batman-mesh skill for troubleshooting
@@ -189,39 +201,48 @@ User: I need the batman-mesh skill for troubleshooting
 ### By Development Phase
 
 **Phase 1-4: Docker Infrastructure**
+
 - Primary: `docker-dev`
 - Supporting: `ansible-dev`
 
 **Phase 5-9: Test Implementation**
+
 - Primary: `python-test`, `mesh-test`
 - Supporting: `ansible-dev`, `batman-mesh`, `openwrt-config`
 
 **Phase 10: Test Automation**
+
 - Primary: `python-test`
 - Supporting: `docker-dev`
 
 **Phase 12: Documentation**
+
 - Primary: `tech-docs`
 - Supporting: All other skills (as reference)
 
 ### By Technical Domain
 
 **Infrastructure & Deployment**:
+
 - `docker-dev` - Containerization
 - `ansible-dev` - Automation
 
 **Network & Mesh**:
+
 - `openwrt-config` - System configuration
 - `batman-mesh` - Mesh routing
 
 **Quality & Validation**:
+
 - `python-test` - Test development
 - `mesh-test` - Network testing
 
 **Documentation**:
+
 - `tech-docs` - All documentation types
 
 **Project Management**:
+
 - `mesh-pm` - Progress tracking
 
 ## Creating New Skills

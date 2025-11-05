@@ -14,12 +14,15 @@ assignees: ''
 **Estimated Effort**: [X hours]
 
 ## Description
+
 [What this test validates]
 
 ## Test Scope
+
 [What specific functionality or scenario this test covers]
 
 ## Acceptance Criteria
+
 - [ ] Test file created in correct directory
 - [ ] Test implements all required scenarios
 - [ ] Test passes consistently
@@ -29,6 +32,7 @@ assignees: ''
 - [ ] Test execution time is reasonable (< X seconds)
 
 ## Implementation Details
+
 - **File to create**: `tests/[category]/test_[name].py`
 - **Fixtures needed**: [List fixtures from conftest.py]
 - **Dependencies**: [External tools like iperf3, if needed]
@@ -37,11 +41,13 @@ assignees: ''
 ## Test Scenarios
 
 ### Scenario 1: [Scenario Name]
+
 - **Given**: [Initial state]
 - **When**: [Action performed]
 - **Then**: [Expected outcome]
 
 ### Scenario 2: [Scenario Name]
+
 - **Given**: [Initial state]
 - **When**: [Action performed]
 - **Then**: [Expected outcome]
@@ -69,12 +75,15 @@ def test_[name](fixture1, fixture2):
 ```
 
 ## Performance/Benchmark Requirements
+
 [If this is a performance test, specify thresholds]
+
 - Throughput: ≥ X Mbps
 - Latency: < X ms
 - Success rate: ≥ X%
 
 ## Definition of Done
+
 - [ ] Test implemented and passing
 - [ ] Test documented with clear docstring
 - [ ] Test added to appropriate test file
@@ -83,11 +92,13 @@ def test_[name](fixture1, fixture2):
 - [ ] PR reviewed and merged
 
 ## Related Issues
+
 - Part of Milestone X: [Test Implementation Milestone]
 - Depends on: [Infrastructure requirements]
 - Related tests: [Similar or related test issues]
 
 ## References
-- pytest docs: https://docs.pytest.org/
+
+- pytest docs: <https://docs.pytest.org/>
 - Use `python-test` or `mesh-test` skill for guidance
 - See `docs/TESTING.md` (when created)

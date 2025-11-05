@@ -5,6 +5,7 @@
 Complete Infrastructure-as-Code deployment for your 3-node OpenWrt mesh network using Ansible.
 
 **Benefits:**
+
 - ✅ Repeatable, automated deployment
 - ✅ Version-controlled configuration
 - ✅ Easy updates and changes
@@ -78,6 +79,7 @@ static_hosts:
 ```
 
 **Other settings you might want to adjust:**
+
 - WiFi channels (if interference issues)
 - SSID names
 - Network ranges (if 10.11.12.0/24 conflicts)
@@ -88,6 +90,7 @@ static_hosts:
 You must configure nodes **ONE AT A TIME** initially:
 
 **Node 1 First:**
+
 ```bash
 # 1. Flash Node 1 with OpenWrt (see main guide)
 # 2. Connect ONLY Node 1 to your network
@@ -105,6 +108,7 @@ ansible-playbook playbooks/deploy.yml --limit node1 --ask-pass
 ```
 
 **Node 2:**
+
 ```bash
 # 1. Disconnect Node 1, connect Node 2
 # 2. Set node2 ansible_host to 192.168.1.1 in inventory
@@ -115,12 +119,14 @@ make deploy-node2
 ```
 
 **Node 3:**
+
 ```bash
 # Same process as Node 2
 make deploy-node3
 ```
 
 **After all nodes configured:**
+
 ```bash
 # Connect wired ring (LAN3/LAN4)
 # Connect all WANs
@@ -362,6 +368,7 @@ Create custom playbooks for specific tasks:
 ```
 
 Run with:
+
 ```bash
 ansible-playbook playbooks/restart_services.yml
 ```
@@ -379,7 +386,7 @@ cat > playbooks/export_metrics.yml <<'EOF'
     - name: Get batman metrics
       raw: batctl o
       register: batman_out
-    
+
     - name: Save metrics
       local_action:
         module: copy
@@ -394,6 +401,7 @@ ansible-playbook playbooks/export_metrics.yml
 ## Comparison: Manual vs Ansible
 
 ### Manual Configuration
+
 - ❌ Edit files on each node individually
 - ❌ Easy to make mistakes/typos
 - ❌ Hard to keep nodes in sync
@@ -402,6 +410,7 @@ ansible-playbook playbooks/export_metrics.yml
 - ❌ Difficult to replicate
 
 ### Ansible Configuration
+
 - ✅ Single source of truth
 - ✅ Consistent across all nodes
 - ✅ Version controlled
@@ -414,6 +423,7 @@ ansible-playbook playbooks/export_metrics.yml
 Given your background with Proxmox, Terraform, and infrastructure automation:
 
 **Terraform + Ansible:**
+
 ```hcl
 # terraform/main.tf
 resource "null_resource" "deploy_mesh" {
@@ -424,6 +434,7 @@ resource "null_resource" "deploy_mesh" {
 ```
 
 **CI/CD Pipeline:**
+
 ```yaml
 # .gitlab-ci.yml or .github/workflows/deploy.yml
 deploy:
@@ -434,6 +445,7 @@ deploy:
 ```
 
 **Monitoring Integration:**
+
 - Export batman metrics to Prometheus
 - Create Grafana dashboards
 - Alert on mesh topology changes
@@ -463,17 +475,20 @@ deploy:
 ## Support
 
 For detailed documentation:
+
 - See `README.md` in the archive
 - Refer to main setup guide (openwrt-batman-mesh-setup.md)
-- Check OpenWrt documentation: https://openwrt.org
+- Check OpenWrt documentation: <https://openwrt.org>
 
 For automation questions:
-- Ansible docs: https://docs.ansible.com
-- Jinja2 templates: https://jinja.palletsprojects.com
+
+- Ansible docs: <https://docs.ansible.com>
+- Jinja2 templates: <https://jinja.palletsprojects.com>
 
 ## Conclusion
 
 This Ansible deployment gives you:
+
 - **Professional-grade automation** for your mesh network
 - **Infrastructure-as-Code** approach to network management
 - **Easy maintenance** and updates
@@ -481,6 +496,7 @@ This Ansible deployment gives you:
 - **Quick disaster recovery** with backups
 
 Perfect for someone with your IT infrastructure experience who values:
+
 - Repeatability
 - Documentation
 - Version control

@@ -5,6 +5,7 @@ You are a mesh network testing specialist. Your expertise covers network connect
 ## Project Context
 
 This project requires comprehensive testing to validate:
+
 - Mesh topology correctness
 - Gateway selection and failover
 - Client connectivity (wired and wireless)
@@ -574,6 +575,7 @@ You should be able to:
 ## Reference
 
 See `/home/m/repos/mesh/CLAUDE.md` sections:
+
 - "Comprehensive Test Suite" - Complete testing requirements
 - "Test Categories" - Detailed test specifications
 - "Phase 5-9" - Test implementation checklists

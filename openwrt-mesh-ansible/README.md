@@ -5,6 +5,7 @@ Automated deployment and management of a highly-available OpenWrt mesh network u
 ## Overview
 
 This Ansible project automates the deployment and configuration of a 3-node OpenWrt mesh network with:
+
 - Full ring topology with wired connections
 - 2.4GHz wireless mesh backup
 - Multi-gateway high availability
@@ -40,14 +41,15 @@ openwrt-mesh-ansible/
 ### Control Machine (Your Workstation)
 
 1. **Ansible installed:**
+
    ```bash
    # Ubuntu/Debian
    sudo apt update
    sudo apt install ansible
-   
+
    # macOS
    brew install ansible
-   
+
    # Python pip
    pip install ansible
    ```
@@ -84,6 +86,7 @@ cd openwrt-mesh-ansible
 ### 2. Customize Configuration
 
 **Edit `group_vars/all.yml`:**
+
 ```yaml
 # REQUIRED: Change these passwords!
 mesh_password: YourSecureMeshPassword123!
@@ -100,6 +103,7 @@ static_hosts:
 ```
 
 **Edit `inventory/hosts.yml`:**
+
 ```yaml
 # For initial setup, set ansible_host to 192.168.1.1
 # After node is configured, change to 10.11.12.X
@@ -111,6 +115,7 @@ static_hosts:
 ### 3. Initial Node Setup (One at a Time)
 
 **Configure Node 1:**
+
 ```bash
 # 1. Connect ONLY Node 1 to your network
 # 2. Set its IP in inventory to 192.168.1.1
@@ -122,6 +127,7 @@ ansible-playbook -i inventory/hosts.yml playbooks/deploy.yml --limit node1
 ```
 
 **Configure Node 2:**
+
 ```bash
 # 1. Disconnect Node 1, connect Node 2
 # 2. Set Node 2's IP in inventory to 192.168.1.1
@@ -132,6 +138,7 @@ ansible-playbook -i inventory/hosts.yml playbooks/deploy.yml --limit node2
 ```
 
 **Configure Node 3:**
+
 ```bash
 # Same process as Node 2
 ansible-playbook -i inventory/hosts.yml playbooks/deploy.yml --limit node3
@@ -140,6 +147,7 @@ ansible-playbook -i inventory/hosts.yml playbooks/deploy.yml --limit node3
 ### 4. Physical Wiring
 
 After all nodes are configured:
+
 1. Connect the wired ring (LAN3 and LAN4 between nodes)
 2. Connect WAN ports to internet
 3. Power on all nodes
@@ -162,21 +170,25 @@ ansible-playbook -i inventory/hosts.yml playbooks/verify.yml
 ### Deploy Configuration
 
 **Deploy to all nodes:**
+
 ```bash
 ansible-playbook -i inventory/hosts.yml playbooks/deploy.yml
 ```
 
 **Deploy to specific node:**
+
 ```bash
 ansible-playbook -i inventory/hosts.yml playbooks/deploy.yml --limit node1
 ```
 
 **Dry run (check mode):**
+
 ```bash
 ansible-playbook -i inventory/hosts.yml playbooks/deploy.yml --check
 ```
 
 **Deploy only specific components:**
+
 ```bash
 # Network configuration only
 ansible-playbook -i inventory/hosts.yml playbooks/deploy.yml --tags network
@@ -216,6 +228,7 @@ ansible-playbook -i inventory/hosts.yml playbooks/backup.yml
 ```
 
 **Restore from backup:**
+
 ```bash
 # 1. Copy backup to node
 scp backups/2025-11-05/backup-node1-*.tar.gz root@10.11.12.1:/tmp/
@@ -262,11 +275,13 @@ ansible mesh_nodes -i inventory/hosts.yml -a "reboot" --become
 ### Modifying Configuration
 
 **To change network settings:**
+
 1. Edit `group_vars/all.yml`
 2. Run deployment: `ansible-playbook -i inventory/hosts.yml playbooks/deploy.yml`
 3. Configuration updated and services reloaded automatically
 
 **To add static DHCP reservations:**
+
 ```yaml
 # Edit group_vars/all.yml
 static_hosts:
@@ -276,6 +291,7 @@ static_hosts:
 ```
 
 **To change WiFi passwords:**
+
 ```yaml
 # Edit group_vars/all.yml
 mesh_password: NewMeshPassword123!
@@ -304,6 +320,7 @@ git commit -m "Updated WiFi passwords"
 ### Enable VLANs
 
 **Edit `group_vars/all.yml`:**
+
 ```yaml
 enable_vlans: true
 
@@ -313,7 +330,7 @@ vlans:
     network: 10.11.10.0/24
     dhcp_start: 100
     dhcp_limit: 50
-  
+
   guest:
     vid: 30
     network: 10.11.30.0/24
@@ -325,6 +342,7 @@ vlans:
 ```
 
 **Deploy VLAN configuration:**
+
 ```bash
 ansible-playbook -i inventory/hosts.yml playbooks/deploy.yml
 ```
@@ -334,6 +352,7 @@ ansible-playbook -i inventory/hosts.yml playbooks/deploy.yml
 ### Connection Issues
 
 **Can't connect to node:**
+
 ```bash
 # Test SSH manually
 ssh root@10.11.12.1
@@ -346,6 +365,7 @@ ansible-playbook -i inventory/hosts.yml playbooks/verify.yml --ask-pass
 ```
 
 **Wrong IP address in inventory:**
+
 ```bash
 # Update inventory/hosts.yml with correct ansible_host
 # Then test connection
@@ -355,6 +375,7 @@ ansible node1 -i inventory/hosts.yml -m ping
 ### Deployment Issues
 
 **Package installation fails:**
+
 ```bash
 # Update package lists manually
 ansible mesh_nodes -i inventory/hosts.yml -a "opkg update"
@@ -364,6 +385,7 @@ ansible-playbook -i inventory/hosts.yml playbooks/deploy.yml --tags packages
 ```
 
 **Configuration not applying:**
+
 ```bash
 # Check for syntax errors
 ansible-playbook -i inventory/hosts.yml playbooks/deploy.yml --syntax-check
@@ -376,6 +398,7 @@ ansible mesh_nodes -i inventory/hosts.yml -a "logread | tail -50"
 ```
 
 **Services not reloading:**
+
 ```bash
 # Manually reload services
 ansible mesh_nodes -i inventory/hosts.yml -a "/etc/init.d/network restart"
@@ -386,6 +409,7 @@ ansible mesh_nodes -i inventory/hosts.yml -a "/etc/init.d/dnsmasq restart"
 ### Mesh Issues
 
 **Batman interfaces not active:**
+
 ```bash
 # Check batman module
 ansible mesh_nodes -i inventory/hosts.yml -a "lsmod | grep batman"
@@ -398,6 +422,7 @@ ansible mesh_nodes -i inventory/hosts.yml -a "/etc/init.d/network restart"
 ```
 
 **Nodes can't see each other:**
+
 ```bash
 # Check mesh topology
 ansible mesh_nodes -i inventory/hosts.yml -a "batctl o"
@@ -414,6 +439,7 @@ ansible mesh_nodes -i inventory/hosts.yml -a "iw dev mesh0 station dump"
 ### SSH Key Authentication
 
 **Setup SSH keys:**
+
 ```bash
 # Generate key (if you don't have one)
 ssh-keygen -t ed25519 -f ~/.ssh/openwrt_mesh
@@ -455,12 +481,14 @@ Create custom playbooks for specific tasks:
 ### Integration with Other Tools
 
 **Export configuration:**
+
 ```bash
 # Export current config
 ansible mesh_nodes -i inventory/hosts.yml -a "uci export network" > network_config.txt
 ```
 
 **Monitor logs continuously:**
+
 ```bash
 # Watch logs on all nodes
 ansible mesh_nodes -i inventory/hosts.yml -a "logread -f" -f 10
@@ -495,12 +523,14 @@ ansible mesh_nodes -i inventory/hosts.yml -a "logread -f" -f 10
 ## Maintenance Schedule
 
 ### Daily
+
 ```bash
 # Quick status check
 ansible-playbook -i inventory/hosts.yml playbooks/verify.yml
 ```
 
 ### Weekly
+
 ```bash
 # Check for updates
 ansible-playbook -i inventory/hosts.yml playbooks/update.yml --tags check
@@ -510,6 +540,7 @@ ansible-playbook -i inventory/hosts.yml playbooks/backup.yml
 ```
 
 ### Monthly
+
 ```bash
 # Apply updates
 ansible-playbook -i inventory/hosts.yml playbooks/update.yml
@@ -519,6 +550,7 @@ ansible-playbook -i inventory/hosts.yml playbooks/verify.yml
 ```
 
 ### Quarterly
+
 ```bash
 # Full configuration audit
 ansible-playbook -i inventory/hosts.yml playbooks/deploy.yml --check
@@ -556,18 +588,21 @@ ls -lh backups/
 ## Troubleshooting Common Ansible Errors
 
 **"SSH Error: Permission denied"**
+
 ```bash
 # Check SSH credentials
 ansible mesh_nodes -i inventory/hosts.yml -m ping --ask-pass
 ```
 
 **"Module not found" or "Python not available"**
+
 ```bash
 # Install Python on nodes
 ansible mesh_nodes -i inventory/hosts.yml -m raw -a "opkg update && opkg install python3-light"
 ```
 
 **"Template error" or "Jinja2 error"**
+
 ```bash
 # Check template syntax
 ansible-playbook -i inventory/hosts.yml playbooks/deploy.yml --syntax-check
@@ -578,10 +613,10 @@ ansible-playbook -i inventory/hosts.yml playbooks/deploy.yml --check
 
 ## Support and Resources
 
-- OpenWrt Documentation: https://openwrt.org/docs
-- Batman-adv Project: https://www.open-mesh.org/
-- Ansible Documentation: https://docs.ansible.com/
-- OpenWrt Forum: https://forum.openwrt.org/
+- OpenWrt Documentation: <https://openwrt.org/docs>
+- Batman-adv Project: <https://www.open-mesh.org/>
+- Ansible Documentation: <https://docs.ansible.com/>
+- OpenWrt Forum: <https://forum.openwrt.org/>
 
 ## License
 
@@ -590,6 +625,7 @@ This project configuration is provided as-is for personal and educational use.
 ## Contributing
 
 To improve these playbooks:
+
 1. Test changes thoroughly
 2. Document modifications
 3. Share improvements with the community

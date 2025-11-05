@@ -4,7 +4,7 @@ This guide explains how to complete the GitHub project management setup for the 
 
 ## What's Been Done
 
-✅ **Repository created**: https://github.com/git-kubik/mesh
+✅ **Repository created**: <https://github.com/git-kubik/mesh>
 ✅ **Code pushed**: All Ansible playbooks, documentation, and tooling
 ✅ **Labels created**: 30 labels (12 phase labels, 4 priority labels, 6 type/status labels)
 ✅ **Milestones created**: 7 milestones for all 12 implementation phases
@@ -17,7 +17,7 @@ GitHub Projects provide Kanban-style project management. Unfortunately, the GitH
 
 **Steps:**
 
-1. Go to: https://github.com/git-kubik/mesh/projects
+1. Go to: <https://github.com/git-kubik/mesh/projects>
 2. Click "New project"
 3. Choose "Board" template
 4. Name it: "Mesh Network Deployment"
@@ -34,14 +34,17 @@ gh project create --owner @me --title "Mesh Network Deployment"
 Once the project is created, set up these views:
 
 **Board View (Default):**
+
 - Columns: Backlog, To Do, In Progress, In Review, Done
 - This is your main working view
 
 **Table View:**
+
 - Shows all issues in spreadsheet format
 - Good for bulk editing and filtering
 
 **Roadmap View:**
+
 - Timeline visualization
 - Shows milestones and due dates
 
@@ -120,6 +123,7 @@ I've created a few sample Phase 1 issues to demonstrate the format. You can crea
 **To create issues in bulk**, you can:
 
 **Option 1: Use GitHub CLI**
+
 ```bash
 gh issue create \
   --title "[Phase 1] Create Dockerfile for Ansible container" \
@@ -129,12 +133,14 @@ gh issue create \
 ```
 
 **Option 2: Use the GitHub web interface**
-- Go to: https://github.com/git-kubik/mesh/issues/new
+
+- Go to: <https://github.com/git-kubik/mesh/issues/new>
 - Use the issue template
 - Fill in the details
 - Add labels and milestone
 
 **Option 3: Ask Claude to create them**
+
 - Claude can create all issues using the GitHub MCP
 - Just say "create all Phase 1 issues"
 
@@ -143,12 +149,15 @@ gh issue create \
 After creating issues, add them to your project:
 
 **Option 1: Automatic (if automation enabled)**
+
 - Issues are automatically added to project
 
 **Option 2: Manual**
+
 - Open issue → Click "Projects" in sidebar → Select your project
 
 **Option 3: Bulk add**
+
 ```bash
 # Get project number from URL: github.com/users/USERNAME/projects/NUMBER
 gh project item-add PROJECT_NUMBER --owner @me --url ISSUE_URL
@@ -159,20 +168,24 @@ gh project item-add PROJECT_NUMBER --owner @me --url ISSUE_URL
 ### Labels (30 total)
 
 **Phase Labels:**
+
 - phase-1-docker through phase-12-documentation
 
 **Priority Labels:**
+
 - priority-critical (blocker)
 - priority-high (important)
 - priority-medium (normal)
 - priority-low (nice to have)
 
 **Type Labels:**
+
 - type-feature, type-bug, type-enhancement
 - type-testing, type-infrastructure
 - Plus default labels (documentation, etc.)
 
 **Status Labels:**
+
 - status-blocked, status-in-progress
 
 ### Milestones (7 total)
@@ -242,6 +255,7 @@ Your project already has excellent PM tools:
 - **/pm-blockers** - Identify blockers
 
 **Workflow:**
+
 1. Use `/pm-next` to identify next tasks
 2. Create GitHub issues for those tasks
 3. Work on issues, move through project board
@@ -249,9 +263,9 @@ Your project already has excellent PM tools:
 
 ## Resources
 
-- **GitHub Projects docs**: https://docs.github.com/en/issues/planning-and-tracking-with-projects
-- **GitHub CLI docs**: https://cli.github.com/manual/
-- **Project repository**: https://github.com/git-kubik/mesh
+- **GitHub Projects docs**: <https://docs.github.com/en/issues/planning-and-tracking-with-projects>
+- **GitHub CLI docs**: <https://cli.github.com/manual/>
+- **Project repository**: <https://github.com/git-kubik/mesh>
 - **GitHub PM skill**: `.claude/skills/github-pm.md`
 
 ## Sample Phase 1 Issues

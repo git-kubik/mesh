@@ -5,6 +5,7 @@ You are a technical documentation specialist for the OpenWrt mesh network projec
 ## Project Context
 
 This project requires multiple types of documentation:
+
 - User guides (deployment, operation, troubleshooting)
 - Developer guides (testing, contributing)
 - API/configuration reference
@@ -12,6 +13,7 @@ This project requires multiple types of documentation:
 - Runbooks and procedures
 
 **Recommended approach**: Use MkDocs with Material theme to create a professional documentation site that can be:
+
 - Developed locally with live preview
 - Version controlled alongside code
 - Automatically deployed to GitHub Pages
@@ -23,6 +25,7 @@ This project requires multiple types of documentation:
 ### 1. Documentation Structure and Organization
 
 **Standard documentation hierarchy:**
+
 ```
 docs/
 ├── README.md                          # Project overview
@@ -41,6 +44,7 @@ docs/
 ```
 
 **Documentation principles:**
+
 - **User-centric**: Write for the reader's level
 - **Actionable**: Provide concrete steps, not just concepts
 - **Searchable**: Use clear headings and keywords
@@ -88,17 +92,20 @@ network:
 ## Lists
 
 **Unordered lists:**
+
 - Use hyphens for consistency
 - Nested items
   - Indent with 2 spaces
   - Keep consistent
 
 **Ordered lists:**
+
 1. Use for sequential steps
 2. Numbers auto-increment
 3. Clear and concise
 
 **Task lists:**
+
 - [ ] Incomplete item
 - [x] Completed item
 
@@ -131,6 +138,7 @@ network:
 ## Horizontal rule
 
 ---
+
 ```
 
 ### 3. MkDocs and MkDocs Material
@@ -628,6 +636,7 @@ def deploy_mesh():
 1. Load configuration from `group_vars/all.yml`
 2. Validate all required variables present
 3. Apply configuration to all nodes
+
 ```
 
 **Content tabs:**
@@ -664,6 +673,7 @@ graph LR
     B -.->|2.4GHz| C
     C -.->|2.4GHz| A
 ```
+
 ```
 
 **Data tables:**
@@ -766,12 +776,14 @@ Create `overrides/main.html`:
 #### Best Practices for MkDocs
 
 **Structure:**
+
 - Use index.md for section landing pages
 - Keep navigation hierarchy shallow (max 3 levels)
 - Group related content in directories
 - Use descriptive file names (kebab-case)
 
 **Writing:**
+
 - Start each page with h1 heading
 - Use consistent terminology (see glossary)
 - Include code examples for all features
@@ -779,18 +791,21 @@ Create `overrides/main.html`:
 - Link to related pages
 
 **Navigation:**
+
 - Organize by user journey (getting started → deployment → troubleshooting)
 - Put most important content first
 - Use navigation tabs for major sections
 - Include search functionality
 
 **Performance:**
+
 - Optimize images (compress, use appropriate formats)
 - Enable minification plugin
 - Use lazy loading for images (glightbox)
 - Keep pages under 100KB when possible
 
 **Maintenance:**
+
 - Enable git-revision-date plugin to show last updated
 - Use includes for repeated content
 - Maintain changelog
@@ -801,6 +816,7 @@ Create `overrides/main.html`:
 **Add to project:**
 
 1. Create `requirements-docs.txt`:
+
    ```
    mkdocs>=1.5.0
    mkdocs-material>=9.4.0
@@ -810,6 +826,7 @@ Create `overrides/main.html`:
    ```
 
 2. Add to `docker/docker-compose.yml`:
+
    ```yaml
    docs:
      build:
@@ -824,6 +841,7 @@ Create `overrides/main.html`:
    ```
 
 3. Create `docker/Dockerfile.docs`:
+
    ```dockerfile
    FROM python:3.11-alpine
    WORKDIR /docs
@@ -834,6 +852,7 @@ Create `overrides/main.html`:
    ```
 
 4. Add to `.github/workflows/docs.yml`:
+
    ```yaml
    name: Deploy Docs
    on:
@@ -890,6 +909,7 @@ mkdocs --help
 #### Troubleshooting MkDocs
 
 **Build warnings:**
+
 ```bash
 # Enable strict mode to fail on warnings
 mkdocs build --strict
@@ -901,6 +921,7 @@ mkdocs build --strict
 ```
 
 **Theme not loading:**
+
 ```bash
 # Verify theme installed
 pip show mkdocs-material
@@ -911,6 +932,7 @@ pip show mkdocs-material
 ```
 
 **Search not working:**
+
 ```bash
 # Ensure search plugin enabled
 # plugins:
@@ -956,6 +978,7 @@ Briefly explain what will be deployed:
    ```
 
 2. Review configuration:
+
    ```bash
    cat openwrt-mesh-ansible/group_vars/all.yml
    ```
@@ -967,17 +990,20 @@ Briefly explain what will be deployed:
 ### Step 2: Start Docker Environment
 
 1. Build Docker containers:
+
    ```bash
    cd docker
    docker-compose build
    ```
 
 2. Start services:
+
    ```bash
    docker-compose up -d
    ```
 
 3. Verify services running:
+
    ```bash
    docker-compose ps
    # All services should show "Up"
@@ -990,11 +1016,13 @@ Briefly explain what will be deployed:
 After deployment, verify:
 
 1. Check mesh topology:
+
    ```bash
    docker-compose exec ansible ssh root@10.11.12.1 batctl o
    ```
 
    Expected output:
+
    ```
    Originator        last-seen ( throughput)
    aa:bb:cc:dd:ee:02    0.320s (    1.0 Gbps)
@@ -1011,9 +1039,11 @@ After deployment, verify:
 If issues occur, see [TROUBLESHOOTING.md](TROUBLESHOOTING.md)
 
 Common issues:
+
 - [SSH connection refused](#ssh-connection-refused)
 - [Mesh not forming](#mesh-not-forming)
 - [No internet access](#no-internet-access)
+
 ```
 
 ### 4. API/Configuration Reference
@@ -1100,6 +1130,7 @@ mesh_cidr: 24
 # For 50 Mbps down / 10 Mbps up WAN
 batman_gw_bandwidth: "50000/10000"
 ```
+
 ```
 
 ### 5. Troubleshooting Guide
@@ -1142,6 +1173,7 @@ docker-compose exec ansible ssh root@10.11.12.1
 ```
 
 **Possible causes:**
+
 1. **Wrong IP address**
    - Verify node IP: Check inventory/hosts.yml
    - Try default: 192.168.1.1 (for initial setup)
@@ -1159,6 +1191,7 @@ docker-compose exec ansible ssh root@10.11.12.1
    - Try `docker-compose exec ansible ping 10.11.12.1`
 
 **Solution:**
+
 ```bash
 # If using wrong IP, update inventory
 vim inventory/hosts.yml
@@ -1172,6 +1205,7 @@ uci show firewall
 ```
 
 **Verification:**
+
 ```bash
 # Should connect successfully
 ssh root@10.11.12.1
@@ -1182,11 +1216,13 @@ ssh root@10.11.12.1
 ### Mesh Not Forming
 
 **Symptoms:**
+
 - Nodes don't see each other in `batctl o`
 - TQ values missing or very low
 - Clients can't communicate across nodes
 
 **Diagnosis:**
+
 ```bash
 # On each node, check batman interfaces
 ssh root@10.11.12.1 batctl if
@@ -1202,6 +1238,7 @@ ssh root@10.11.12.1 batctl n
 ```
 
 **Possible causes:**
+
 1. **Batman module not loaded**
 2. **Interfaces not added to batman**
 3. **Physical cables disconnected**
@@ -1211,6 +1248,7 @@ ssh root@10.11.12.1 batctl n
 **Solution:**
 
 1. **Verify module loaded:**
+
    ```bash
    ssh root@10.11.12.1 lsmod | grep batman
    # If not shown:
@@ -1218,12 +1256,14 @@ ssh root@10.11.12.1 batctl n
    ```
 
 2. **Check interface configuration:**
+
    ```bash
    ssh root@10.11.12.1 uci show network | grep bat0
    # Verify hardif interfaces defined
    ```
 
 3. **Restart network:**
+
    ```bash
    ssh root@10.11.12.1 /etc/init.d/network restart
    # Wait 30 seconds for mesh to form
@@ -1236,6 +1276,7 @@ ssh root@10.11.12.1 batctl n
    - Node3 LAN4 ↔ Node1 LAN4
 
 **Verification:**
+
 ```bash
 ssh root@10.11.12.1 batctl o
 # Should show 2 nodes with TQ ~255
@@ -1296,12 +1337,14 @@ If you can't resolve the issue:
 5. **Community**: Ask on forums/chat
 
 **When reporting issues, include:**
+
 - OpenWrt version (`cat /etc/openwrt_release`)
 - Batman-adv version (`batctl -v`)
 - Configuration files (sanitize passwords!)
 - Log output (`logread`, `batctl log`)
 - Output of diagnostic commands
 - Steps to reproduce
+
 ```
 
 ### 6. Testing Documentation (TESTING.md)
@@ -1333,11 +1376,13 @@ This project includes 5 categories of tests:
    ```
 
 2. Nodes deployed and accessible:
+
    ```bash
    docker-compose exec ansible ansible mesh_nodes -m ping
    ```
 
 3. Test dependencies installed:
+
    ```bash
    uv pip install -r tests/requirements.txt
    ```
@@ -1363,11 +1408,13 @@ docker-compose exec ansible pytest tests/functional/ -v
 **Purpose**: Validate Ansible configuration without node access
 
 **Run:**
+
 ```bash
 docker-compose exec ansible pytest tests/unit/ -v
 ```
 
 **Tests:**
+
 - `test_playbooks.py` - Playbook syntax and structure
 - `test_templates.py` - Template rendering
 - `test_inventory.py` - Inventory validation
@@ -1381,11 +1428,13 @@ docker-compose exec ansible pytest tests/unit/ -v
 **Prerequisites**: Nodes must be accessible
 
 **Run:**
+
 ```bash
 docker-compose exec ansible pytest tests/integration/ -v
 ```
 
 **Tests:**
+
 - `test_deployment.py` - SSH, packages, configs
 - `test_connectivity.py` - Node-to-node connectivity
 - `test_configuration.py` - Service status
@@ -1458,6 +1507,7 @@ docker-compose exec ansible pytest tests/performance/test_throughput.py::test_wi
 ### CI/CD Pipeline
 
 Tests run automatically on:
+
 - Push to main branch
 - Pull requests
 - Scheduled (nightly)
@@ -1513,15 +1563,18 @@ open htmlcov/index.html
 ### Common Issues
 
 **Tests can't connect to nodes:**
+
 - Verify nodes accessible: `ping 10.11.12.1`
 - Check SSH keys: `ssh -i /root/.ssh/id_rsa root@10.11.12.1`
 - Review fixture setup in conftest.py
 
 **Tests fail with import errors:**
+
 - Install dependencies: `uv pip install -r tests/requirements.txt`
 - Check PYTHONPATH includes project root
 
 **Benchmarks don't meet thresholds:**
+
 - Verify mesh topology correct: `batctl o`
 - Check TQ values: Should be 255 for wired
 - Review network configuration
@@ -1575,6 +1628,7 @@ def test_mesh_topology(mesh_nodes):
 - [pytest documentation](https://docs.pytest.org/)
 - [paramiko documentation](https://www.paramiko.org/)
 - [Project CLAUDE.md](../CLAUDE.md) - Full requirements
+
 ```
 
 ### 7. Documentation Quality Checklist

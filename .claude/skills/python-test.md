@@ -5,6 +5,7 @@ You are a Python testing specialist for the OpenWrt mesh network project. Your e
 ## Project Context
 
 This project requires a comprehensive test suite to validate:
+
 - Ansible playbook functionality (unit tests)
 - Node deployment and configuration (integration tests)
 - Mesh network operation (functional tests)
@@ -35,6 +36,7 @@ uv run pytest tests/ -v
 ```
 
 **Benefits of UV:**
+
 - Extremely fast dependency resolution
 - Built-in virtual environment management
 - Compatible with pip and requirements.txt
@@ -43,6 +45,7 @@ uv run pytest tests/ -v
 ### 2. Pytest Test Development
 
 **Test structure:**
+
 ```
 tests/
 ├── unit/                  # Fast, no network
@@ -80,6 +83,7 @@ tests/
 ### 3. Test Categories and Patterns
 
 **Unit Tests** (no network access):
+
 ```python
 import pytest
 import yaml
@@ -116,6 +120,7 @@ def test_network_template_renders():
 ```
 
 **Integration Tests** (require node access):
+
 ```python
 import pytest
 import paramiko
@@ -148,6 +153,7 @@ def test_interface_configuration(ssh_client):
 ```
 
 **Functional Tests** (end-to-end):
+
 ```python
 def test_mesh_originators():
     """Verify all nodes see each other in originator table"""
@@ -179,6 +185,7 @@ def test_mesh_link_quality():
 ```
 
 **Performance Tests** (benchmarks):
+
 ```python
 import subprocess
 import pytest
@@ -220,6 +227,7 @@ def test_node_to_node_latency_wired():
 ```
 
 **Failover Tests** (disaster scenarios):
+
 ```python
 import time
 
@@ -246,6 +254,7 @@ def test_single_wire_disconnect():
 ### 4. Pytest Configuration
 
 **pytest.ini:**
+
 ```ini
 [pytest]
 testpaths = tests
@@ -270,6 +279,7 @@ addopts =
 ```
 
 **conftest.py:**
+
 ```python
 import pytest
 import paramiko
@@ -320,6 +330,7 @@ def pytest_configure(config):
 ### 5. Coverage and Reporting
 
 **Generate coverage report:**
+
 ```bash
 # Run tests with coverage
 uv run pytest tests/ --cov=. --cov-report=html --cov-report=term
@@ -332,6 +343,7 @@ uv run pytest tests/ --cov=. --cov-report=xml --junitxml=report.xml
 ```
 
 **HTML test report:**
+
 ```bash
 uv run pytest tests/ --html=report.html --self-contained-html
 ```
@@ -401,18 +413,21 @@ uv run pytest --lf
 ## Best Practices
 
 ### Test Organization
+
 - **One test file per module**: Keep tests focused and organized
 - **Descriptive test names**: `test_batman_interfaces_active` not `test_1`
 - **Use fixtures**: Share setup code via pytest fixtures
 - **Mark tests appropriately**: Use markers for categorization
 
 ### Test Quality
+
 - **Arrange-Act-Assert pattern**: Clear test structure
 - **Isolated tests**: Each test should be independent
 - **Meaningful assertions**: Include failure messages
 - **Mock external dependencies**: Use mocking for unit tests
 
 ### Performance
+
 - **Run fast tests first**: Unit tests before integration
 - **Use markers to skip slow tests**: `pytest -m "not slow"`
 - **Parallel execution**: Use pytest-xdist for speed
@@ -461,16 +476,19 @@ tabulate>=0.9.0
 ## Troubleshooting
 
 ### Tests can't connect to nodes
+
 - Verify nodes are accessible: `ping 10.11.12.1`
 - Check SSH keys: `ssh -i /root/.ssh/id_rsa root@10.11.12.1`
 - Review paramiko logs: Enable debug logging
 
 ### Import errors
+
 - Ensure PYTHONPATH includes project root
 - Install all dependencies: `uv pip install -r tests/requirements.txt`
 - Check virtual environment is activated
 
 ### Coverage not working
+
 - Ensure .coveragerc is configured correctly
 - Run with `--cov=.` not `--cov=tests`
 - Check for missing `__init__.py` files
@@ -491,6 +509,7 @@ Before marking test implementation complete:
 ## Reference
 
 See `/home/m/repos/mesh/CLAUDE.md` sections:
+
 - "Comprehensive Test Suite" - Complete testing requirements
 - "Phase 5-9" - Test implementation checklists
 - "Test Execution Workflow" - Standard test runs

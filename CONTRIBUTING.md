@@ -15,6 +15,7 @@ Thank you for your interest in contributing! This document provides guidelines a
 ## Code of Conduct
 
 This project adheres to a code of conduct. By participating, you are expected to:
+
 - Be respectful and inclusive
 - Welcome newcomers and help them learn
 - Focus on what is best for the community
@@ -43,6 +44,7 @@ cd mesh
 ```
 
 The setup script will:
+
 - Check prerequisites (Python 3.11+, Git, Docker)
 - Install UV package manager (if not present)
 - Install all development dependencies
@@ -53,12 +55,14 @@ The setup script will:
 **Manual Setup:**
 
 1. **Clone the repository:**
+
    ```bash
    git clone https://github.com/yourusername/mesh.git
    cd mesh
    ```
 
 2. **Install development tools:**
+
    ```bash
    # Using UV (recommended)
    curl -LsSf https://astral.sh/uv/install.sh | sh
@@ -69,6 +73,7 @@ The setup script will:
    ```
 
 3. **Install pre-commit hooks (REQUIRED):**
+
    ```bash
    # Install Git hooks
    pre-commit install
@@ -88,17 +93,20 @@ The setup script will:
    - YAML/Markdown validation
 
 4. **Create secrets baseline:**
+
    ```bash
    detect-secrets scan --baseline .secrets.baseline
    ```
 
 5. **Start Docker environment:**
+
    ```bash
    cd docker
    docker-compose up -d
    ```
 
 6. **Verify setup:**
+
    ```bash
    # Run unit tests
    pytest tests/unit/ -v
@@ -158,6 +166,7 @@ git checkout -b hotfix/critical-issue
 ### 3. Make Changes
 
 Follow the project standards (see below). Key principles:
+
 - Make focused, atomic commits
 - Write clear commit messages
 - Add tests for new functionality
@@ -196,6 +205,7 @@ git commit -m "test(failover): add wire disconnect test"
 ```
 
 **Commit types:**
+
 - `feat`: New feature
 - `fix`: Bug fix
 - `docs`: Documentation
@@ -220,6 +230,7 @@ This project maintains high standards. For complete details, see the `project-st
 ### Code Style
 
 **Python:**
+
 - Style: PEP 8
 - Formatter: Black (line length: 100)
 - Import sorting: isort
@@ -228,6 +239,7 @@ This project maintains high standards. For complete details, see the `project-st
 - All public functions must have type hints and docstrings
 
 **YAML (Ansible):**
+
 - Indentation: 2 spaces
 - Task names: Descriptive, capitalized
 - Use handlers for service restarts
@@ -235,12 +247,14 @@ This project maintains high standards. For complete details, see the `project-st
 - Lint with ansible-lint
 
 **Bash:**
+
 - Always use `set -euo pipefail`
 - Quote all variables: `"${var}"`
 - Use `readonly` for constants
 - Check with shellcheck
 
 **Markdown:**
+
 - Line length: 100 characters
 - Headings: ATX style (`#`)
 - Code blocks: Always specify language
@@ -324,6 +338,7 @@ class TestFeature:
 ```
 
 **Requirements:**
+
 - Descriptive test names (`test_*`)
 - Docstrings for all tests
 - Arrange-Act-Assert pattern
@@ -401,6 +416,7 @@ Your PR will be reviewed for:
 ### As a Contributor
 
 When receiving feedback:
+
 - Respond to all comments (even if just acknowledging)
 - Ask for clarification if needed
 - Make requested changes or explain why you disagree
@@ -437,7 +453,7 @@ Reviewers may use these prefixes:
 
 - **Issues**: [GitHub Issues](https://github.com/yourusername/mesh/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/yourusername/mesh/discussions)
-- **Email**: your.email@example.com
+- **Email**: <your.email@example.com>
 
 ### Project Skills
 
@@ -452,6 +468,7 @@ Use Claude Code skills for specialized help:
 ## Recognition
 
 Contributors will be recognized in:
+
 - CHANGELOG.md (for significant contributions)
 - README.md (contributors section)
 - Release notes

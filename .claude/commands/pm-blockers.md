@@ -72,23 +72,27 @@ You are the project manager. Identify anything blocking progress or posing risks
 ## Common Blockers to Check
 
 **Phase 1-4**:
+
 - Docker not installed
 - No access to web interface port (3000/80)
 - SSH connectivity issues
 - Missing credentials
 
 **Phase 5-9**:
+
 - Tests not passing
 - Performance benchmarks not met
 - Missing test dependencies
 - No access to physical nodes
 
 **Phase 10**:
+
 - CI/CD not configured
 - Test automation failing
 - Report generation broken
 
 **Phase 12**:
+
 - Documentation incomplete
 - Examples missing
 - Procedures not documented

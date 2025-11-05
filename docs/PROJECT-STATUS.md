@@ -12,6 +12,7 @@
 This project deploys a high-availability, 3-node OpenWrt mesh network using Batman-adv routing protocol, containerized Ansible automation, and comprehensive testing. The repository foundation is complete with Ansible playbooks, CI/CD workflows, and project management tools. **Primary blocker**: Docker infrastructure must be created before proceeding with test suite implementation.
 
 **Key Stats**:
+
 - **Ansible Playbooks**: ✅ Complete and functional
 - **Docker Environment**: ❌ Not started (critical path blocker)
 - **Test Suite**: ❌ Not started (0/~20 test files)
@@ -23,6 +24,7 @@ This project deploys a high-availability, 3-node OpenWrt mesh network using Batm
 ## Project Overview
 
 ### Technical Stack
+
 - **Hardware**: 3x D-Link DIR-1960 A1 routers
 - **Routing**: Batman-adv mesh protocol
 - **Network**: 10.11.12.0/24 (Node1: .1, Node2: .2, Node3: .3)
@@ -78,11 +80,13 @@ mesh/
 ### Phase Groups
 
 **Phases 1-4: Docker Infrastructure & Web Interface** (23 tasks)
+
 - Critical path for entire project
 - Enables web-based deployment management
 - Required before any testing can begin
 
 **Phases 5-9: Test Suite Implementation** (20 tasks)
+
 - Unit tests (no node access required)
 - Integration tests (requires node access)
 - Functional tests (end-to-end validation)
@@ -90,16 +94,19 @@ mesh/
 - Failover tests (high availability scenarios)
 
 **Phase 10: Test Automation & CI/CD** (8 tasks)
+
 - Automated test execution
 - Test reporting and coverage tracking
 - Continuous integration pipelines
 
 **Phase 11: Continuous Monitoring** (4 tasks, Optional)
+
 - Real-time network monitoring
 - Performance metrics collection
 - Alerting and dashboards
 
 **Phase 12: Documentation** (6 tasks)
+
 - Comprehensive MkDocs site
 - Testing guide (TESTING.md)
 - Architecture and deployment docs
@@ -111,6 +118,7 @@ mesh/
 ### ✅ Completed Work
 
 **Ansible Automation:**
+
 - ✅ Inventory configuration (`inventory/hosts.yml`)
 - ✅ Deployment playbooks (`playbooks/deploy.yml`, etc.)
 - ✅ UCI configuration templates (`templates/`)
@@ -118,6 +126,7 @@ mesh/
 - ✅ Makefile with common operations
 
 **Development Infrastructure:**
+
 - ✅ Pre-commit hooks (`.pre-commit-config.yaml`)
   - Black, isort, flake8, mypy for Python
   - ansible-lint for Ansible
@@ -132,6 +141,7 @@ mesh/
   - Installs dependencies, configures pre-commit
 
 **Project Management:**
+
 - ✅ Slash commands for project tracking
   - `/pm-status` - Quick status check
   - `/pm-next` - Next priority tasks
@@ -145,6 +155,7 @@ mesh/
   - project-standards, mesh-pm
 
 **Documentation:**
+
 - ✅ `README.md` - Project overview
 - ✅ `CLAUDE.md` - AI assistant guidance
 - ✅ `CONTRIBUTING.md` - Contribution guidelines
@@ -157,6 +168,7 @@ mesh/
 ### ❌ Missing Components (Critical)
 
 **Docker Infrastructure** (Phases 1-4):
+
 - ❌ `docker/Dockerfile` - Ansible container definition
 - ❌ `docker/docker-compose.yml` - Multi-container orchestration
 - ❌ `docker/requirements.txt` - Python dependencies
@@ -165,6 +177,7 @@ mesh/
 - ❌ Persistent volumes for data
 
 **Test Suite** (Phases 5-9):
+
 - ❌ `tests/` directory (doesn't exist)
 - ❌ `tests/unit/` - Unit tests (6 test files)
 - ❌ `tests/integration/` - Integration tests (3 test files)
@@ -179,6 +192,7 @@ mesh/
 ### ⚠️ Incomplete Components
 
 **Documentation** (Phase 12):
+
 - ❌ `docs/TESTING.md` - Testing guide (referenced in CLAUDE.md)
 - ❌ `mkdocs.yml` - MkDocs configuration
 - ❌ `docs/ARCHITECTURE.md` - System architecture
@@ -190,6 +204,7 @@ mesh/
 - ❌ MkDocs subdirectory structure (getting-started, architecture, etc.)
 
 **CI/CD Automation** (Phase 10):
+
 - ⚠️ Workflows exist but test automation incomplete
 - ❌ Test reporting not configured
 - ❌ Coverage tracking not enabled
@@ -204,12 +219,14 @@ mesh/
 **Impact**: Cannot proceed with any subsequent phases
 
 **Details**:
+
 - Docker containerization is **mandatory** (not optional)
 - All testing requires Docker environment
 - Web interface deployment requires Docker
 - No way to execute Ansible playbooks via web UI
 
 **Resolution**:
+
 - Complete Phase 1-4 (23 tasks)
 - Create Docker infrastructure files
 - Build and verify containers
@@ -222,6 +239,7 @@ mesh/
 **Impact**: Cannot validate deployment or meet production readiness criteria
 
 **Details**:
+
 - 0 of ~20 test files created
 - Cannot verify mesh topology
 - Cannot validate performance benchmarks
@@ -229,6 +247,7 @@ mesh/
 - Production readiness requires passing all tests
 
 **Resolution**:
+
 - Complete Phase 5-9 (20 tasks)
 - Create `tests/` directory structure
 - Implement all test categories
@@ -245,6 +264,7 @@ mesh/
 ### 🟡 Major Risks
 
 **Risk #1: Large Test Suite Scope**
+
 - **Probability**: High
 - **Impact**: Medium (delays)
 - **Mitigation**: Break down into small daily tasks using TodoWrite
@@ -252,12 +272,14 @@ mesh/
 - **Mitigation**: Use specialized skills (python-test, mesh-test)
 
 **Risk #2: Web UI Choice Undecided**
+
 - **Probability**: Low
 - **Impact**: Low (either option works)
 - **Decision Required**: Semaphore (lighter) vs AWX (more features)
 - **Recommendation**: Use Semaphore for simplicity
 
 **Risk #3: Incomplete Documentation**
+
 - **Probability**: Medium
 - **Impact**: Low (doesn't block deployment)
 - **Mitigation**: Document as you build (parallel work)
@@ -267,11 +289,13 @@ mesh/
 ### 🟢 Minor Risks
 
 **Risk #4: Performance Benchmarks**
+
 - **Concern**: Actual performance may not meet thresholds
 - **Mitigation**: Benchmarks are realistic based on hardware
 - **Mitigation**: Early performance testing in Phase 8
 
 **Risk #5: Integration Complexity**
+
 - **Concern**: Docker + Ansible + Web UI integration
 - **Mitigation**: Follow established patterns
 - **Mitigation**: Use docker-dev and ansible-dev skills
@@ -370,6 +394,7 @@ Choose and integrate Semaphore or AWX.
 ### Documentation Recommendations
 
 **Use MkDocs for Professional Site:**
+
 - Modern, responsive design with search
 - Dark mode support
 - GitHub Pages deployment
@@ -377,6 +402,7 @@ Choose and integrate Semaphore or AWX.
 - Comprehensive navigation
 
 **Benefits:**
+
 - Improved user experience
 - Easy maintenance (Markdown source)
 - Version control integrated
@@ -384,6 +410,7 @@ Choose and integrate Semaphore or AWX.
 - Professional appearance
 
 **Setup:**
+
 ```bash
 uv pip install mkdocs mkdocs-material
 mkdocs new .  # Creates mkdocs.yml
@@ -410,12 +437,14 @@ mkdocs gh-deploy  # Deploy to GitHub Pages
 ### Production Readiness Criteria
 
 **Infrastructure:**
+
 - [ ] Docker environment builds and runs
 - [ ] Web interface accessible and functional
 - [ ] Can deploy to nodes via web UI
 - [ ] Ansible playbooks execute successfully
 
 **Testing:**
+
 - [ ] All unit tests pass (100%)
 - [ ] All integration tests pass (100%)
 - [ ] All functional tests pass (100%)
@@ -429,6 +458,7 @@ mkdocs gh-deploy  # Deploy to GitHub Pages
 - [ ] Code coverage ≥80%
 
 **Documentation:**
+
 - [ ] TESTING.md complete
 - [ ] All deployment procedures documented
 - [ ] Troubleshooting guide available
@@ -436,11 +466,13 @@ mkdocs gh-deploy  # Deploy to GitHub Pages
 - [ ] MkDocs site deployed (recommended)
 
 **Automation:**
+
 - [ ] CI/CD pipeline functional
 - [ ] Automated test reporting
 - [ ] Coverage tracking enabled
 
 **Optional:**
+
 - [ ] Continuous monitoring configured (Phase 11)
 
 ---
@@ -450,6 +482,7 @@ mkdocs gh-deploy  # Deploy to GitHub Pages
 ### Development Resources
 
 **Skills Required:**
+
 - Docker and Docker Compose
 - Ansible (playbook development)
 - Python and pytest
@@ -458,6 +491,7 @@ mkdocs gh-deploy  # Deploy to GitHub Pages
 - Network testing tools (iperf3, ping, etc.)
 
 **Tools Required:**
+
 - Docker Desktop 20.10+
 - Python 3.11+
 - UV package manager
@@ -493,6 +527,7 @@ The Docker environment is the critical path. Nothing else can proceed without it
 The project has excellent PM infrastructure. Use it!
 
 **Commands available:**
+
 - `/pm-status` - Quick status snapshot
 - `/pm-next` - Get next 3-5 priority tasks
 - `/pm-validate [phase]` - Validate phase completion
@@ -506,6 +541,7 @@ Each phase has multiple tasks. Use TodoWrite tool to create daily task lists and
 ### 4. Document as You Build
 
 Don't wait until Phase 12. Create documentation alongside implementation:
+
 - **Phase 1-2**: Create mkdocs.yml, basic structure
 - **Phase 3-4**: Write ARCHITECTURE.md, DEPLOYMENT.md
 - **Phase 5-9**: Write TESTING.md as tests are created
@@ -514,6 +550,7 @@ Don't wait until Phase 12. Create documentation alongside implementation:
 ### 5. Leverage Specialized Skills
 
 Nine specialized skills are available. Use them!
+
 - `docker-dev` for Phases 1-4
 - `python-test` for Phase 5-9
 - `mesh-test` for Phase 8-9
@@ -530,6 +567,7 @@ pre-commit run --all-files
 ### 7. Sequential Implementation Required
 
 **DO NOT skip phases**. Each phase builds on the previous one:
+
 - Phases 1-4 → Phases 5-9 → Phase 10 → Phase 12
 - Exception: Phase 12 can run in parallel
 
@@ -540,16 +578,19 @@ pre-commit run --all-files
 ### Getting Help
 
 **For technical guidance:**
+
 - Use specialized skills (see CLAUDE.md)
 - Check `docs/` for existing documentation
 - Review `CONTRIBUTING.md` for procedures
 
 **For project tracking:**
+
 - Use `/pm-*` slash commands
 - Check this status report
 - Review `.claude/PROJECT-MANAGEMENT.md`
 
 **For implementation details:**
+
 - See individual phase checklists in CLAUDE.md
 - Use specialized skills for deep dives
 - Reference existing Ansible playbooks
@@ -557,6 +598,7 @@ pre-commit run --all-files
 ### Reporting Issues
 
 When encountering problems:
+
 1. Gather diagnostic information
 2. Check troubleshooting docs
 3. Search existing issues

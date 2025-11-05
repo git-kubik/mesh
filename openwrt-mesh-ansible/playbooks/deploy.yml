@@ -13,10 +13,10 @@
 - name: Deploy OpenWrt Mesh Network Configuration
   hosts: mesh_nodes
   gather_facts: false
-  
+
   vars:
     config_backup_dir: /tmp/openwrt-config-backup
-  
+
   tasks:
     - name: Wait for SSH to be available
       wait_for_connection:
@@ -89,7 +89,7 @@
       register: optional_install_result
       changed_when: "'Installing' in optional_install_result.stdout"
       failed_when: false
-      tags: 
+      tags:
         - packages
         - optional
 
@@ -115,7 +115,7 @@
         dest: /etc/config/network
         mode: '0644'
         backup: yes
-      tags: 
+      tags:
         - config
         - network
 
@@ -235,7 +235,7 @@
           ✓ Node IP: {{ node_ip }}
           ✓ DHCP Server: {{ dhcp_server }}
           ✓ Services reloaded
-          
+
           Next steps:
           - Verify connectivity between nodes
           - Test client connections

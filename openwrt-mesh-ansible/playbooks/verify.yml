@@ -7,7 +7,7 @@
 - name: Verify Mesh Network Status
   hosts: mesh_nodes
   gather_facts: false
-  
+
   tasks:
     - name: Check node reachability
       wait_for_connection:

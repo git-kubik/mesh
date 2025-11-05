@@ -7,10 +7,10 @@
 - name: Backup Mesh Node Configurations
   hosts: mesh_nodes
   gather_facts: false
-  
+
   vars:
     backup_dir: "{{ playbook_dir }}/../backups/{{ ansible_date_time.date }}"
-  
+
   tasks:
     - name: Create local backup directory
       file:

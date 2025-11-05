@@ -11,6 +11,7 @@ This directory contains CI/CD workflows that enforce project standards and autom
 **Purpose**: Enforce code quality, security, and documentation standards
 
 **Jobs**:
+
 - **pre-commit**: Runs all pre-commit hooks (Black, isort, flake8, mypy, ansible-lint, etc.)
 - **code-quality**: Additional code quality checks and linting
 - **security**: Secrets scanning, vulnerability checks, permission audits
@@ -20,6 +21,7 @@ This directory contains CI/CD workflows that enforce project standards and autom
 **Status**: 🔴 Blocking - Must pass for PR approval
 
 **Local equivalent**:
+
 ```bash
 pre-commit run --all-files
 ```
@@ -33,6 +35,7 @@ pre-commit run --all-files
 **Purpose**: Run test suite and verify code coverage
 
 **Jobs**:
+
 - **unit-tests**: Run unit tests with coverage reporting (minimum 80%)
 - **integration-tests**: Run integration tests (requires test environment)
 - **docker-build**: Verify Docker images build successfully
@@ -41,6 +44,7 @@ pre-commit run --all-files
 **Status**: 🔴 Blocking - Unit tests must pass for PR approval
 
 **Local equivalent**:
+
 ```bash
 pytest tests/unit/ --cov=. --cov-report=term
 cd docker && docker-compose build
@@ -51,12 +55,14 @@ cd docker && docker-compose build
 ### 3. Deploy Documentation (`deploy-docs.yml`)
 
 **Triggers**:
+
 - Push to `main` branch (only when docs/ or mkdocs.yml changes)
 - Manual trigger via workflow_dispatch
 
 **Purpose**: Build and deploy documentation to GitHub Pages
 
 **Jobs**:
+
 - **deploy**: Build MkDocs site and deploy to gh-pages branch
 
 **Status**: ⚪ Non-blocking - Doesn't affect PR approval
@@ -64,6 +70,7 @@ cd docker && docker-compose build
 **Deployment URL**: `https://yourusername.github.io/mesh/`
 
 **Local equivalent**:
+
 ```bash
 mkdocs build --strict
 mkdocs gh-deploy
@@ -74,6 +81,7 @@ mkdocs gh-deploy
 ## Workflow Status
 
 Check workflow status:
+
 - **GitHub UI**: Actions tab → Select workflow
 - **README badge**: Add status badges to README.md
 - **Git branch protection**: Require status checks to pass
@@ -107,6 +115,7 @@ Configure at: `Settings → Branches → Branch protection rules`
 ## Caching
 
 Workflows use caching to speed up builds:
+
 - **Pre-commit**: `~/.cache/pre-commit` (pre-commit environments)
 - **Python**: `~/.cache/pip` (pip packages)
 - **Docker**: Layer caching via buildx
@@ -121,6 +130,7 @@ Required secrets (configure in repo settings):
 - SSH keys (if needed for deployment to external servers)
 
 Repository variables:
+
 - None required currently
 
 ## Manual Workflow Triggers
@@ -138,16 +148,20 @@ Actions tab → Select workflow → Run workflow
 ## Debugging Workflows
 
 **View logs**:
+
 - GitHub UI: Actions tab → Select run → Select job
 
 **Re-run failed jobs**:
+
 - GitHub UI: Actions tab → Select run → Re-run failed jobs
 
 **Download artifacts**:
+
 - GitHub UI: Actions tab → Select run → Artifacts section
 - Or: `gh run download <run-id>`
 
 **Test locally with act** (advanced):
+
 ```bash
 # Install act: https://github.com/nektos/act
 brew install act  # macOS
@@ -160,6 +174,7 @@ act pull_request
 ## Workflow Notifications
 
 Configure notifications:
+
 - **Email**: Settings → Notifications → Actions
 - **Slack**: Use GitHub Actions integration
 - **Discord**: Use webhook actions
@@ -169,6 +184,7 @@ Configure notifications:
 ### Pre-commit checks fail
 
 **Local fix**:
+
 ```bash
 # Run pre-commit to see what failed
 pre-commit run --all-files
@@ -185,6 +201,7 @@ git commit -m "fix: auto-format code"
 ### Tests fail
 
 **Local fix**:
+
 ```bash
 # Run failing tests locally
 pytest tests/unit/ -v --tb=short
@@ -196,6 +213,7 @@ pytest tests/unit/ --cov=. --cov-report=term
 ### Docker build fails
 
 **Local fix**:
+
 ```bash
 cd docker
 docker-compose build --no-cache
@@ -206,6 +224,7 @@ docker-compose logs
 ### Documentation build fails
 
 **Local fix**:
+
 ```bash
 # Check for errors
 mkdocs build --strict --verbose
@@ -219,12 +238,14 @@ mkdocs build --strict --verbose
 ## Performance Optimization
 
 **Reduce workflow run time**:
+
 - Use caching (already configured)
 - Run jobs in parallel (already configured)
 - Use matrix builds for multiple Python versions (if needed)
 - Skip redundant jobs (e.g., docs on code-only changes)
 
 **Current performance**:
+
 - Pre-commit: ~3-5 minutes
 - Tests: ~2-4 minutes
 - Documentation: ~1-2 minutes
@@ -232,6 +253,7 @@ mkdocs build --strict --verbose
 ## Costs
 
 GitHub Actions is free for public repositories with limits:
+
 - **Free tier**: 2,000 minutes/month for private repos
 - **Public repos**: Unlimited
 

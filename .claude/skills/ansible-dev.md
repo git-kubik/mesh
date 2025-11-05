@@ -5,6 +5,7 @@ You are an Ansible development specialist for the OpenWrt mesh network project. 
 ## Project Context
 
 This project uses Ansible to automate configuration of a 3-node OpenWrt mesh network:
+
 - **Devices**: D-Link DIR-1960 A1 routers
 - **OpenWrt Version**: 23.05+
 - **Topology**: Full ring (wired) + 2.4GHz wireless backup
@@ -15,6 +16,7 @@ This project uses Ansible to automate configuration of a 3-node OpenWrt mesh net
 ### 1. Playbook Development
 
 **Standard playbook structure:**
+
 ```yaml
 ---
 - name: Deploy mesh network configuration
@@ -47,6 +49,7 @@ This project uses Ansible to automate configuration of a 3-node OpenWrt mesh net
 ```
 
 **Key playbooks in project:**
+
 - `deploy.yml` - Main deployment (network, wireless, DHCP, firewall)
 - `verify.yml` - Health checks and status verification
 - `backup.yml` - Configuration backup
@@ -113,6 +116,7 @@ config interface 'bat0_hardif_mesh0'
 ```
 
 **Wireless template (templates/wireless.j2):**
+
 ```jinja2
 config wifi-device 'radio0'
     option type 'mac80211'
@@ -156,6 +160,7 @@ config wifi-iface 'ap0'
 ```
 
 **DHCP template (templates/dhcp.j2):**
+
 ```jinja2
 config dnsmasq 'main'
     option domainneeded '1'
@@ -204,6 +209,7 @@ config host
 ### 3. Inventory Management
 
 **inventory/hosts.yml:**
+
 ```yaml
 all:
   vars:
@@ -230,6 +236,7 @@ mesh_nodes:
 ```
 
 **group_vars/all.yml:**
+
 ```yaml
 # Network configuration
 mesh_network: 10.11.12.0
@@ -286,6 +293,7 @@ static_hosts:
 ### 4. Ansible Vault for Secrets
 
 **Encrypting sensitive variables:**
+
 ```bash
 # Encrypt group_vars file
 ansible-vault encrypt group_vars/all.yml
@@ -304,6 +312,7 @@ ansible-playbook -i inventory/hosts.yml playbooks/deploy.yml --vault-password-fi
 ```
 
 **Store only secrets in vault:**
+
 ```yaml
 # group_vars/vault.yml (encrypted)
 vault_mesh_password: "actual_secret_password"
@@ -317,6 +326,7 @@ client_password: "{{ vault_client_password }}"
 ### 5. Ad-hoc Commands
 
 **Common ad-hoc commands:**
+
 ```bash
 # Ping all nodes
 ansible mesh_nodes -i inventory/hosts.yml -m ping
@@ -346,6 +356,7 @@ ansible mesh_nodes -i inventory/hosts.yml -m opkg -a "name=tcpdump state=present
 ### 6. Tags and Limits
 
 **Using tags for selective execution:**
+
 ```bash
 # Deploy only network configuration
 ansible-playbook -i inventory/hosts.yml playbooks/deploy.yml --tags network
@@ -361,6 +372,7 @@ ansible-playbook -i inventory/hosts.yml playbooks/deploy.yml --list-tags
 ```
 
 **Using limits for specific nodes:**
+
 ```bash
 # Deploy to single node
 ansible-playbook -i inventory/hosts.yml playbooks/deploy.yml --limit node1
@@ -375,6 +387,7 @@ ansible-playbook -i inventory/hosts.yml playbooks/deploy.yml --limit "!node3"
 ### 7. Check Mode and Diff
 
 **Dry run before actual deployment:**
+
 ```bash
 # Check mode (no changes)
 ansible-playbook -i inventory/hosts.yml playbooks/deploy.yml --check
@@ -447,24 +460,28 @@ ansible-playbook -i inventory/hosts.yml playbooks/deploy.yml
 ## Best Practices
 
 ### Playbook Design
+
 - **Idempotent tasks**: Tasks should be safe to run multiple times
 - **Use handlers**: For service restarts (reload network only if config changed)
 - **Tag everything**: Enable selective execution
 - **Gather facts conditionally**: Set `gather_facts: false` for OpenWrt (saves time)
 
 ### Template Design
+
 - **UCI format**: Follow OpenWrt's UCI configuration format strictly
 - **Comments**: Add Jinja2 comments for clarity
 - **Defaults**: Use `| default()` filter for optional variables
 - **Validation**: Test templates render correctly before deployment
 
 ### Variable Management
+
 - **Group vars for shared**: Common settings in group_vars/all.yml
 - **Host vars for specific**: Node-specific settings in inventory
 - **Vault for secrets**: Never commit passwords to Git
 - **Clear naming**: `mesh_password` not `pwd1`
 
 ### Error Handling
+
 - **Use blocks**: Group tasks and add error handling
 - **Register results**: Capture task output for debugging
 - **Assert conditions**: Validate prerequisites before proceeding
@@ -488,21 +505,25 @@ ansible-playbook -i inventory/hosts.yml playbooks/deploy.yml
 ## Troubleshooting
 
 ### SSH connection fails
+
 - Check SSH key: `ssh -i /root/.ssh/id_rsa root@10.11.12.1`
 - Try password auth: Add `--ask-pass` flag
 - Verify host reachable: `ping 10.11.12.1`
 
 ### Template rendering fails
+
 - Test template manually: `ansible-playbook playbooks/deploy.yml --check --diff`
 - Check variable definition: `ansible-inventory -i inventory/hosts.yml --host node1`
 - Validate Jinja2 syntax: Look for unclosed tags `{% %}`
 
 ### UCI config invalid
+
 - Validate on node: `uci show` should list all configs
 - Check syntax: UCI requires specific format (option/list/config blocks)
 - Test manually: Copy template output to node and test `uci import`
 
 ### Changes not applied
+
 - Check handlers triggered: Add `-v` flag to see handler execution
 - Manually reload: SSH to node and `/etc/init.d/network reload`
 - Review logs: `logread` on OpenWrt node
@@ -538,6 +559,7 @@ Before marking Ansible development complete:
 ## Reference
 
 See `/home/m/repos/mesh/CLAUDE.md` sections:
+
 - "Jinja2 Templates" - Template development details
 - "Key Configuration Variables" - Variable definitions
 - "Important Implementation Notes" - Deployment sequence

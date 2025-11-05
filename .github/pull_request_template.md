@@ -42,15 +42,18 @@ Closes #(issue)
 - [ ] Manual testing completed
 
 **Manual Test Steps:**
+
 1. Step 1
 2. Step 2
 3. Step 3
 
 **Expected Results:**
+
 - Result 1
 - Result 2
 
 **Actual Results:**
+
 - Result 1
 - Result 2
 
@@ -125,6 +128,7 @@ Closes #(issue)
 - [ ] Performance degraded (explain why this is acceptable)
 
 **Performance Test Results:**
+
 - Benchmark 1: X Mbps (was Y Mbps)
 - Benchmark 2: X ms (was Y ms)
 
@@ -135,6 +139,7 @@ Closes #(issue)
 - [ ] No breaking changes
 
 **If breaking changes:**
+
 1. What breaks:
 2. Why it's necessary:
 3. Migration steps:
@@ -146,6 +151,7 @@ Closes #(issue)
 - [ ] No new dependencies
 
 **New Dependencies:**
+
 - Package 1 (version) - Reason
 - Package 2 (version) - Reason
 

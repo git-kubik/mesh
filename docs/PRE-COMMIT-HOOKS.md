@@ -7,6 +7,7 @@ This guide explains the pre-commit hooks used in this project and how to work wi
 Pre-commit hooks are automated checks that run before each commit to ensure code quality, consistency, and security. They prevent common issues from being committed to the repository.
 
 **Benefits:**
+
 - ✅ Automatic code formatting
 - ✅ Early error detection
 - ✅ Consistent code style
@@ -66,6 +67,7 @@ black --check .
 ```
 
 **Common issues**:
+
 - Long lines: Split into multiple lines
 - Inconsistent quotes: Uses double quotes by default
 - Trailing commas: Adds where appropriate
@@ -85,6 +87,7 @@ isort --check-only .
 ```
 
 **Import order**:
+
 1. Standard library imports
 2. Third-party imports
 3. Local application imports
@@ -103,6 +106,7 @@ flake8 . --max-line-length 100
 ```
 
 **Common issues**:
+
 - Unused imports: Remove or use them
 - Undefined names: Fix typos or import missing modules
 - Line too long: Refactor or split line
@@ -120,11 +124,13 @@ mypy tests/ --strict
 ```
 
 **Common issues**:
+
 - Missing type hints: Add type annotations
 - Type mismatches: Fix incorrect types
 - Incompatible types: Correct function signatures
 
 **Example fixes**:
+
 ```python
 # ❌ Missing type hints
 def calculate(x, y):
@@ -147,6 +153,7 @@ ansible-lint openwrt-mesh-ansible/
 ```
 
 **Common issues**:
+
 - Tasks without names: Add descriptive names
 - Using command instead of module: Use specific modules
 - No handlers for services: Use handlers for restarts
@@ -191,6 +198,7 @@ detect-secrets audit .secrets.baseline
 ```
 
 **What it detects**:
+
 - API keys
 - Private keys
 - Passwords
@@ -199,6 +207,7 @@ detect-secrets audit .secrets.baseline
 - High entropy strings
 
 **If secrets detected**:
+
 1. **Remove secret from code**
 2. **Use Ansible Vault** for sensitive data
 3. **Update .secrets.baseline** if false positive
@@ -357,6 +366,7 @@ SKIP=flake8,mypy git commit -m "feat: something"
 **Problem**: Hooks don't run on commit
 
 **Solution**:
+
 ```bash
 # Check if hooks installed
 ls -la .git/hooks/pre-commit
@@ -374,6 +384,7 @@ pre-commit run --help
 **Problem**: Hooks take too long to run
 
 **Solutions**:
+
 ```bash
 # Use pre-commit's caching (already configured)
 # Caches stored in ~/.cache/pre-commit/
@@ -392,11 +403,13 @@ pre-commit run --all-files
 **Problem**: Hooks pass locally but fail in CI
 
 **Common causes**:
+
 1. Different Python version
 2. Cached results locally
 3. Missing dependencies
 
 **Solution**:
+
 ```bash
 # Clear pre-commit cache
 pre-commit clean
@@ -417,6 +430,7 @@ act pull_request  # Run PR workflow
 **Problem**: Legitimate string flagged as secret
 
 **Solution**:
+
 ```bash
 # Update baseline to include new "secret"
 detect-secrets scan --baseline .secrets.baseline
@@ -435,6 +449,7 @@ git commit -m "chore: update secrets baseline"
 ### Do's
 
 ✅ **Run hooks before pushing**:
+
 ```bash
 pre-commit run --all-files
 git push
@@ -465,11 +480,13 @@ git push
 Main configuration file for pre-commit hooks.
 
 **Key sections**:
+
 - `repos`: List of hook repositories
 - `hooks`: Specific hooks to run
 - `args`: Arguments passed to hooks
 
 **Example**:
+
 ```yaml
 repos:
   - repo: https://github.com/psf/black
@@ -484,6 +501,7 @@ repos:
 Python tool configurations (Black, isort, mypy, pytest).
 
 **Example**:
+
 ```toml
 [tool.black]
 line-length = 100
@@ -509,6 +527,7 @@ Pre-commit hooks also run in CI/CD:
 **Workflow**: `.github/workflows/pre-commit.yml`
 
 **Runs**:
+
 - On every push to main/develop
 - On every pull request
 - All the same hooks as local
@@ -537,6 +556,7 @@ repos:
 ### Hook Ordering
 
 Hooks run in order defined in config. Optimize for:
+
 1. Fast auto-fixers first (Black, isort)
 2. Fast checkers (flake8)
 3. Slow checkers last (mypy)
@@ -563,12 +583,14 @@ Run hooks only on specific directories:
 ## Getting Help
 
 **Issues with pre-commit**:
+
 1. Check this guide first
 2. Review [CONTRIBUTING.md](../CONTRIBUTING.md)
 3. Check [GitHub Issues](https://github.com/yourusername/mesh/issues)
 4. Ask in [GitHub Discussions](https://github.com/yourusername/mesh/discussions)
 
 **Reporting problems**:
+
 ```bash
 # Include this information when reporting issues
 pre-commit --version

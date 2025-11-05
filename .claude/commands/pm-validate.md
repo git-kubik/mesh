@@ -9,12 +9,14 @@ You are the project manager. Validate whether a phase is complete or check overa
 ## Instructions
 
 If user specified a phase number (e.g., "/pm-validate 1" or "/pm-validate phase 5"):
+
 1. Check that specific phase's requirements from CLAUDE.md
 2. Verify all files exist
 3. Validate all acceptance criteria met
 4. Report pass/fail for each requirement
 
 If no phase specified:
+
 1. Check overall project status
 2. Validate against "Project Success Criteria" in CLAUDE.md
 3. Determine production readiness
@@ -62,6 +64,7 @@ If no phase specified:
 **Phase 12 (Documentation)**: Must have complete documentation files
 
 A phase is only COMPLETE when:
+
 - All required files exist
 - All tests pass (if applicable)
 - All acceptance criteria met
@@ -70,6 +73,7 @@ A phase is only COMPLETE when:
 ## Production Readiness Check
 
 If validating overall readiness, check:
+
 1. All 12 phases complete
 2. All tests passing (zero failures)
 3. All performance benchmarks met

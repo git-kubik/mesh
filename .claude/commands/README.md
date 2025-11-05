@@ -5,20 +5,24 @@ This directory contains slash commands for managing the OpenWrt Mesh Network dep
 ## Available Commands
 
 ### `/pm-status` - Project Status Overview
+
 **Description**: Generate a quick status snapshot of the project
 **Usage**: `/pm-status`
 **Output**: Phase completion, current focus, next tasks, metrics
 **When to use**: Daily check-in, quick status updates
 
 ### `/pm-next` - Next Priority Tasks
+
 **Description**: Get the next 3-5 priority tasks to work on
 **Usage**: `/pm-next`
 **Output**: Prioritized task list with file paths and acceptance criteria
 **When to use**: Starting a work session, need direction on what to do
 
 ### `/pm-validate` - Phase Validation
+
 **Description**: Validate completion of a phase or check production readiness
 **Usage**:
+
 - `/pm-validate` - Check overall project readiness
 - `/pm-validate 1` - Validate Phase 1
 - `/pm-validate phase 5` - Validate Phase 5
@@ -27,12 +31,14 @@ This directory contains slash commands for managing the OpenWrt Mesh Network dep
 **When to use**: Before moving to next phase, checking production readiness
 
 ### `/pm-blockers` - Blockers and Risks
+
 **Description**: Identify current blockers, risks, and dependencies
 **Usage**: `/pm-blockers`
 **Output**: Categorized list of blockers (Critical/Major/Minor) with resolutions
 **When to use**: Stuck on something, weekly risk review, project planning
 
 ### `/pm-report` - Comprehensive Report
+
 **Description**: Generate complete stakeholder-ready project status report
 **Usage**: `/pm-report`
 **Output**: Multi-page detailed report with all metrics and analysis
@@ -41,6 +47,7 @@ This directory contains slash commands for managing the OpenWrt Mesh Network dep
 ## Typical Workflows
 
 ### Starting a New Work Session
+
 ```
 1. /pm-status          # See where we are
 2. /pm-blockers        # Check for any issues
@@ -50,6 +57,7 @@ This directory contains slash commands for managing the OpenWrt Mesh Network dep
 ```
 
 ### Completing a Phase
+
 ```
 1. [Finish phase tasks]
 2. /pm-validate [phase #]   # Check if phase is complete
@@ -59,6 +67,7 @@ This directory contains slash commands for managing the OpenWrt Mesh Network dep
 ```
 
 ### Weekly Check-in
+
 ```
 1. /pm-report          # Generate full report
 2. /pm-blockers        # Review risks
@@ -66,6 +75,7 @@ This directory contains slash commands for managing the OpenWrt Mesh Network dep
 ```
 
 ### Production Readiness Check
+
 ```
 1. /pm-validate        # Overall validation
 2. /pm-blockers        # Check for any blockers
@@ -75,6 +85,7 @@ This directory contains slash commands for managing the OpenWrt Mesh Network dep
 ## Command Integration
 
 These commands work best with:
+
 - **TodoWrite tool**: Create task lists from pm-next output
 - **CLAUDE.md**: Reference document for all requirements
 - **Git**: Track progress via commits
@@ -82,23 +93,29 @@ These commands work best with:
 ## Quick Tips
 
 ### Be Specific
+
 Commands provide specific file paths and actions - use them!
 
 ### Follow the Path
+
 Phases must be completed sequentially (1→2→3...)
 
 ### Validate Often
+
 Use `/pm-validate` before moving to next phase
 
 ### Track Blockers
+
 Run `/pm-blockers` weekly to catch issues early
 
 ### Document Progress
+
 Use `/pm-report` for documentation and stakeholder updates
 
 ## Example Usage
 
 **Starting the project:**
+
 ```
 User: /pm-status
 Claude: [Shows Phase 1 is current priority]
@@ -113,6 +130,7 @@ Claude: [Shows progress on Phase 1]
 ```
 
 **Validating a phase:**
+
 ```
 User: /pm-validate 1
 Claude: [Checks all Phase 1 requirements]
@@ -127,6 +145,7 @@ Claude: Phase 1 COMPLETE ✅
 ```
 
 **Checking production readiness:**
+
 ```
 User: /pm-validate
 Claude: NOT READY ❌
@@ -155,6 +174,7 @@ These commands implement a rigorous project management approach:
 ## Integration with CLAUDE.md
 
 All commands reference `/home/m/repos/mesh/CLAUDE.md` which contains:
+
 - 12-phase implementation checklist
 - Acceptance criteria for each phase
 - Project success criteria
@@ -175,6 +195,7 @@ These commands bring that structure to life with actionable tasks and real-time 
 ## Contributing
 
 To add new commands:
+
 1. Create `[command-name].md` in this directory
 2. Add `description` in front matter
 3. Provide clear instructions for Claude
@@ -183,6 +204,7 @@ To add new commands:
 ## Support
 
 For questions about:
+
 - **Commands themselves**: See this README
 - **Project requirements**: See CLAUDE.md
 - **Technical implementation**: See docs/TESTING.md (when created)

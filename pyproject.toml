@@ -136,7 +136,7 @@ omit = [
     "*/site-packages/*",
     "*/__pycache__/*",
     "*/venv/*",
-    "*/\.venv/*",
+    "*/.venv/*",
 ]
 
 [tool.coverage.report]

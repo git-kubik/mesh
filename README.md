@@ -29,19 +29,21 @@ High-availability OpenWrt mesh network with Batman-adv routing, multi-gateway fa
 ### Installation
 
 1. **Clone the repository:**
+
    ```bash
    git clone https://github.com/yourusername/mesh.git
    cd mesh
    ```
 
 2. **Start Docker environment:**
+
    ```bash
    cd docker
    docker-compose up -d
    ```
 
 3. **Access Ansible web interface:**
-   - Semaphore: http://localhost:3000
+   - Semaphore: <http://localhost:3000>
    - Default credentials: admin / changeme
 
 4. **Deploy mesh network:**
@@ -62,6 +64,7 @@ Node1 (10.11.12.1) ←lan3→ Node2 (10.11.12.2)
 ```
 
 **Network Details:**
+
 - **LAN**: 10.11.12.0/24
 - **DHCP**: 10.11.12.100-250 (served by Node1)
 - **Gateways**: All 3 nodes (automatic failover)
@@ -81,6 +84,7 @@ cd mesh
 ```
 
 This installs:
+
 - Python development tools (Black, isort, flake8, mypy, pylint)
 - Pre-commit hooks (automatically enforce code standards)
 - Testing framework (pytest with coverage)
@@ -91,6 +95,7 @@ This installs:
 **This project enforces code quality standards using GitHub pre-commit hooks.**
 
 Pre-commit hooks automatically run before each commit and check:
+
 - ✅ Code formatting (Black, isort)
 - ✅ Linting (flake8, pylint)
 - ✅ Type checking (mypy)
@@ -101,12 +106,14 @@ Pre-commit hooks automatically run before each commit and check:
 - ✅ Trailing whitespace, end-of-file, merge conflicts
 
 **Installation** (automatic with setup script):
+
 ```bash
 pre-commit install
 pre-commit install --hook-type commit-msg
 ```
 
 **Usage**:
+
 ```bash
 # Hooks run automatically on git commit
 git commit -m "feat: add new feature"
@@ -122,6 +129,7 @@ git commit --no-verify
 ```
 
 **What happens when you commit:**
+
 1. Pre-commit hooks run automatically
 2. Code is auto-formatted (Black, isort)
 3. All linters check your code
@@ -134,28 +142,33 @@ git commit --no-verify
 This project adheres to high-quality standards:
 
 **Python**:
+
 - Style: PEP 8 with Black formatting (100 char lines)
 - Type hints required on all functions
 - Docstrings required (Google style)
 - Minimum 80% test coverage
 
 **YAML/Ansible**:
+
 - 2-space indentation
 - ansible-lint compliance
 - Idempotent playbooks only
 - Handlers for service restarts
 
 **Testing**:
+
 - pytest with markers (unit, integration, functional, performance, failover)
 - Minimum 80% coverage (90% for new code)
 - All tests must have docstrings
 
 **Documentation**:
+
 - MkDocs Material for site generation
 - Markdown with 100 char line length
 - Must build without errors/warnings
 
 **Security**:
+
 - Never commit secrets (enforced by detect-secrets)
 - Ansible Vault for sensitive data
 - 20+ character passwords
@@ -238,16 +251,18 @@ mesh/
 - **Technical Guide**: [openwrt-batman-mesh-setup.md](docs/openwrt-batman-mesh-setup.md)
 - **Testing Guide**: [TESTING.md](docs/TESTING.md) (to be created)
 - **Contributing**: [CONTRIBUTING.md](CONTRIBUTING.md)
-- **Full Documentation**: https://yourusername.github.io/mesh/
+- **Full Documentation**: <https://yourusername.github.io/mesh/>
 
 ## CI/CD
 
 **GitHub Actions workflows:**
+
 - **Pre-commit Checks**: Runs all linters, formatters, and security scans
 - **Tests**: Executes test suite with coverage reporting
 - **Deploy Documentation**: Builds and deploys MkDocs site to GitHub Pages
 
 **Status checks required for PR approval:**
+
 - ✅ Pre-commit hooks pass
 - ✅ Code quality checks pass
 - ✅ Unit tests pass (minimum 80% coverage)
@@ -281,6 +296,7 @@ Expected performance metrics:
 We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 **Quick contribution workflow:**
+
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
 3. Run `./scripts/setup-dev-environment.sh` to set up pre-commit hooks
@@ -305,7 +321,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Support
 
-- **Documentation**: https://yourusername.github.io/mesh/
+- **Documentation**: <https://yourusername.github.io/mesh/>
 - **Issues**: [GitHub Issues](https://github.com/yourusername/mesh/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/yourusername/mesh/discussions)
 
