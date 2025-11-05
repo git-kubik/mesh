@@ -28,11 +28,11 @@ readonly BLUE='\033[0;34m'
 readonly NC='\033[0m'
 
 log_info() {
-    echo -e "${GREEN}[INFO]${NC} $*"
+    echo -e "${GREEN}[INFO]${NC} $*" >&2
 }
 
 log_warn() {
-    echo -e "${YELLOW}[WARN]${NC} $*"
+    echo -e "${YELLOW}[WARN]${NC} $*" >&2
 }
 
 log_error() {
@@ -40,7 +40,7 @@ log_error() {
 }
 
 log_step() {
-    echo -e "${BLUE}==>${NC} $*"
+    echo -e "${BLUE}==>${NC} $*" >&2
 }
 
 # Wait for Semaphore to be ready
@@ -63,38 +63,44 @@ wait_for_semaphore() {
     return 1
 }
 
-# Authenticate and get token
-get_auth_token() {
+# Authenticate and get cookie
+get_auth_cookie() {
     log_step "Authenticating with Semaphore..."
 
-    local response
-    response=$(curl -s -X POST "${SEMAPHORE_URL}/api/auth/login" \
+    local cookie_file="/tmp/semaphore-cookie-$$"
+    local status_code
+
+    status_code=$(curl -s -o /dev/null -w "%{http_code}" -c "$cookie_file" \
+        -X POST "${SEMAPHORE_URL}/api/auth/login" \
         -H "Content-Type: application/json" \
         -d "{\"auth\":\"${SEMAPHORE_ADMIN}\",\"password\":\"${SEMAPHORE_ADMIN_PASSWORD}\"}")
 
-    # Extract token from response
-    local token
-    token=$(echo "$response" | grep -o '"token":"[^"]*"' | cut -d'"' -f4)
+    log_info "Auth status code: $status_code"
+    log_info "Cookie file: $cookie_file"
 
-    if [ -z "$token" ]; then
-        log_error "Failed to authenticate with Semaphore"
-        log_error "Response: $response"
+    if [ "$status_code" != "204" ]; then
+        log_error "Failed to authenticate with Semaphore (HTTP $status_code)"
+        rm -f "$cookie_file"
+        return 1
+    fi
+
+    if [ ! -f "$cookie_file" ]; then
+        log_error "Cookie file was not created"
         return 1
     fi
 
     log_info "Authentication successful"
-    echo "$token"
+    echo "$cookie_file"
 }
 
 # Create project
 create_project() {
-    local token="$1"
+    local cookie_file="$1"
     log_step "Creating Mesh Network project..."
 
     local response
-    response=$(curl -s -X POST "${SEMAPHORE_URL}/api/projects" \
+    response=$(curl -s -b "$cookie_file" -X POST "${SEMAPHORE_URL}/api/projects" \
         -H "Content-Type: application/json" \
-        -H "Authorization: Bearer ${token}" \
         -d '{
             "name": "OpenWrt Mesh Network",
             "alert": false,
@@ -106,13 +112,15 @@ create_project() {
     local project_id
     project_id=$(echo "$response" | grep -o '"id":[0-9]*' | head -1 | cut -d':' -f2)
 
+    log_info "Project creation response: $response"
+    log_info "Extracted project_id: $project_id"
+
     if [ -z "$project_id" ]; then
         log_warn "Project may already exist or creation failed"
         log_info "Attempting to find existing project..."
 
         # Try to get existing projects
-        response=$(curl -s -X GET "${SEMAPHORE_URL}/api/projects" \
-            -H "Authorization: Bearer ${token}")
+        response=$(curl -s -b "$cookie_file" -X GET "${SEMAPHORE_URL}/api/projects")
 
         # Look for mesh network project
         project_id=$(echo "$response" | grep -o '"name":"OpenWrt Mesh Network".*"id":[0-9]*' | grep -o '"id":[0-9]*' | cut -d':' -f2 | head -1)
@@ -132,14 +140,14 @@ create_project() {
 
 # Create inventory
 create_inventory() {
-    local token="$1"
+    local cookie_file="$1"
     local project_id="$2"
     log_step "Creating inventory..."
 
     local response
     response=$(curl -s -X POST "${SEMAPHORE_URL}/api/project/${project_id}/inventory" \
         -H "Content-Type: application/json" \
-        -H "Authorization: Bearer ${token}" \
+        -b "$cookie_file" \
         -d '{
             "name": "Mesh Nodes",
             "project_id": '"${project_id}"',
@@ -154,7 +162,7 @@ create_inventory() {
         log_warn "Inventory may already exist"
         # Try to get existing inventory
         response=$(curl -s -X GET "${SEMAPHORE_URL}/api/project/${project_id}/inventory" \
-            -H "Authorization: Bearer ${token}")
+            -b "$cookie_file")
         inventory_id=$(echo "$response" | grep -o '"name":"Mesh Nodes".*"id":[0-9]*' | grep -o '"id":[0-9]*' | cut -d':' -f2 | head -1)
 
         if [ -n "$inventory_id" ]; then
@@ -169,14 +177,14 @@ create_inventory() {
 
 # Create environment (for variables)
 create_environment() {
-    local token="$1"
+    local cookie_file="$1"
     local project_id="$2"
     log_step "Creating environment..."
 
     local response
     response=$(curl -s -X POST "${SEMAPHORE_URL}/api/project/${project_id}/environment" \
         -H "Content-Type: application/json" \
-        -H "Authorization: Bearer ${token}" \
+        -b "$cookie_file" \
         -d '{
             "name": "Production",
             "project_id": '"${project_id}"',
@@ -190,7 +198,7 @@ create_environment() {
     if [ -z "$env_id" ]; then
         log_warn "Environment may already exist"
         response=$(curl -s -X GET "${SEMAPHORE_URL}/api/project/${project_id}/environment" \
-            -H "Authorization: Bearer ${token}")
+            -b "$cookie_file")
         env_id=$(echo "$response" | grep -o '"name":"Production".*"id":[0-9]*' | grep -o '"id":[0-9]*' | cut -d':' -f2 | head -1)
 
         if [ -n "$env_id" ]; then
@@ -205,7 +213,7 @@ create_environment() {
 
 # Create template for deployment
 create_template() {
-    local token="$1"
+    local cookie_file="$1"
     local project_id="$2"
     local inventory_id="$3"
     local env_id="$4"
@@ -217,17 +225,17 @@ create_template() {
     local response
     response=$(curl -s -X POST "${SEMAPHORE_URL}/api/project/${project_id}/templates" \
         -H "Content-Type: application/json" \
-        -H "Authorization: Bearer ${token}" \
+        -b "$cookie_file" \
         -d '{
             "project_id": '"${project_id}"',
             "inventory_id": '"${inventory_id}"',
             "environment_id": '"${env_id}"',
             "name": "'"${name}"'",
             "playbook": "'"${playbook}"'",
-            "arguments": "",
+            "arguments": "[]",
             "allow_override_args_in_task": false,
             "suppress_success_alerts": true,
-            "survey_vars": null,
+            "survey_vars": [],
             "type": ""
         }')
 
@@ -253,8 +261,8 @@ main() {
     echo
 
     # Authenticate
-    local token
-    if ! token=$(get_auth_token); then
+    local cookie_file
+    if ! cookie_file=$(get_auth_cookie); then
         exit 1
     fi
 
@@ -262,7 +270,7 @@ main() {
 
     # Create project
     local project_id
-    if ! project_id=$(create_project "$token"); then
+    if ! project_id=$(create_project "$cookie_file"); then
         exit 1
     fi
 
@@ -270,7 +278,7 @@ main() {
 
     # Create inventory
     local inventory_id
-    if ! inventory_id=$(create_inventory "$token" "$project_id"); then
+    if ! inventory_id=$(create_inventory "$cookie_file" "$project_id"); then
         log_error "Failed to create inventory"
         exit 1
     fi
@@ -279,22 +287,19 @@ main() {
 
     # Create environment
     local env_id
-    if ! env_id=$(create_environment "$token" "$project_id"); then
+    if ! env_id=$(create_environment "$cookie_file" "$project_id"); then
         log_error "Failed to create environment"
         exit 1
     fi
 
     echo
 
-    # Create templates
-    create_template "$token" "$project_id" "$inventory_id" "$env_id" \
-        "Deploy Mesh Network" "/ansible/playbooks/deploy.yml"
+    # Note: Templates require SSH keys to be configured
+    # They can be created manually via the web UI
+    log_info "Project setup complete. Templates should be created via web UI after SSH keys are configured."
 
-    create_template "$token" "$project_id" "$inventory_id" "$env_id" \
-        "Verify Deployment" "/ansible/playbooks/verify.yml"
-
-    create_template "$token" "$project_id" "$inventory_id" "$env_id" \
-        "Backup Node Configs" "/ansible/playbooks/backup.yml"
+    # Cleanup cookie file
+    rm -f "$cookie_file"
 
     echo
     log_step "Semaphore setup complete!"
