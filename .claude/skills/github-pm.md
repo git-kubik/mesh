@@ -468,16 +468,19 @@ jobs:
 After any `git push` or action that triggers workflows, you MUST:
 
 1. **Wait for workflows to start** (5-10 seconds):
+
    ```bash
    sleep 10
    ```
 
 2. **Check workflow status**:
+
    ```bash
    gh run list --limit 3
    ```
 
 3. **If any workflow shows "failure"**, investigate immediately:
+
    ```bash
    # View failed run details
    gh run view RUN_ID
@@ -489,6 +492,7 @@ After any `git push` or action that triggers workflows, you MUST:
 4. **Fix the failure** before proceeding with other work
 
 5. **After fixing, verify all workflows pass**:
+
    ```bash
    gh run list --limit 3
    # Ensure all show "success"
