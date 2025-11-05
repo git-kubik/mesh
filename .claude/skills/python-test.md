@@ -131,7 +131,7 @@ def ssh_client(request):
     node_ip = request.param
     client = paramiko.SSHClient()
     client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    client.connect(node_ip, username='root', password='password')
+    client.connect(node_ip, username='root', password='password')  # pragma: allowlist secret
     yield client
     client.close()
 

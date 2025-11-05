@@ -374,9 +374,9 @@ Download:
    - You should see OpenWrt LuCI interface
    - Default: no password set
 
-6. **Set Root Password:**
+6. **Set Root Password:**  <!-- pragma: allowlist secret -->
    - SSH to router: `ssh root@192.168.1.1` (no password initially)
-   - Set password: `passwd`
+   - Set password: `passwd`  <!-- pragma: allowlist secret -->
    - Or via LuCI: System → Administration → Router Password
 
 7. **Update Package Lists:**
@@ -2283,8 +2283,8 @@ git commit -m "Initial mesh configuration"
    ssh-copy-id root@10.11.12.2
    ssh-copy-id root@10.11.12.3
 
-   # Disable password authentication (optional)
-   uci set dropbear.@dropbear[0].PasswordAuth='0'
+   # Disable password authentication (optional)  # pragma: allowlist secret
+   uci set dropbear.@dropbear[0].PasswordAuth='0'  # pragma: allowlist secret
    uci commit dropbear
    /etc/init.d/dropbear restart
    ```

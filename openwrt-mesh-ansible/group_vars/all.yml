@@ -35,7 +35,7 @@ batman_hop_penalty: 15
 # Wireless Mesh Configuration (2.4GHz - Backup)
 mesh_id: ha-mesh-net
 mesh_encryption: sae
-mesh_password: YourSecureMeshPassword123!  # CHANGE THIS!
+mesh_password: YourSecureMeshPassword123!  # CHANGE THIS!  # pragma: allowlist secret
 mesh_channel: 6
 mesh_htmode: HT40
 mesh_mcast_rate: 24000
@@ -43,7 +43,7 @@ mesh_mcast_rate: 24000
 # Client WiFi Configuration (5GHz - AP)
 client_ssid: HA-Network-5G
 client_encryption: psk2+ccmp
-client_password: YourClientPassword123!  # CHANGE THIS!
+client_password: YourClientPassword123!  # CHANGE THIS!  # pragma: allowlist secret
 client_channel: 36
 client_htmode: VHT80
 client_country: AU
@@ -116,7 +116,7 @@ vlans:
     dhcp_limit: 50
     isolation: true
     guest_ssid: HA-Guest
-    guest_password: GuestPassword123!
+    guest_password: GuestPassword123!  # pragma: allowlist secret
 
   iot:
     vid: 40

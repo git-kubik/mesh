@@ -689,11 +689,49 @@ pytest tests/unit/ --cov=openwrt_mesh_ansible --cov-report=term
 **Standards:**
 
 - **NEVER** commit secrets to Git
-- **ALWAYS** use Ansible Vault for sensitive data
+- **ALWAYS** use .env files for all variables (excluded from Git via .gitignore)
 - **ROTATE** secrets regularly (quarterly minimum)
 - **AUDIT** access to secrets (who, when, what)
 
-**Ansible Vault usage:**
+**IMPORTANT: All variables (including secrets) are sourced from .env files that are NOT stored in Git.**
+
+**.env file approach (Primary Method):**
+
+```bash
+# .env (NOT IN GIT - excluded by .gitignore)
+# Contains ALL configuration variables including secrets
+MESH_PASSWORD=your_actual_secure_password_here
+CLIENT_PASSWORD=your_actual_client_password
+GUEST_PASSWORD=your_guest_password
+MESH_ID=ha-mesh-net
+CLIENT_SSID=HA-Network-5G
+# ... all other variables
+```
+
+**Reference in Ansible files:**
+
+```yaml
+# group_vars/all.yml (committed with example/default values only)
+---
+mesh_password: "{{ lookup('env', 'MESH_PASSWORD') | default('YourSecureMeshPassword123!') }}"  # pragma: allowlist secret
+client_password: "{{ lookup('env', 'CLIENT_PASSWORD') | default('YourClientPassword123!') }}"  # pragma: allowlist secret
+```
+
+**Setup workflow:**
+
+```bash
+# 1. Copy example .env file
+cp .env.example .env
+
+# 2. Edit with actual values
+nano .env
+
+# 3. Source variables before running Ansible
+source .env
+ansible-playbook playbooks/deploy.yml
+```
+
+**Alternative: Ansible Vault (if preferred)**
 
 ```bash
 # Encrypt file
@@ -701,35 +739,9 @@ ansible-vault encrypt group_vars/vault.yml
 
 # Edit encrypted file
 ansible-vault edit group_vars/vault.yml
-
-# Decrypt for viewing (temporary)
-ansible-vault view group_vars/vault.yml
-
-# Rekey (change password)
-ansible-vault rekey group_vars/vault.yml
 ```
 
-**Vault file structure:**
-
-```yaml
-# group_vars/vault.yml (encrypted)
----
-vault_mesh_password: "actual_secure_password_here"
-vault_client_password: "another_secure_password"
-vault_ssh_private_key: |
-  -----BEGIN OPENSSH PRIVATE KEY-----
-  ...
-  -----END OPENSSH PRIVATE KEY-----
-```
-
-**Reference in plain files:**
-
-```yaml
-# group_vars/all.yml (plain)
----
-mesh_password: "{{ vault_mesh_password }}"
-client_password: "{{ vault_client_password }}"
-```
+**Note:** The default approach for this project is .env files, not Ansible Vault.
 
 #### Password Standards
 

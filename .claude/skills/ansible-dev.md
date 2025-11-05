@@ -258,11 +258,11 @@ batman_gw_bandwidth: "100000/100000"  # 100 Mbps down/up
 
 # Wireless configuration
 mesh_ssid: mesh-network
-mesh_password: "CHANGE_THIS_PASSWORD"  # 2.4GHz mesh
+mesh_password: "CHANGE_THIS_PASSWORD"  # 2.4GHz mesh (example - use .env)  # pragma: allowlist secret
 mesh_channel: 1
 
 client_ssid: HA-Network-5G
-client_password: "CHANGE_THIS_PASSWORD"  # 5GHz AP
+client_password: "CHANGE_THIS_PASSWORD"  # 5GHz AP (example - use .env)  # pragma: allowlist secret
 client_channel: 36
 client_country: US
 
@@ -290,9 +290,33 @@ static_hosts:
     ip: 10.11.12.11
 ```
 
-### 4. Ansible Vault for Secrets
+### 4. Variable Management with .env Files
 
-**Encrypting sensitive variables:**
+**IMPORTANT: All variables (including secrets) are sourced from .env files that are NOT stored in git.**
+
+The `.env` file is excluded via `.gitignore` and contains all configuration variables:
+
+```bash
+# .env (NOT IN GIT - excluded by .gitignore)
+MESH_PASSWORD=your_actual_secure_password
+CLIENT_PASSWORD=your_actual_client_password
+GUEST_PASSWORD=your_guest_password
+MESH_ID=ha-mesh-net
+CLIENT_SSID=HA-Network-5G
+# ... all other variables
+```
+
+**Using .env variables in Ansible:**
+
+The project uses environment variable substitution in `group_vars/all.yml`:
+
+```yaml
+# group_vars/all.yml (committed to git with example values)
+mesh_password: "{{ lookup('env', 'MESH_PASSWORD') | default('YourSecureMeshPassword123!') }}"
+client_password: "{{ lookup('env', 'CLIENT_PASSWORD') | default('YourClientPassword123!') }}"
+```
+
+**Alternative: Ansible Vault (if preferred)**
 
 ```bash
 # Encrypt group_vars file
@@ -301,27 +325,11 @@ ansible-vault encrypt group_vars/all.yml
 # Edit encrypted file
 ansible-vault edit group_vars/all.yml
 
-# Decrypt for editing
-ansible-vault decrypt group_vars/all.yml
-
 # Run playbook with vault password
 ansible-playbook -i inventory/hosts.yml playbooks/deploy.yml --ask-vault-pass
-
-# Use vault password file
-ansible-playbook -i inventory/hosts.yml playbooks/deploy.yml --vault-password-file ~/.vault_pass
 ```
 
-**Store only secrets in vault:**
-
-```yaml
-# group_vars/vault.yml (encrypted)
-vault_mesh_password: "actual_secret_password"
-vault_client_password: "another_secret_password"
-
-# group_vars/all.yml (plain)
-mesh_password: "{{ vault_mesh_password }}"
-client_password: "{{ vault_client_password }}"
-```
+**Note:** The default approach for this project is .env files, not Ansible Vault.
 
 ### 5. Ad-hoc Commands
 

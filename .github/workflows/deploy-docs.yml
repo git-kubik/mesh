@@ -15,9 +15,29 @@ permissions:
   contents: write
 
 jobs:
+  check-mkdocs-exists:
+    name: Check if mkdocs.yml exists
+    runs-on: ubuntu-latest
+    outputs:
+      mkdocs-exists: ${{ steps.check.outputs.exists }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check if mkdocs.yml exists
+        id: check
+        run: |
+          if [ -f "mkdocs.yml" ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
   deploy:
     name: Deploy to GitHub Pages
     runs-on: ubuntu-latest
+    needs: check-mkdocs-exists
+    if: needs.check-mkdocs-exists.outputs.mkdocs-exists == 'true'
 
     steps:
       - name: Checkout code
@@ -50,12 +70,7 @@ jobs:
 
       - name: Build and deploy documentation
         run: |
-          if [ -f mkdocs.yml ]; then
-            mkdocs gh-deploy --force --verbose
-          else
-            echo "No mkdocs.yml found. Skipping deployment."
-            exit 1
-          fi
+          mkdocs gh-deploy --force --verbose
 
       - name: Summary
         run: |
@@ -64,3 +79,18 @@ jobs:
           echo "Documentation has been deployed to GitHub Pages." >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**URL**: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/" >> $GITHUB_STEP_SUMMARY
+
+  skip-summary:
+    name: Documentation Status
+    runs-on: ubuntu-latest
+    needs: check-mkdocs-exists
+    if: needs.check-mkdocs-exists.outputs.mkdocs-exists == 'false'
+
+    steps:
+      - name: Summary
+        run: |
+          echo "## Documentation Deployment" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "⚠️ **MkDocs not yet configured** (Phase 12)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Documentation deployment will be available after creating \`mkdocs.yml\`." >> $GITHUB_STEP_SUMMARY
