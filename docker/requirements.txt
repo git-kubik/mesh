@@ -1,0 +1,33 @@
+# Python dependencies for Ansible mesh network deployment container
+# Installed using UV package manager for faster installation
+
+# Ansible core and tools
+ansible>=8.0.0
+ansible-core>=2.15.0
+ansible-lint>=6.22.0
+
+# Templating and data processing
+jinja2>=3.1.0
+netaddr>=0.8.0
+pyyaml>=6.0.0
+
+# SSH and remote execution
+paramiko>=3.4.0
+
+# Testing framework (for running tests in container)
+pytest>=7.4.0
+pytest-cov>=4.1.0
+pytest-html>=3.2.0
+pytest-xdist>=3.3.0
+pytest-timeout>=2.2.0
+pytest-mock>=3.12.0
+
+# Code quality tools
+black>=23.12.0
+isort>=5.13.0
+flake8>=7.0.0
+mypy>=1.8.0
+
+# Utility libraries
+python-dotenv>=1.0.0  # For loading .env files
+rich>=13.7.0  # For better console output

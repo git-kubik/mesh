@@ -1,0 +1,94 @@
+services:
+  # PostgreSQL database for Semaphore web interface
+  postgres:
+    image: postgres:15-alpine
+    container_name: mesh_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: semaphore
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-semaphore_password}
+      POSTGRES_DB: semaphore
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - mesh-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U semaphore"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Semaphore web interface for Ansible
+  semaphore:
+    image: semaphoreui/semaphore:latest
+    container_name: mesh_semaphore
+    restart: unless-stopped
+    ports:
+      - "${SEMAPHORE_PORT:-3000}:3000"
+    environment:
+      SEMAPHORE_DB_DIALECT: postgres
+      SEMAPHORE_DB_HOST: postgres
+      SEMAPHORE_DB_PORT: 5432
+      SEMAPHORE_DB_USER: semaphore
+      SEMAPHORE_DB_PASS: ${POSTGRES_PASSWORD:-semaphore_password}
+      SEMAPHORE_DB_NAME: semaphore
+      SEMAPHORE_ADMIN: ${SEMAPHORE_ADMIN:-admin}
+      SEMAPHORE_ADMIN_PASSWORD: ${SEMAPHORE_ADMIN_PASSWORD:-changeme}
+      SEMAPHORE_ADMIN_NAME: ${SEMAPHORE_ADMIN_NAME:-Admin}
+      SEMAPHORE_ADMIN_EMAIL: ${SEMAPHORE_ADMIN_EMAIL:-admin@localhost}
+      SEMAPHORE_ACCESS_KEY_ENCRYPTION: ${SEMAPHORE_ACCESS_KEY_ENCRYPTION:-}
+    volumes:
+      - semaphore-data:/etc/semaphore
+      - ../openwrt-mesh-ansible:/ansible:ro
+    networks:
+      - mesh-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/api/ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Ansible runtime container
+  ansible:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mesh_ansible
+    restart: unless-stopped
+    volumes:
+      - ../openwrt-mesh-ansible:/ansible
+      - ssh-keys:/root/.ssh
+      - backups:/backups
+    networks:
+      - mesh-network
+    environment:
+      ANSIBLE_FORCE_COLOR: "true"
+      ANSIBLE_HOST_KEY_CHECKING: "False"
+    # Keep container running for interactive use
+    command: tail -f /dev/null
+    healthcheck:
+      test: ["CMD", "ansible", "--version"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+# Named volumes for persistent data
+volumes:
+  postgres-data:
+    name: mesh_postgres-data
+  semaphore-data:
+    name: mesh_semaphore-data
+  ssh-keys:
+    name: mesh_ssh-keys
+  backups:
+    name: mesh_backups
+
+# Custom bridge network for service communication
+networks:
+  mesh-network:
+    name: mesh_network
+    driver: bridge
