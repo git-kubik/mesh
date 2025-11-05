@@ -99,6 +99,7 @@ Then run the automated configuration script:
 ```
 
 This will automatically create:
+
 - Project: "OpenWrt Mesh Network"
 - Inventory: "Mesh Nodes" pointing to `/ansible/inventory/hosts.yml`
 - Environment: "Production"
