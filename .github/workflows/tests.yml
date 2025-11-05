@@ -131,7 +131,7 @@ jobs:
         run: |
           if [ -f docker/Dockerfile ]; then
             cd docker
-            docker-compose build ansible
+            docker compose build ansible
           else
             echo "No Dockerfile found, skipping Docker build"
           fi
@@ -140,10 +140,10 @@ jobs:
         run: |
           if [ -f docker/docker-compose.yml ]; then
             cd docker
-            docker-compose up -d ansible
+            docker compose up -d ansible
             sleep 5
-            docker-compose exec -T ansible ansible --version
-            docker-compose down
+            docker compose exec -T ansible ansible --version
+            docker compose down
           else
             echo "No docker-compose.yml found, skipping Docker test"
           fi
