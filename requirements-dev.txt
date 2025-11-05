@@ -35,5 +35,5 @@ detect-secrets>=1.4.0
 # Shell script checking (Python wrapper)
 shellcheck-py>=0.9.0
 
-# Include base requirements
--r tests/requirements.txt
+# Note: tests/requirements.txt will be created in Phase 5-9
+# For now, test dependencies are included above
