@@ -30,8 +30,9 @@ RUN apk add --no-cache \
 
 # Stage 2: Python dependencies
 FROM base AS builder
+RUN pip install uv
 COPY requirements.txt /tmp/
-RUN pip install --user --no-cache-dir -r /tmp/requirements.txt
+RUN uv pip install --system -r /tmp/requirements.txt
 
 # Stage 3: Final runtime
 FROM base

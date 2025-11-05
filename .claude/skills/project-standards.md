@@ -1083,8 +1083,9 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install black isort flake8 mypy
-          pip install -r requirements.txt
+          pip install uv
+          uv pip install --system black isort flake8 mypy
+          uv pip install --system -r requirements.txt
 
       - name: Check code formatting
         run: |
@@ -1099,7 +1100,8 @@ jobs:
 
       - name: Lint Ansible playbooks
         run: |
-          pip install ansible-lint
+          pip install uv
+          uv pip install --system ansible-lint
           ansible-lint openwrt-mesh-ansible/
 
   test:
@@ -1115,7 +1117,8 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install -r tests/requirements.txt
+          pip install uv
+          uv pip install --system -r tests/requirements.txt
 
       - name: Run unit tests
         run: |
@@ -1157,7 +1160,8 @@ jobs:
 
       - name: Install MkDocs
         run: |
-          pip install -r requirements-docs.txt
+          pip install uv
+          uv pip install --system -r requirements-docs.txt
 
       - name: Build documentation
         run: |
