@@ -21,7 +21,7 @@ FROM base AS builder
 RUN pip install --no-cache-dir uv
 
 # Copy requirements file
-COPY requirements.txt /tmp/requirements.txt
+COPY docker/requirements.txt /tmp/requirements.txt
 
 # Install Python dependencies using UV
 RUN uv pip install --system -r /tmp/requirements.txt
@@ -35,11 +35,20 @@ COPY --from=builder /usr/local /usr/local
 # Set working directory
 WORKDIR /ansible
 
+# Copy Ansible project files into container
+# These serve as the base, bind mounts can override for development
+COPY openwrt-mesh-ansible/ansible.cfg /ansible/
+COPY openwrt-mesh-ansible/inventory/ /ansible/inventory/
+COPY openwrt-mesh-ansible/group_vars/ /ansible/group_vars/
+COPY openwrt-mesh-ansible/playbooks/ /ansible/playbooks/
+COPY openwrt-mesh-ansible/templates/ /ansible/templates/
+COPY openwrt-mesh-ansible/Makefile /ansible/
+
 # Create SSH directory with proper permissions
 RUN mkdir -p /root/.ssh && chmod 700 /root/.ssh
 
 # Copy entrypoint script
-COPY entrypoint.sh /entrypoint.sh
+COPY docker/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
 # Set environment variables

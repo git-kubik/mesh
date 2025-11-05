@@ -55,8 +55,8 @@ services:
   # Ansible runtime container
   ansible:
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: docker/Dockerfile
     container_name: mesh_ansible
     restart: unless-stopped
     volumes:
