@@ -83,7 +83,32 @@ docker-compose exec ansible ansible --version
 
 Web-based Ansible management interface.
 
-**Initial Configuration:**
+**Automated Setup (Recommended):**
+
+First, ensure you have a `.env` file with credentials:
+
+```bash
+cp .env.example .env
+# Edit .env and set SEMAPHORE_ADMIN_PASSWORD
+```
+
+Then run the automated configuration script:
+
+```bash
+./setup-semaphore.sh
+```
+
+This will automatically create:
+- Project: "OpenWrt Mesh Network"
+- Inventory: "Mesh Nodes" pointing to `/ansible/inventory/hosts.yml`
+- Environment: "Production"
+- Templates: Deploy, Verify, and Backup playbooks
+
+**Note**: The script requires `.env` file with `SEMAPHORE_ADMIN` and `SEMAPHORE_ADMIN_PASSWORD` set.
+
+**Manual Configuration (Optional):**
+
+If you prefer manual setup:
 
 1. Log in to <http://localhost:3000>
 2. Create a new project pointing to `/ansible`
