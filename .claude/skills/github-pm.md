@@ -461,6 +461,76 @@ jobs:
             -f body="🎉 Milestone ${{ github.event.milestone.title }} is complete!"
 ```
 
+**CRITICAL: Workflow Error Checking Protocol**
+
+**ALWAYS check for workflow failures after triggering GitHub Actions:**
+
+After any `git push` or action that triggers workflows, you MUST:
+
+1. **Wait for workflows to start** (5-10 seconds):
+   ```bash
+   sleep 10
+   ```
+
+2. **Check workflow status**:
+   ```bash
+   gh run list --limit 3
+   ```
+
+3. **If any workflow shows "failure"**, investigate immediately:
+   ```bash
+   # View failed run details
+   gh run view RUN_ID
+
+   # View failed logs
+   gh run view RUN_ID --log-failed
+   ```
+
+4. **Fix the failure** before proceeding with other work
+
+5. **After fixing, verify all workflows pass**:
+   ```bash
+   gh run list --limit 3
+   # Ensure all show "success"
+   ```
+
+**Example workflow check after commit:**
+
+```bash
+# After git push
+git push
+
+# Wait for workflows to trigger
+sleep 10
+
+# Check status
+gh run list --limit 5
+
+# If failures detected:
+# - Fix the issue
+# - Commit fix
+# - Push again
+# - Verify workflows pass
+
+# Only proceed when all workflows show success
+```
+
+**Why this is critical:**
+
+- Prevents accumulation of CI/CD failures
+- Catches issues immediately while context is fresh
+- Maintains clean build status
+- Ensures code quality gates are passing
+- Reduces technical debt
+
+**Common workflow failures to check for:**
+
+- Pre-commit checks (linting, formatting)
+- Tests (unit, integration, Docker builds)
+- Documentation deployment
+- Security scans
+- Build processes
+
 ### 8. Project Setup Workflow
 
 **Complete setup for mesh project:**
