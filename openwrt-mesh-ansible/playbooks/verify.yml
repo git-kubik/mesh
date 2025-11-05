@@ -1,0 +1,115 @@
+---
+# Verification playbook - Check mesh network status
+#
+# Usage:
+#   ansible-playbook -i inventory/hosts.yml playbooks/verify.yml
+
+- name: Verify Mesh Network Status
+  hosts: mesh_nodes
+  gather_facts: false
+  
+  tasks:
+    - name: Check node reachability
+      wait_for_connection:
+        timeout: 10
+      register: reachability
+      failed_when: false
+
+    - name: Display reachability status
+      debug:
+        msg: "{{ inventory_hostname }}: {{ 'REACHABLE' if reachability is success else 'UNREACHABLE' }}"
+
+    - block:
+        - name: Get system uptime
+          raw: uptime
+          register: uptime_result
+          changed_when: false
+
+        - name: Check batman-adv module
+          raw: lsmod | grep batman
+          register: batman_module
+          changed_when: false
+          failed_when: false
+
+        - name: Check batman interfaces
+          raw: batctl if
+          register: batman_if
+          changed_when: false
+          failed_when: false
+
+        - name: Check mesh topology
+          raw: batctl o
+          register: batman_o
+          changed_when: false
+          failed_when: false
+
+        - name: Check gateway status
+          raw: batctl gwl
+          register: batman_gwl
+          changed_when: false
+          failed_when: false
+
+        - name: Check neighbor info
+          raw: batctl n
+          register: batman_n
+          changed_when: false
+          failed_when: false
+
+        - name: Check wireless mesh status
+          raw: iw dev mesh0 station dump
+          register: mesh_stations
+          changed_when: false
+          failed_when: false
+
+        - name: Check interface status
+          raw: ip link show | grep -E "lan[1-4]|mesh0|bat0|br-lan"
+          register: interfaces
+          changed_when: false
+          failed_when: false
+
+        - name: Check WAN connectivity
+          raw: ping -c 3 -W 2 1.1.1.1
+          register: wan_test
+          changed_when: false
+          failed_when: false
+
+        - name: Display comprehensive status
+          debug:
+            msg:
+              - "=== {{ inventory_hostname }} Status ==="
+              - "Uptime: {{ uptime_result.stdout_lines[0] }}"
+              - ""
+              - "Batman Module: {{ 'LOADED' if batman_module.rc == 0 else 'NOT LOADED' }}"
+              - ""
+              - "Batman Interfaces:"
+              - "{{ batman_if.stdout }}"
+              - ""
+              - "Mesh Topology (Originators):"
+              - "{{ batman_o.stdout_lines[0:10] | join('\n') }}"
+              - ""
+              - "Gateway Status:"
+              - "{{ batman_gwl.stdout }}"
+              - ""
+              - "Active Interfaces:"
+              - "{{ interfaces.stdout_lines | join('\n') }}"
+              - ""
+              - "WAN Connectivity: {{ 'OK' if wan_test.rc == 0 else 'FAILED' }}"
+
+      when: reachability is success
+
+- name: Mesh Network Health Summary
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Summary
+      debug:
+        msg:
+          - "=== Mesh Network Health Summary ==="
+          - "Total nodes: {{ groups['mesh_nodes'] | length }}"
+          - "Nodes configured: Check output above"
+          - ""
+          - "Run individual checks:"
+          - "  batctl o     - View mesh topology"
+          - "  batctl gwl   - View gateway status"
+          - "  batctl if    - View batman interfaces"
+          - "  batctl n     - View neighbor details"

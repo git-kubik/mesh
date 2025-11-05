@@ -1,0 +1,101 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+venv/
+ENV/
+env/
+.venv
+
+# Testing
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+.hypothesis/
+
+# MyPy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# MkDocs
+site/
+.cache/
+
+# Ansible
+*.retry
+.vault_pass
+vault_password
+
+# Docker
+docker/volumes/
+docker/.env
+
+# SSH Keys (IMPORTANT: Never commit keys!)
+*.pem
+*.key
+id_rsa
+id_rsa.pub
+id_ed25519
+id_ed25519.pub
+
+# Secrets (IMPORTANT: Never commit secrets!)
+.env
+.env.*
+!.env.example
+secrets.yml
+credentials.json
+*.secret
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+.tmp/
+.temp/
+
+# OS Files
+Thumbs.db
+.DS_Store
+
+# UV Package Manager
+.uv/
+uv.lock
+
+# Pre-commit
+.pre-commit-cache/
+.mcp.json

@@ -1,0 +1,263 @@
+---
+# Main playbook to deploy OpenWrt mesh network configuration
+#
+# Usage:
+#   ansible-playbook -i inventory/hosts.yml playbooks/deploy.yml
+#
+# To deploy to specific node:
+#   ansible-playbook -i inventory/hosts.yml playbooks/deploy.yml --limit node1
+#
+# Check mode (dry run):
+#   ansible-playbook -i inventory/hosts.yml playbooks/deploy.yml --check
+
+- name: Deploy OpenWrt Mesh Network Configuration
+  hosts: mesh_nodes
+  gather_facts: false
+  
+  vars:
+    config_backup_dir: /tmp/openwrt-config-backup
+  
+  tasks:
+    - name: Wait for SSH to be available
+      wait_for_connection:
+        timeout: 300
+      tags: always
+
+    - name: Test connection and gather facts
+      raw: uname -a
+      register: uname_output
+      changed_when: false
+      tags: always
+
+    - name: Display node information
+      debug:
+        msg: "Configuring {{ inventory_hostname }} at {{ ansible_host }}"
+      tags: always
+
+    # Backup existing configuration
+    - name: Create backup directory
+      file:
+        path: "{{ config_backup_dir }}"
+        state: directory
+        mode: '0755'
+      delegate_to: localhost
+      run_once: false
+      tags: backup
+
+    - name: Backup current configuration
+      shell: |
+        sysupgrade -b /tmp/backup-{{ inventory_hostname }}-$(date +%Y%m%d-%H%M%S).tar.gz
+      args:
+        creates: /tmp/backup-{{ inventory_hostname }}-*.tar.gz
+      tags: backup
+      ignore_errors: true
+
+    - name: Fetch backup to control machine
+      fetch:
+        src: "/tmp/backup-{{ inventory_hostname }}-*.tar.gz"
+        dest: "{{ config_backup_dir }}/"
+        flat: yes
+      tags: backup
+      ignore_errors: true
+
+    # Package management
+    - name: Update package lists
+      raw: opkg update
+      register: opkg_update
+      changed_when: "'Updated list of available packages' in opkg_update.stdout"
+      tags: packages
+
+    - name: Remove conflicting packages
+      raw: "opkg remove {{ item }} --force-removal-of-dependent-packages"
+      loop: "{{ remove_packages }}"
+      register: remove_result
+      changed_when: "'Removing package' in remove_result.stdout"
+      failed_when: false
+      tags: packages
+
+    - name: Install required packages
+      raw: "opkg install {{ item }}"
+      loop: "{{ required_packages }}"
+      register: install_result
+      changed_when: "'Installing' in install_result.stdout or 'Configuring' in install_result.stdout"
+      failed_when: "'Cannot install package' in install_result.stderr"
+      tags: packages
+
+    - name: Install optional packages
+      raw: "opkg install {{ item }}"
+      loop: "{{ optional_packages }}"
+      register: optional_install_result
+      changed_when: "'Installing' in optional_install_result.stdout"
+      failed_when: false
+      tags: 
+        - packages
+        - optional
+
+    # System configuration
+    - name: Set hostname
+      raw: "uci set system.@system[0].hostname='{{ hostname_prefix }}{{ node_id }}'"
+      tags: system
+
+    - name: Set timezone
+      raw: |
+        uci set system.@system[0].timezone='{{ timezone }}'
+        uci set system.@system[0].zonename='{{ zonename }}'
+      tags: system
+
+    - name: Commit system changes
+      raw: uci commit system
+      tags: system
+
+    # Deploy network configuration
+    - name: Deploy network configuration
+      template:
+        src: ../templates/network.j2
+        dest: /etc/config/network
+        mode: '0644'
+        backup: yes
+      tags: 
+        - config
+        - network
+
+    # Deploy wireless configuration
+    - name: Deploy wireless configuration
+      template:
+        src: ../templates/wireless.j2
+        dest: /etc/config/wireless
+        mode: '0644'
+        backup: yes
+      tags:
+        - config
+        - wireless
+
+    # Deploy DHCP configuration
+    - name: Deploy DHCP configuration
+      template:
+        src: ../templates/dhcp.j2
+        dest: /etc/config/dhcp
+        mode: '0644'
+        backup: yes
+      tags:
+        - config
+        - dhcp
+
+    # Deploy firewall configuration
+    - name: Deploy firewall configuration
+      template:
+        src: ../templates/firewall.j2
+        dest: /etc/config/firewall
+        mode: '0644'
+        backup: yes
+      tags:
+        - config
+        - firewall
+
+    # Reload services
+    - name: Reload network configuration
+      raw: /etc/init.d/network reload
+      tags:
+        - reload
+        - network
+      when: not ansible_check_mode
+
+    - name: Reload wireless configuration
+      raw: wifi reload
+      tags:
+        - reload
+        - wireless
+      when: not ansible_check_mode
+
+    - name: Reload DHCP/DNS
+      raw: /etc/init.d/dnsmasq restart
+      tags:
+        - reload
+        - dhcp
+      when: not ansible_check_mode
+
+    - name: Reload firewall
+      raw: /etc/init.d/firewall reload
+      tags:
+        - reload
+        - firewall
+      when: not ansible_check_mode
+
+    - name: Wait for services to stabilize
+      pause:
+        seconds: 10
+      when: not ansible_check_mode
+      tags: reload
+
+    # Verification
+    - name: Verify batman-adv interfaces
+      raw: batctl if
+      register: batman_if
+      changed_when: false
+      failed_when: "'No interfaces configured' in batman_if.stdout"
+      tags: verify
+      when: not ansible_check_mode
+
+    - name: Display batman interfaces
+      debug:
+        var: batman_if.stdout_lines
+      tags: verify
+      when: not ansible_check_mode
+
+    - name: Verify mesh topology
+      raw: batctl o
+      register: batman_o
+      changed_when: false
+      tags: verify
+      when: not ansible_check_mode
+
+    - name: Display mesh topology
+      debug:
+        var: batman_o.stdout_lines
+      tags: verify
+      when: not ansible_check_mode
+
+    - name: Verify gateway status
+      raw: batctl gwl
+      register: batman_gwl
+      changed_when: false
+      tags: verify
+      when: not ansible_check_mode
+
+    - name: Display gateway status
+      debug:
+        var: batman_gwl.stdout_lines
+      tags: verify
+      when: not ansible_check_mode
+
+    - name: Configuration deployment complete
+      debug:
+        msg: |
+          ✓ Configuration deployed successfully to {{ inventory_hostname }}
+          ✓ Node IP: {{ node_ip }}
+          ✓ DHCP Server: {{ dhcp_server }}
+          ✓ Services reloaded
+          
+          Next steps:
+          - Verify connectivity between nodes
+          - Test client connections
+          - Monitor /var/log/messages for any issues
+      tags: always
+
+- name: Post-deployment verification
+  hosts: mesh_nodes
+  gather_facts: false
+  tasks:
+    - name: Test connectivity to other mesh nodes
+      raw: "ping -c 3 {{ hostvars[item].node_ip }}"
+      loop: "{{ groups['mesh_nodes'] }}"
+      when: item != inventory_hostname
+      register: ping_test
+      changed_when: false
+      failed_when: false
+      tags: verify
+
+    - name: Display connectivity test results
+      debug:
+        msg: "{{ inventory_hostname }} -> {{ item.item }}: {{ 'OK' if item.rc == 0 else 'FAILED' }}"
+      loop: "{{ ping_test.results }}"
+      when: ping_test.results is defined
+      tags: verify

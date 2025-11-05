@@ -1,0 +1,37 @@
+# Ansible
+*.retry
+__pycache__/
+*.pyc
+
+# Backups
+backups/
+*.tar.gz
+
+# Logs
+*.log
+
+# SSH keys (keep private)
+*.pem
+*.key
+id_rsa*
+id_ed25519*
+
+# Sensitive data
+# Uncomment if you don't want passwords in version control
+# group_vars/all.yml
+# host_vars/*/secrets.yml
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor files
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# Temporary files
+tmp/
+temp/

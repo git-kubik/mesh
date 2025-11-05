@@ -1,0 +1,112 @@
+---
+# Update playbook - Update packages on mesh nodes
+#
+# Usage:
+#   ansible-playbook -i inventory/hosts.yml playbooks/update.yml
+#
+# Dry run (check for updates):
+#   ansible-playbook -i inventory/hosts.yml playbooks/update.yml --tags check
+
+- name: Update Mesh Node Packages
+  hosts: mesh_nodes
+  gather_facts: false
+  serial: 1  # Update one node at a time to maintain mesh availability
+  
+  tasks:
+    - name: Update package lists
+      raw: opkg update
+      register: opkg_update
+      changed_when: false
+      tags: always
+
+    - name: Check for upgradable packages
+      raw: opkg list-upgradable
+      register: upgradable
+      changed_when: false
+      tags: 
+        - always
+        - check
+
+    - name: Display upgradable packages
+      debug:
+        msg: "{{ upgradable.stdout_lines }}"
+      when: upgradable.stdout != ""
+      tags:
+        - always
+        - check
+
+    - name: No updates available
+      debug:
+        msg: "No package updates available for {{ inventory_hostname }}"
+      when: upgradable.stdout == ""
+      tags:
+        - always
+        - check
+
+    - block:
+        - name: Backup configuration before updates
+          raw: "sysupgrade -b /tmp/pre-update-backup-{{ inventory_hostname }}.tar.gz"
+          tags: update
+
+        - name: Upgrade all packages
+          raw: |
+            opkg list-upgradable | cut -f 1 -d ' ' | xargs -r opkg upgrade
+          register: upgrade_result
+          changed_when: "'Upgrading' in upgrade_result.stdout"
+          tags: update
+
+        - name: Display upgrade results
+          debug:
+            var: upgrade_result.stdout_lines
+          tags: update
+
+        - name: Check if reboot required
+          raw: |
+            if opkg list-upgradable | grep -q 'kernel'; then
+              echo "REBOOT_REQUIRED"
+            fi
+          register: reboot_check
+          changed_when: false
+          tags: update
+
+        - name: Reboot if kernel updated
+          raw: "sleep 2 && reboot"
+          async: 1
+          poll: 0
+          when: "'REBOOT_REQUIRED' in reboot_check.stdout"
+          tags: update
+
+        - name: Wait for node to come back online
+          wait_for_connection:
+            timeout: 300
+            delay: 30
+          when: "'REBOOT_REQUIRED' in reboot_check.stdout"
+          tags: update
+
+        - name: Verify services after update
+          raw: |
+            batctl if
+            batctl o | head -5
+          register: verify
+          changed_when: false
+          tags: update
+
+        - name: Display post-update status
+          debug:
+            var: verify.stdout_lines
+          tags: update
+
+      when: upgradable.stdout != "" and 'check' not in ansible_run_tags
+
+- name: Update Summary
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Summary
+      debug:
+        msg:
+          - "=== Update Complete ==="
+          - "All nodes have been updated"
+          - ""
+          - "Verify mesh status:"
+          - "  ansible-playbook -i inventory/hosts.yml playbooks/verify.yml"

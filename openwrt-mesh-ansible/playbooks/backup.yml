@@ -1,0 +1,85 @@
+---
+# Backup playbook - Backup all mesh node configurations
+#
+# Usage:
+#   ansible-playbook -i inventory/hosts.yml playbooks/backup.yml
+
+- name: Backup Mesh Node Configurations
+  hosts: mesh_nodes
+  gather_facts: false
+  
+  vars:
+    backup_dir: "{{ playbook_dir }}/../backups/{{ ansible_date_time.date }}"
+  
+  tasks:
+    - name: Create local backup directory
+      file:
+        path: "{{ backup_dir }}"
+        state: directory
+        mode: '0755'
+      delegate_to: localhost
+      run_once: true
+
+    - name: Create backup on remote node
+      raw: "sysupgrade -b /tmp/backup-{{ inventory_hostname }}-$(date +%Y%m%d-%H%M%S).tar.gz"
+      register: backup_create
+      changed_when: true
+
+    - name: Get backup filename
+      raw: "ls -t /tmp/backup-{{ inventory_hostname }}-*.tar.gz | head -1"
+      register: backup_file
+      changed_when: false
+
+    - name: Fetch backup to control machine
+      fetch:
+        src: "{{ backup_file.stdout }}"
+        dest: "{{ backup_dir }}/"
+        flat: yes
+      when: backup_file.stdout != ""
+
+    - name: Fetch individual config files
+      fetch:
+        src: "{{ item }}"
+        dest: "{{ backup_dir }}/{{ inventory_hostname }}/"
+      loop:
+        - /etc/config/network
+        - /etc/config/wireless
+        - /etc/config/dhcp
+        - /etc/config/firewall
+        - /etc/config/system
+      ignore_errors: true
+
+    - name: Clean up old backups on remote node (keep last 5)
+      shell: |
+        cd /tmp
+        ls -t backup-{{ inventory_hostname }}-*.tar.gz | tail -n +6 | xargs -r rm
+      changed_when: false
+      failed_when: false
+
+    - name: Display backup location
+      debug:
+        msg: "Backup saved to {{ backup_dir }}/{{ backup_file.stdout | basename }}"
+      when: backup_file.stdout != ""
+
+- name: Backup Summary
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: List backups
+      find:
+        paths: "{{ playbook_dir }}/../backups"
+        file_type: directory
+      register: backup_dirs
+
+    - name: Display backup summary
+      debug:
+        msg:
+          - "=== Backup Complete ==="
+          - "Backups saved to: {{ playbook_dir }}/../backups/"
+          - "Total backup dates: {{ backup_dirs.files | length }}"
+          - ""
+          - "To restore a backup:"
+          - "  1. Copy backup file to node: scp backup.tar.gz root@10.11.12.X:/tmp/"
+          - "  2. SSH to node: ssh root@10.11.12.X"
+          - "  3. Restore: sysupgrade -r /tmp/backup.tar.gz"
+          - "  4. Reboot: reboot"

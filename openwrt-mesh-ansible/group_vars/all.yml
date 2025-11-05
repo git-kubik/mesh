@@ -1,0 +1,125 @@
+---
+# Common variables for all mesh nodes
+
+# Network Configuration
+mesh_network: 10.11.12.0
+mesh_netmask: 255.255.255.0
+mesh_cidr: 24
+mesh_gateway: 10.11.12.1
+
+# DNS Servers
+dns_servers:
+  - 1.1.1.1
+  - 8.8.8.8
+
+# DHCP Configuration
+dhcp_start: 100
+dhcp_limit: 150
+dhcp_leasetime: 12h
+
+# Static Host Reservations (optional)
+static_hosts: []
+#  - name: admin-workstation
+#    mac: 'AA:BB:CC:DD:EE:FF'
+#    ip: 10.11.12.10
+#  - name: file-server
+#    mac: '11:22:33:44:55:66'
+#    ip: 10.11.12.20
+
+# Batman-adv Configuration
+batman_routing_algo: BATMAN_V
+batman_gw_bandwidth: 100000/100000  # Adjust to your WAN speeds (kbit/s)
+batman_orig_interval: 1000
+batman_hop_penalty: 15
+
+# Wireless Mesh Configuration (2.4GHz - Backup)
+mesh_id: ha-mesh-net
+mesh_encryption: sae
+mesh_password: YourSecureMeshPassword123!  # CHANGE THIS!
+mesh_channel: 6
+mesh_htmode: HT40
+mesh_mcast_rate: 24000
+
+# Client WiFi Configuration (5GHz - AP)
+client_ssid: HA-Network-5G
+client_encryption: psk2+ccmp
+client_password: YourClientPassword123!  # CHANGE THIS!
+client_channel: 36
+client_htmode: VHT80
+client_country: AU
+
+# 802.11r Fast Roaming
+enable_80211r: true
+mobility_domain: a1b2
+
+# MTU Settings
+mtu_wired_mesh: 1560
+mtu_wireless_mesh: 1532
+
+# Required Packages
+required_packages:
+  - kmod-batman-adv
+  - batctl
+  - wpad-mesh-mbedtls
+  - ip-full
+  - tcpdump-mini
+
+# Packages to Remove
+remove_packages:
+  - wpad-basic-mbedtls
+  - wpad-basic-wolfssl
+  - wpad-basic
+
+# Optional Packages
+optional_packages:
+  - iperf3
+  - ethtool
+  - nano
+  - htop
+  - rsync
+
+# Timezone
+timezone: AEST-10
+zonename: Australia/Adelaide
+
+# System Hostname Prefix
+hostname_prefix: mesh-node
+
+# Enable Services
+enable_services:
+  - network
+  - firewall
+  - dnsmasq
+  - dropbear
+
+# VLAN Configuration (optional - set to true to enable)
+enable_vlans: false
+
+# VLAN Definitions (if enable_vlans: true)
+vlans:
+  management:
+    vid: 10
+    network: 10.11.10.0/24
+    dhcp_start: 100
+    dhcp_limit: 50
+  
+  trusted:
+    vid: 20
+    network: 10.11.20.0/24
+    dhcp_start: 100
+    dhcp_limit: 100
+  
+  guest:
+    vid: 30
+    network: 10.11.30.0/24
+    dhcp_start: 100
+    dhcp_limit: 50
+    isolation: true
+    guest_ssid: HA-Guest
+    guest_password: GuestPassword123!
+  
+  iot:
+    vid: 40
+    network: 10.11.40.0/24
+    dhcp_start: 100
+    dhcp_limit: 100
