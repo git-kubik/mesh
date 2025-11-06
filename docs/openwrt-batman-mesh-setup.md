@@ -8,32 +8,19 @@
 **Network:** 10.11.12.0/24
 **Devices:** 3x D-Link DIR-1960 A1
 
-```
-Node1 (10.11.12.1) ←lan3→ Node2 (10.11.12.2)
-  ↑ lan4                      ↓ lan4
-  └──────────← Node3 (10.11.12.3)
-
-  + 2.4GHz wireless mesh backup across all nodes
-```
+![Mesh Topology Overview](images/mesh-topology-overview.svg)
 
 ### Detailed Port Layout
 
-```
-Node 1 (10.11.12.1)              Node 2 (10.11.12.2)              Node 3 (10.11.12.3)
-┌────────────────┐              ┌────────────────┐              ┌────────────────┐
-│ WAN: ISP #1    │              │ WAN: ISP #2    │              │ WAN: ISP #3    │
-├────────────────┤              ├────────────────┤              ├────────────────┤
-│ LAN1: Clients  │              │ LAN1: Clients  │              │ LAN1: Clients  │
-│ LAN2: Clients  │              │ LAN2: Clients  │              │ LAN2: Clients  │
-│ LAN3: ➜ Node2  │──────────────│ LAN3: ← Node1  │              │ LAN3: ← Node2  │
-│ LAN4: ➜ Node3  │──────┐       │ LAN4: ➜ Node3  │──────────────│ LAN4: ← Node1  │
-└────────────────┘      │       └────────────────┘       ┌──────└────────────────┘
-                        │                                │
-                        └────────────────────────────────┘
+![Mesh Network Port Layout](images/mesh-port-layout.svg)
 
-2.4GHz Mesh (backup):  Node1 ←──→ Node2 ←──→ Node3 ←──→ Node1
-5GHz Client AP:        All nodes broadcast "HA-Network-5G" (unified SSID)
-```
+**Port Configuration:**
+
+- **WAN (Blue)**: ISP connection for internet access
+- **LAN1-LAN2 (Green)**: Client device connections
+- **LAN3-LAN4 (Yellow)**: Mesh network connections to other nodes
+- **2.4GHz Wireless**: Mesh backup (invisible to clients)
+- **5GHz Wireless**: Client access point with unified SSID
 
 ### Client Connection Points
 
@@ -393,12 +380,13 @@ Download:
 
 ### Ring Topology Connections
 
-```
-Node1 lan3 ←──────→ Node2 lan3
-  ↑ lan4                ↓ lan4
-  └──────← Node3 lan4   │
-           Node3 lan3 ←─┘
-```
+![Mesh Ring Topology Wiring](images/mesh-ring-wiring.svg)
+
+**Physical Connections:**
+
+- Node1 lan3 ↔ Node2 lan3
+- Node2 lan4 → Node3 lan3
+- Node3 lan4 → Node1 lan4
 
 ### Cable Mapping
 
