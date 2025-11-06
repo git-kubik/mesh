@@ -149,8 +149,8 @@ docker-compose exec ansible ls -la /root/.ssh/
 ### Copy Public Key to Nodes
 
 ```bash
-# For each node (adjust IP as needed):
-ssh-copy-id -i mesh_key.pub root@192.168.1.1
+# For each node (after completing initial setup with new IPs):
+ssh-copy-id -i mesh_key.pub root@10.11.12.1
 ssh-copy-id -i mesh_key.pub root@10.11.12.2
 ssh-copy-id -i mesh_key.pub root@10.11.12.3
 ```
