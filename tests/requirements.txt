@@ -1,0 +1,38 @@
+# Test Suite Dependencies
+# Python testing framework and plugins
+
+# Core testing framework
+pytest>=7.4.0
+pytest-cov>=4.1.0
+pytest-xdist>=3.3.1
+pytest-timeout>=2.1.0
+pytest-mock>=3.11.1
+
+# SSH and network testing
+paramiko>=3.3.0
+netaddr>=0.9.0
+
+# YAML parsing and validation
+PyYAML>=6.0.1
+yamllint>=1.32.0
+
+# Ansible testing
+ansible>=8.0.0
+ansible-lint>=6.17.0
+
+# Performance testing
+iperf3>=0.1.11
+
+# Type checking and linting
+mypy>=1.5.0
+types-PyYAML>=6.0.12
+types-paramiko>=3.3.0
+
+# Code formatting
+black>=23.7.0
+isort>=5.12.0
+flake8>=6.1.0
+
+# Additional utilities
+pytest-html>=3.2.0
+pytest-json-report>=1.5.0
