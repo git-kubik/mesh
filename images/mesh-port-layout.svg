@@ -7,21 +7,74 @@
 
   <defs>
     <marker id="arrow-port" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
-      <polygon points="0 0, 10 3, 0 6" fill="#495057"/>
+      <polygon points="0 0, 10 3, 0 6" fill="#343a40"/>
     </marker>
 
+    <!-- Design System Styles -->
     <style>
-      .node-container { fill: #f8f9fa; stroke: #495057; stroke-width: 2; }
-      .port-wan { fill: #cfe2ff; stroke: #084298; stroke-width: 1.5; }
-      .port-client { fill: #d1e7dd; stroke: #0a3622; stroke-width: 1.5; }
-      .port-mesh { fill: #fff3cd; stroke: #664d03; stroke-width: 1.5; }
-      .connection-line { stroke: #495057; stroke-width: 2.5; fill: none; }
-      .wireless-line { stroke: #6c757d; stroke-width: 2; fill: none; stroke-dasharray: 5,5; }
-      .text-node-name { font-family: system-ui, sans-serif; font-size: 16px; font-weight: 600; fill: #212529; text-anchor: middle; }
-      .text-node-ip { font-family: system-ui, sans-serif; font-size: 13px; fill: #6c757d; text-anchor: middle; }
-      .text-port { font-family: system-ui, sans-serif; font-size: 12px; fill: #212529; }
-      .text-label { font-family: system-ui, sans-serif; font-size: 11px; fill: #495057; text-anchor: middle; }
-      .text-note { font-family: system-ui, sans-serif; font-size: 13px; fill: #495057; text-anchor: middle; }
+      /* Node Container */
+      .node-container {
+        fill: #f8f9fa;
+        stroke: #343a40;
+        stroke-width: 2;
+      }
+
+      /* Port Types */
+      .port-wan {
+        fill: #cfe2ff;
+        stroke: #0d6efd;
+        stroke-width: 1.5;
+      }
+
+      .port-client {
+        fill: #d1e7dd;
+        stroke: #198754;
+        stroke-width: 1.5;
+      }
+
+      .port-mesh {
+        fill: #fff3cd;
+        stroke: #ffc107;
+        stroke-width: 1.5;
+      }
+
+      /* Connections */
+      .connection {
+        stroke: #343a40;
+        stroke-width: 2.5;
+        fill: none;
+      }
+
+      .connection-wireless {
+        stroke: #6c757d;
+        stroke-width: 2;
+        fill: none;
+        stroke-dasharray: 5,5;
+      }
+
+      /* Typography */
+      .text-node-name {
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        font-size: 16px;
+        font-weight: 500;
+        fill: #212529;
+        text-anchor: middle;
+      }
+
+      .text-port {
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        font-size: 12px;
+        font-weight: 400;
+        fill: #212529;
+      }
+
+      .text-note {
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        font-size: 13px;
+        font-weight: 400;
+        fill: #495057;
+        text-anchor: middle;
+      }
     </style>
   </defs>
 
@@ -105,20 +158,20 @@
 
   <!-- Connection: Node1 LAN3 -> Node2 LAN3 -->
   <g id="conn-n1lan3-n2lan3">
-    <line class="connection-line"
-          x1="310" y1="265"
+    <line class="connection"
+          x1="330" y1="265"
           x2="480" y2="265"/>
   </g>
 
   <!-- Connection: Node1 LAN4 -> Node3 LAN4 (curved down and around) -->
   <g id="conn-n1lan4-n3lan4">
-    <path class="connection-line"
-          d="M 310 305 Q 600 400, 890 305"/>
+    <path class="connection"
+          d="M 330 305 Q 600 400, 890 305"/>
   </g>
 
   <!-- Connection: Node2 LAN4 -> Node3 LAN3 -->
   <g id="conn-n2lan4-n3lan3">
-    <line class="connection-line"
+    <line class="connection"
           x1="720" y1="305"
           x2="890" y2="265"/>
   </g>
