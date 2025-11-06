@@ -314,27 +314,22 @@ docker system prune -a
 
 ## Architecture
 
-```
-┌─────────────────────────────────────────────────┐
-│                  Host Machine                    │
-│                                                  │
-│  ┌────────────────────────────────────────────┐ │
-│  │         Docker Compose Network             │ │
-│  │                                            │ │
-│  │  ┌──────────┐  ┌───────────┐  ┌────────┐ │ │
-│  │  │ Ansible  │  │ Semaphore │  │Postgres│ │ │
-│  │  │Container │◄─┤  Web UI   │◄─┤   DB   │ │ │
-│  │  └────┬─────┘  └─────┬─────┘  └────────┘ │ │
-│  │       │              │                    │ │
-│  │       │              │                    │ │
-│  └───────┼──────────────┼────────────────────┘ │
-│          │              │                       │
-│          │              └─► Port 3000           │
-│          │                                      │
-│          └─► SSH to OpenWrt Nodes               │
-│              (192.168.1.1, 10.11.12.0/24)       │
-└─────────────────────────────────────────────────┘
-```
+![Docker Architecture Diagram](images/docker-architecture.svg)
+
+The Docker environment consists of:
+
+- **Host Machine**: Your workstation or server running Docker
+- **Docker Compose Network**: Isolated network for container communication
+- **Ansible Container**: Executes playbooks and connects to OpenWrt nodes via SSH
+- **Semaphore Web UI**: Web-based interface for running Ansible playbooks (exposed on port 3000)
+- **PostgreSQL Database**: Backend storage for Semaphore configuration and history
+
+**Data Flow:**
+
+1. PostgreSQL stores Semaphore configuration
+2. Semaphore Web UI provides user interface accessible via browser
+3. Semaphore triggers Ansible playbook execution
+4. Ansible Container connects to OpenWrt nodes (10.11.12.1, 10.11.12.2, 10.11.12.3) via SSH
 
 ## Files
 

@@ -135,6 +135,25 @@ User: pm ready?
 
 ---
 
+#### `svg-diagrams` - SVG Diagram Generation
+
+**Purpose**: Creating accessible, responsive SVG diagrams following W3C standards and best practices.
+
+**Expertise**:
+
+- Converting ASCII art to SVG
+- Architecture and infrastructure diagrams
+- Network topology diagrams
+- Data flow diagrams
+- WCAG 2.1 AA+ accessibility compliance
+- Responsive design with viewBox
+- Professional styling and color palettes
+- SVG optimization and validation
+
+**Use when**: Creating technical diagrams, converting ASCII art, or ensuring diagrams meet accessibility standards.
+
+---
+
 #### `mesh-test` - Mesh Network Testing
 
 **Purpose**: Network testing, performance benchmarking, and failover validation.
@@ -240,6 +259,7 @@ User: I need the batman-mesh skill for troubleshooting
 **Documentation**:
 
 - `tech-docs` - All documentation types
+- `svg-diagrams` - Technical diagrams and visualization
 
 **Project Management**:
 

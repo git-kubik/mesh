@@ -1,0 +1,135 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+     viewBox="0 0 1000 800"
+     role="img"
+     aria-labelledby="docker-arch-title docker-arch-desc">
+  <title id="docker-arch-title">Docker Architecture for OpenWrt Mesh Network</title>
+  <desc id="docker-arch-desc">Architecture diagram showing Docker containers running on host machine. The host contains a Docker Compose network with three services: Ansible Container, Semaphore Web UI, and PostgreSQL Database. Semaphore Web UI connects to PostgreSQL and controls the Ansible Container. Semaphore exposes port 3000 to the host, and Ansible connects to OpenWrt nodes via SSH.</desc>
+
+  <defs>
+    <!-- Arrowhead marker -->
+    <marker id="arrowhead"
+            markerWidth="10"
+            markerHeight="10"
+            refX="9"
+            refY="3"
+            orient="auto">
+      <polygon points="0 0, 10 3, 0 6" fill="#495057"/>
+    </marker>
+
+    <!-- Styles -->
+    <style>
+      .host-container { fill: #f8f9fa; stroke: #343a40; stroke-width: 3; }
+      .docker-network { fill: #ffffff; stroke: #6c757d; stroke-width: 2; }
+      .component-box { fill: #e9ecef; stroke: #495057; stroke-width: 2; }
+      .database-box { fill: #d1ecf1; stroke: #0c5460; stroke-width: 2; }
+      .connection { stroke: #495057; stroke-width: 2; fill: none; }
+      .text-title { font-family: system-ui, -apple-system, sans-serif; font-size: 20px; font-weight: 600; fill: #212529; }
+      .text-subtitle { font-family: system-ui, -apple-system, sans-serif; font-size: 16px; font-weight: 500; fill: #495057; }
+      .text-component { font-family: system-ui, -apple-system, sans-serif; font-size: 14px; font-weight: 500; fill: #212529; text-anchor: middle; }
+      .text-label { font-family: system-ui, -apple-system, sans-serif; font-size: 12px; fill: #6c757d; }
+    </style>
+  </defs>
+
+  <!-- Host Machine Container -->
+  <g id="host-machine">
+    <rect class="host-container"
+          x="50" y="50"
+          width="900" height="700"
+          rx="8"/>
+    <text class="text-title" x="500" y="90" text-anchor="middle">
+      Host Machine
+    </text>
+
+    <!-- Docker Compose Network -->
+    <g id="docker-network">
+      <rect class="docker-network"
+            x="100" y="140"
+            width="800" height="460"
+            rx="5"/>
+      <text class="text-subtitle" x="500" y="175" text-anchor="middle">
+        Docker Compose Network
+      </text>
+
+      <!-- PostgreSQL Database -->
+      <g id="postgres">
+        <rect class="database-box"
+              x="700" y="240"
+              width="140" height="100"
+              rx="5"/>
+        <text class="text-component" x="770" y="280">Postgres</text>
+        <text class="text-component" x="770" y="305">DB</text>
+      </g>
+
+      <!-- Semaphore Web UI -->
+      <g id="semaphore">
+        <rect class="component-box"
+              x="480" y="240"
+              width="140" height="100"
+              rx="5"/>
+        <text class="text-component" x="550" y="280">Semaphore</text>
+        <text class="text-component" x="550" y="305">Web UI</text>
+      </g>
+
+      <!-- Ansible Container -->
+      <g id="ansible">
+        <rect class="component-box"
+              x="260" y="240"
+              width="140" height="100"
+              rx="5"/>
+        <text class="text-component" x="330" y="280">Ansible</text>
+        <text class="text-component" x="330" y="305">Container</text>
+      </g>
+
+      <!-- Connection: Postgres -> Semaphore -->
+      <g id="conn-postgres-semaphore">
+        <line class="connection"
+              x1="700" y1="290"
+              x2="620" y2="290"
+              marker-end="url(#arrowhead)"/>
+      </g>
+
+      <!-- Connection: Semaphore -> Ansible -->
+      <g id="conn-semaphore-ansible">
+        <line class="connection"
+              x1="480" y1="290"
+              x2="400" y2="290"
+              marker-end="url(#arrowhead)"/>
+      </g>
+
+      <!-- Connection: Semaphore -> Port 3000 (downward) -->
+      <g id="conn-semaphore-port">
+        <line class="connection"
+              x1="550" y1="340"
+              x2="550" y2="520"
+              marker-end="url(#arrowhead)"/>
+        <text class="text-label" x="570" y="430">Port 3000</text>
+      </g>
+
+      <!-- Connection: Ansible -> SSH nodes (downward) -->
+      <g id="conn-ansible-ssh">
+        <line class="connection"
+              x1="330" y1="340"
+              x2="330" y2="520"
+              marker-end="url(#arrowhead)"/>
+      </g>
+    </g>
+
+    <!-- External connections labels -->
+    <g id="external-labels">
+      <!-- Port 3000 label -->
+      <text class="text-label" x="550" y="650" text-anchor="middle">
+        Port 3000
+      </text>
+
+      <!-- SSH connection label -->
+      <g id="ssh-label">
+        <text class="text-label" x="330" y="650" text-anchor="middle">
+          SSH to OpenWrt Nodes
+        </text>
+        <text class="text-label" x="330" y="670" text-anchor="middle">
+          (10.11.12.1, 10.11.12.2, 10.11.12.3)
+        </text>
+      </g>
+    </g>
+  </g>
+</svg>
