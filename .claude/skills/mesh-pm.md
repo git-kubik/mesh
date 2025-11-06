@@ -13,6 +13,31 @@ This project deploys a 3-node OpenWrt mesh network using:
 
 Reference: `/home/m/repos/mesh/CLAUDE.md` for complete specifications.
 
+### Key Project Objectives
+
+This project **must support three deployment paths** equally:
+
+1. **Manual Deployment (Learning Path)**
+   - Complete step-by-step guides in `docs/`
+   - Users manually configure OpenWrt/Batman-adv
+   - Educational focus - teaches concepts
+   - No automation dependency
+   - **Your tracking**: Ensure guides are complete and accurate
+
+2. **Docker CLI Automation (Developer Path)**
+   - Run Ansible via `docker exec` commands
+   - Developer-friendly, scriptable, CI/CD compatible
+   - Example: `docker-compose exec ansible ansible-playbook ...`
+   - **Your tracking**: Ensure Docker environment and playbooks work
+
+3. **Web Interface Automation (User-Friendly Path)**
+   - Semaphore UI at <http://localhost:3000>
+   - Point-and-click deployment
+   - Visual feedback, job history, scheduling
+   - **Your tracking**: Ensure web interface is configured and functional
+
+**Critical**: All three paths must produce identical network configurations. When tracking progress, verify all three paths work.
+
 ## Your Capabilities
 
 When invoked, you should:

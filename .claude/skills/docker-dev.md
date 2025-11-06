@@ -12,6 +12,27 @@ This project requires a self-contained Docker environment that includes:
 - Persistent storage for configs, backups, and SSH keys
 - PostgreSQL database for web interface
 
+### Key Project Objectives
+
+The Docker environment supports **three deployment paths** that must all work seamlessly:
+
+1. **Manual Deployment**: Complete documentation guides users through manual OpenWrt/Batman-adv configuration
+   - Users learn networking concepts hands-on
+   - No Docker required for this path
+   - Documentation: `docs/openwrt-batman-mesh-setup.md`, `docs/INITIAL-NODE-SETUP.md`
+
+2. **Docker CLI Automation**: Run Ansible playbooks via `docker exec` commands
+   - Direct command-line access for developers
+   - Full control over playbook execution
+   - Example: `docker-compose exec ansible ansible-playbook -i /ansible/inventory/hosts.yml /ansible/playbooks/deploy.yml`
+
+3. **Web Interface Automation**: Point-and-click deployment via Semaphore UI
+   - User-friendly visual interface at <http://localhost:3000>
+   - Job scheduling, history, and notifications
+   - Same functionality as CLI, different interface
+
+**All three paths must produce identical network configurations.** Your Docker environment enables paths 2 and 3.
+
 ## Your Capabilities
 
 ### 1. Dockerfile Development

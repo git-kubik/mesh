@@ -11,6 +11,56 @@ The Docker environment provides:
 - **PostgreSQL Database**: Backend for Semaphore
 - **Persistent Storage**: Volumes for SSH keys, backups, and configuration
 
+## Deployment Methods
+
+This Docker environment supports **two automation paths** (there's also a manual path that doesn't use Docker):
+
+### 🐳 Method 1: Docker CLI (Developer Path)
+
+Run Ansible playbooks directly via command line:
+
+```bash
+docker-compose exec ansible ansible-playbook -i /ansible/inventory/hosts.yml /ansible/playbooks/deploy.yml
+```
+
+**Best for:**
+
+- Developers and power users
+- CI/CD pipelines
+- Scripting and automation
+- Full control over execution
+
+**See**: [Running Playbooks via CLI](#ansible-container) section below
+
+### 🌐 Method 2: Web Interface (User-Friendly Path)
+
+Use Semaphore UI for point-and-click deployment:
+
+1. Open <http://localhost:3000>
+2. Login with credentials
+3. Click "Run" on deployment template
+4. Monitor progress in real-time
+
+**Best for:**
+
+- First-time users
+- Visual feedback
+- Job scheduling and history
+- Team collaboration
+
+**See**: [Using Semaphore Web Interface](#semaphore-web-interface) section below
+
+### 🔧 Method 3: Manual Deployment (Learning Path)
+
+Complete manual setup without automation - see:
+
+- [Initial Node Setup](../docs/INITIAL-NODE-SETUP.md)
+- [Manual Configuration Guide](../docs/openwrt-batman-mesh-setup.md)
+
+---
+
+**All methods produce identical network configurations.** Choose based on your preference and use case.
+
 ## Quick Start
 
 ### 1. Initial Setup

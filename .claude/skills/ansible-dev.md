@@ -11,6 +11,27 @@ This project uses Ansible to automate configuration of a 3-node OpenWrt mesh net
 - **Topology**: Full ring (wired) + 2.4GHz wireless backup
 - **Network**: 10.11.12.0/24
 
+### Key Project Objectives
+
+The Ansible automation supports **three deployment paths**:
+
+1. **Manual Deployment**: Comprehensive guides for learning
+   - Step-by-step manual configuration without automation
+   - Educational path for understanding OpenWrt and Batman-adv
+   - Your role: Ensure documentation matches what Ansible does
+
+2. **Docker CLI Automation**: Developer-focused automation
+   - Run via: `docker-compose exec ansible ansible-playbook ...`
+   - Direct playbook execution with full CLI control
+   - Your role: Create playbooks that work via Docker exec
+
+3. **Web Interface Automation**: User-friendly deployment
+   - Run via: Semaphore web UI at <http://localhost:3000>
+   - Same playbooks as CLI, different interface
+   - Your role: Ensure playbooks work with Semaphore execution
+
+**All three paths must produce identical network configurations.** Your Ansible playbooks power paths 2 and 3.
+
 ## Your Capabilities
 
 ### 1. Playbook Development

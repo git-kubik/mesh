@@ -18,39 +18,98 @@ High-availability OpenWrt mesh network with Batman-adv routing, multi-gateway fa
 - **✅ Comprehensive Testing**: Unit, integration, functional, performance, and failover tests
 - **📚 Documentation**: Professional documentation site with MkDocs Material
 
+## Deployment Options
+
+This project provides **three ways** to deploy your mesh network, supporting different skill levels and preferences:
+
+### 1. 🔧 Manual Deployment (Learning Path)
+
+Complete step-by-step guide for manual configuration. Perfect for:
+
+- Understanding how mesh networking works
+- Learning OpenWrt and Batman-adv concepts
+- Customizing beyond automation capabilities
+
+**Documentation**: [Manual Setup Guide](docs/openwrt-batman-mesh-setup.md) | [Initial Node Setup](docs/INITIAL-NODE-SETUP.md)
+
+### 2. 🐳 Docker CLI Automation (Developer Path)
+
+Run Ansible playbooks via Docker exec for full automation control:
+
+```bash
+cd docker
+docker-compose up -d
+docker-compose exec ansible ansible-playbook -i /ansible/inventory/hosts.yml /ansible/playbooks/deploy.yml
+```
+
+**Benefits**: Direct CLI access, scriptable, version controlled
+**Documentation**: [Docker README](docker/README.md) | [Ansible Quick Start](docs/ANSIBLE-QUICKSTART.md)
+
+### 3. 🌐 Web Interface Automation (User-Friendly Path)
+
+Use Semaphore web UI for point-and-click deployment:
+
+1. Access <http://localhost:3000> (after `docker-compose up -d`)
+2. Login with default credentials
+3. Click "Run" on the deployment template
+4. Monitor progress in real-time
+
+**Benefits**: Visual feedback, job history, scheduling, notifications
+**Documentation**: [Docker README](docker/README.md)
+
+---
+
+**All three paths produce identical network configurations.** Choose based on your comfort level and use case.
+
 ## Quick Start
 
-### Prerequisites
+### Choose Your Path
 
-- **Hardware**: 3x D-Link DIR-1960 A1 routers (or compatible)
+Select a deployment method from the [Deployment Options](#deployment-options) above, then follow the appropriate guide:
+
+- **Manual**: [Initial Node Setup](docs/INITIAL-NODE-SETUP.md) → [Manual Setup Guide](docs/openwrt-batman-mesh-setup.md)
+- **Docker CLI**: [Docker README](docker/README.md) → [Ansible Quick Start](docs/ANSIBLE-QUICKSTART.md)
+- **Web Interface**: [Docker README](docker/README.md)
+
+### Prerequisites (Automation Paths)
+
+- **Hardware**: 3x D-Link DIR-1960 A1 routers with OpenWrt 24.10.4
 - **Software**: Docker Desktop 20.10+ (or Docker Engine + docker-compose)
 - **Network**: Ethernet cables for ring topology
 
-### Installation
+### Quick Setup (Automation Paths)
 
-1. **Clone the repository:**
+1. **Clone and prepare:**
 
    ```bash
    git clone https://github.com/yourusername/mesh.git
    cd mesh
+
+   # Prepare initial node (manual step required)
+   # Follow: docs/INITIAL-NODE-SETUP.md for first node
    ```
 
-2. **Start Docker environment:**
+2. **Start automation environment:**
 
    ```bash
    cd docker
    docker-compose up -d
    ```
 
-3. **Access Ansible web interface:**
-   - Semaphore: <http://localhost:3000>
-   - Default credentials: admin / changeme
+3. **Deploy via Web Interface OR CLI:**
 
-4. **Deploy mesh network:**
-   - Use web interface to run `deploy.yml` playbook
-   - Or via CLI: `docker-compose exec ansible ansible-playbook deploy.yml`
+   **Option A: Web Interface**
+   - Open <http://localhost:3000>
+   - Login: admin / changeme
+   - Run deployment template
 
-For detailed instructions, see the [Initial Node Setup](INITIAL-NODE-SETUP.md) and [Complete Setup Guide](openwrt-batman-mesh-setup.md).
+   **Option B: Docker CLI**
+
+   ```bash
+   docker-compose exec ansible ansible-playbook -i /ansible/inventory/hosts.yml /ansible/playbooks/deploy.yml
+   ```
+
+For detailed instructions, see the deployment path documentation above.
 
 ## Architecture
 
@@ -174,7 +233,7 @@ This project adheres to high-quality standards:
 - 20+ character passwords
 - ED25519 or RSA 4096 SSH keys
 
-For complete standards, see the [Contributing Guide](CONTRIBUTING.md).
+For complete standards, see [project-standards skill](.claude/skills/project-standards.md).
 
 ### Testing
 
@@ -247,9 +306,9 @@ mesh/
 
 ## Documentation
 
-- **Quick Start**: [ANSIBLE-QUICKSTART.md](ANSIBLE-QUICKSTART.md)
-- **Initial Node Setup**: [INITIAL-NODE-SETUP.md](INITIAL-NODE-SETUP.md)
-- **Technical Guide**: [openwrt-batman-mesh-setup.md](openwrt-batman-mesh-setup.md)
+- **Quick Start**: [ANSIBLE-QUICKSTART.md](docs/ANSIBLE-QUICKSTART.md)
+- **Technical Guide**: [openwrt-batman-mesh-setup.md](docs/openwrt-batman-mesh-setup.md)
+- **Testing Guide**: [TESTING.md](docs/TESTING.md) (to be created)
 - **Contributing**: [CONTRIBUTING.md](CONTRIBUTING.md)
 - **Full Documentation**: <https://yourusername.github.io/mesh/>
 
@@ -310,7 +369,7 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guid
 
 ## License
 
-This project is licensed under the MIT License.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## Acknowledgments
 

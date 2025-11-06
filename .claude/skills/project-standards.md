@@ -13,6 +13,28 @@ This project must maintain high standards across all aspects:
 - Git workflow and version control
 - Infrastructure as Code best practices
 
+### Key Project Objectives
+
+The project **must support three equally valid deployment paths**:
+
+1. **Manual Deployment** - Complete educational guides
+   - Comprehensive step-by-step documentation
+   - Teaches OpenWrt, Batman-adv, networking concepts
+   - No automation required
+   - Standards: Documentation must be accurate, complete, tested
+
+2. **Docker CLI Automation** - Developer-focused automation
+   - Ansible playbooks run via `docker exec`
+   - Scriptable, CI/CD compatible, version controlled
+   - Standards: Playbooks must be idempotent, documented, tested
+
+3. **Web Interface Automation** - User-friendly deployment
+   - Semaphore web UI for point-and-click deployment
+   - Same playbooks as CLI, visual interface
+   - Standards: UI must be intuitive, documented, error-handling complete
+
+**Critical Standard**: All three paths must produce identical, tested network configurations.
+
 ## Your Capabilities
 
 ### 1. Code Style Standards
