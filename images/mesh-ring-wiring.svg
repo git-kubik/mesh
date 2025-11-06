@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+     viewBox="0 0 600 400"
+     role="img"
+     aria-labelledby="wiring-title wiring-desc">
+  <title id="wiring-title">Mesh Network Ring Topology Wiring</title>
+  <desc id="wiring-desc">Physical wiring diagram showing ring topology connections between three nodes. Node1 lan3 connects to Node2 lan3. Node2 lan4 connects to Node3 lan3. Node3 lan4 connects back to Node1 lan4, forming a complete physical ring.</desc>
+
+  <defs>
+    <marker id="arrow-wire" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <polygon points="0 0, 10 3, 0 6" fill="#495057"/>
+    </marker>
+
+    <marker id="arrow-wire-bidirectional" markerWidth="10" markerHeight="10" refX="1" refY="3" orient="auto">
+      <polygon points="10 0, 0 3, 10 6" fill="#495057"/>
+    </marker>
+
+    <style>
+      .node-circle { fill: #e9ecef; stroke: #495057; stroke-width: 3; }
+      .wire-connection { stroke: #495057; stroke-width: 3; fill: none; }
+      .text-node { font-family: system-ui, sans-serif; font-size: 16px; font-weight: 600; fill: #212529; text-anchor: middle; }
+      .text-port { font-family: system-ui, sans-serif; font-size: 13px; fill: #495057; }
+    </style>
+  </defs>
+
+  <!-- Node 1 (left) -->
+  <g id="node1-wire">
+    <circle class="node-circle" cx="150" cy="200" r="60"/>
+    <text class="text-node" x="150" y="200">Node1</text>
+    <!-- Port labels -->
+    <text class="text-port" x="220" y="160">lan3</text>
+    <text class="text-port" x="115" y="290">lan4</text>
+  </g>
+
+  <!-- Node 2 (top right) -->
+  <g id="node2-wire">
+    <circle class="node-circle" cx="450" cy="120" r="60"/>
+    <text class="text-node" x="450" y="120">Node2</text>
+    <!-- Port labels -->
+    <text class="text-port" x="280" y="140">lan3</text>
+    <text class="text-port" x="470" y="200">lan4</text>
+  </g>
+
+  <!-- Node 3 (bottom right) -->
+  <g id="node3-wire">
+    <circle class="node-circle" cx="450" cy="320" r="60"/>
+    <text class="text-node" x="450" y="320">Node3</text>
+    <!-- Port labels -->
+    <text class="text-port" x="380" y="250">lan3</text>
+    <text class="text-port" x="350" y="345">lan4</text>
+  </g>
+
+  <!-- Connection: Node1 lan3 <-> Node2 lan3 -->
+  <g id="wire-n1-n2">
+    <line class="wire-connection"
+          x1="210" y1="185"
+          x2="400" y2="135"
+          marker-end="url(#arrow-wire)"
+          marker-start="url(#arrow-wire-bidirectional)"/>
+  </g>
+
+  <!-- Connection: Node2 lan4 -> Node3 lan3 -->
+  <g id="wire-n2-n3">
+    <line class="wire-connection"
+          x1="450" y1="180"
+          x2="450" y2="260"
+          marker-end="url(#arrow-wire)"/>
+  </g>
+
+  <!-- Connection: Node3 lan4 -> Node1 lan4 (curved) -->
+  <g id="wire-n3-n1">
+    <path class="wire-connection"
+          d="M 390 320 Q 150 350, 150 260"
+          marker-end="url(#arrow-wire)"/>
+  </g>
+</svg>
