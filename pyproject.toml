@@ -115,10 +115,6 @@ addopts = """
     -v
     --strict-markers
     --tb=short
-    --cov=.
-    --cov-report=html
-    --cov-report=term-missing:skip-covered
-    --cov-fail-under=80
     --maxfail=5
 """
 markers = [

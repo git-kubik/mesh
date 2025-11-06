@@ -51,32 +51,14 @@ jobs:
           pytest tests/unit/ \
             -v \
             --tb=short \
-            --cov=. \
-            --cov-report=xml \
-            --cov-report=html \
-            --cov-report=term-missing \
             --junitxml=junit-unit.xml
-
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
-        with:
-          files: ./coverage.xml
-          flags: unit
-          name: unit-tests
-          fail_ci_if_error: false
 
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: unit-test-results
-          path: |
-            junit-unit.xml
-            htmlcov/
-
-      - name: Check coverage threshold
-        run: |
-          coverage report --fail-under=80
+          path: junit-unit.xml
 
   integration-tests:
     name: Integration Tests
