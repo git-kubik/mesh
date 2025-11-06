@@ -211,14 +211,89 @@ create_environment() {
     echo "$env_id"
 }
 
+# Create empty key (for local files - no repo needed)
+create_empty_key() {
+    local cookie_file="$1"
+    local project_id="$2"
+    log_step "Creating empty SSH key..."
+
+    local response
+    response=$(curl -s -b "$cookie_file" -X POST "${SEMAPHORE_URL}/api/project/${project_id}/keys" \
+        -H "Content-Type: application/json" \
+        -d '{
+            "name": "None (local files)",
+            "type": "none",
+            "project_id": '"${project_id}"'
+        }')
+
+    local key_id
+    key_id=$(echo "$response" | grep -o '"id":[0-9]*' | head -1 | cut -d':' -f2)
+
+    if [ -z "$key_id" ]; then
+        log_warn "Key may already exist"
+        # Try to get existing key
+        response=$(curl -s -b "$cookie_file" -X GET "${SEMAPHORE_URL}/api/project/${project_id}/keys")
+        key_id=$(echo "$response" | grep -o '"name":"None (local files)".*"id":[0-9]*' | grep -o '"id":[0-9]*' | cut -d':' -f2 | head -1)
+
+        if [ -n "$key_id" ]; then
+            log_info "Found existing key with ID: $key_id"
+        fi
+    else
+        log_info "Key created with ID: $key_id"
+    fi
+
+    echo "$key_id"
+}
+
+# Create repository (none type for local files)
+create_repository() {
+    local cookie_file="$1"
+    local project_id="$2"
+    local key_id="$3"
+    log_step "Creating repository..."
+
+    local response
+    response=$(curl -s -b "$cookie_file" -X POST "${SEMAPHORE_URL}/api/project/${project_id}/repositories" \
+        -H "Content-Type: application/json" \
+        -d '{
+            "name": "Local Ansible Files",
+            "project_id": '"${project_id}"',
+            "git_url": "file:///ansible",
+            "git_branch": "main",
+            "ssh_key_id": '"${key_id}"'
+        }')
+
+    local repo_id
+    repo_id=$(echo "$response" | grep -o '"id":[0-9]*' | head -1 | cut -d':' -f2)
+
+    log_info "Repository creation response: $response"
+    log_info "Extracted repo_id: $repo_id"
+
+    if [ -z "$repo_id" ]; then
+        log_warn "Repository may already exist"
+        # Try to get existing repository
+        response=$(curl -s -b "$cookie_file" -X GET "${SEMAPHORE_URL}/api/project/${project_id}/repositories")
+        repo_id=$(echo "$response" | grep -o '"name":"Local Ansible Files".*"id":[0-9]*' | grep -o '"id":[0-9]*' | cut -d':' -f2 | head -1)
+
+        if [ -n "$repo_id" ]; then
+            log_info "Found existing repository with ID: $repo_id"
+        fi
+    else
+        log_info "Repository created with ID: $repo_id"
+    fi
+
+    echo "$repo_id"
+}
+
 # Create template for deployment
 create_template() {
     local cookie_file="$1"
     local project_id="$2"
     local inventory_id="$3"
-    local env_id="$4"
-    local name="$5"
-    local playbook="$6"
+    local repo_id="$4"
+    local env_id="$5"
+    local name="$6"
+    local playbook="$7"
 
     log_step "Creating template: $name..."
 
@@ -229,13 +304,12 @@ create_template() {
         -d '{
             "project_id": '"${project_id}"',
             "inventory_id": '"${inventory_id}"',
+            "repository_id": '"${repo_id}"',
             "environment_id": '"${env_id}"',
             "name": "'"${name}"'",
             "playbook": "'"${playbook}"'",
-            "arguments": "[]",
-            "allow_override_args_in_task": false,
-            "suppress_success_alerts": true,
-            "survey_vars": [],
+            "app": "ansible",
+            "suppress_success_alerts": false,
             "type": ""
         }')
 
@@ -294,9 +368,36 @@ main() {
 
     echo
 
-    # Note: Templates require SSH keys to be configured
-    # They can be created manually via the web UI
-    log_info "Project setup complete. Templates should be created via web UI after SSH keys are configured."
+    # Create key
+    local key_id
+    if ! key_id=$(create_empty_key "$cookie_file" "$project_id"); then
+        log_error "Failed to create key"
+        exit 1
+    fi
+
+    echo
+
+    # Create repository
+    local repo_id
+    if ! repo_id=$(create_repository "$cookie_file" "$project_id" "$key_id"); then
+        log_error "Failed to create repository"
+        exit 1
+    fi
+
+    echo
+
+    # Create templates
+    create_template "$cookie_file" "$project_id" "$inventory_id" "$repo_id" "$env_id" \
+        "Deploy Mesh Network" "playbooks/deploy.yml"
+
+    create_template "$cookie_file" "$project_id" "$inventory_id" "$repo_id" "$env_id" \
+        "Verify Deployment" "playbooks/verify.yml"
+
+    create_template "$cookie_file" "$project_id" "$inventory_id" "$repo_id" "$env_id" \
+        "Backup Node Configs" "playbooks/backup.yml"
+
+    create_template "$cookie_file" "$project_id" "$inventory_id" "$repo_id" "$env_id" \
+        "Update Nodes" "playbooks/update.yml"
 
     # Cleanup cookie file
     rm -f "$cookie_file"
@@ -309,8 +410,19 @@ main() {
     log_info "Password: ${SEMAPHORE_ADMIN_PASSWORD}"
     echo
     log_info "Project: OpenWrt Mesh Network"
-    log_info "Project ID: ${project_id}"
-    log_info "Inventory ID: ${inventory_id}"
+    log_info "  Project ID: ${project_id}"
+    log_info "  Inventory ID: ${inventory_id}"
+    log_info "  Repository ID: ${repo_id}"
+    log_info "  Environment ID: ${env_id}"
+    log_info "  Key ID: ${key_id}"
+    echo
+    log_info "Task Templates:"
+    log_info "  ✓ Deploy Mesh Network (playbooks/deploy.yml)"
+    log_info "  ✓ Verify Deployment (playbooks/verify.yml)"
+    log_info "  ✓ Backup Node Configs (playbooks/backup.yml)"
+    log_info "  ✓ Update Nodes (playbooks/update.yml)"
+    echo
+    log_info "You can now run playbooks from: ${SEMAPHORE_URL}"
     echo
 }
 
