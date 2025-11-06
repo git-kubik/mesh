@@ -90,7 +90,7 @@ enable_services:
   - network
   - firewall
   - dnsmasq
-  - dropbear
+  - sshd
 
 # VLAN Configuration (optional - set to true to enable)
 enable_vlans: false

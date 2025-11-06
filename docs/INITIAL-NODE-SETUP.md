@@ -173,31 +173,62 @@ opkg list-upgrades | cut -d ' ' -f 1 | xargs opkg upgrade
 
 ## Step 4: Enable SSH Access
 
-### Configure SSH for Ansible
+### Install OpenSSH and Remove Dropbear
 
-1. **Enable SSH on LAN**:
+OpenWrt uses Dropbear by default, but OpenSSH provides better compatibility with Ansible and modern SSH features.
+
+1. **Install OpenSSH**:
 
    ```bash
-   # Edit dropbear config
-   vi /etc/config/dropbear
+   # Update package list
+   opkg update
 
-   # Ensure this config exists:
-   config dropbear
-       option Port '22'
-       option Interface 'lan'
-       option RootPasswordAuth 'on'
-       option PasswordAuth 'on'
+   # Install OpenSSH server and SFTP support
+   opkg install openssh-server openssh-sftp-server
 
-   # Restart SSH
-   /etc/init.d/dropbear restart
+   # Optional: Install OpenSSH client (if you need ssh-keygen on the router)
+   opkg install openssh-client openssh-keygen
    ```
 
-2. **Test SSH access** from your workstation:
+2. **Configure OpenSSH**:
+
+   Edit `/etc/ssh/sshd_config` to ensure these settings:
+
+   ```bash
+   vi /etc/ssh/sshd_config
+
+   # Recommended settings:
+   Port 22
+   PermitRootLogin yes
+   PasswordAuthentication yes
+   PubkeyAuthentication yes
+   ChallengeResponseAuthentication no
+   UsePAM no
+   ```
+
+3. **Remove Dropbear and Enable OpenSSH**:
+
+   ```bash
+   # Stop and disable dropbear
+   /etc/init.d/dropbear stop
+   /etc/init.d/dropbear disable
+
+   # Enable and start OpenSSH
+   /etc/init.d/sshd enable
+   /etc/init.d/sshd start
+
+   # Remove dropbear (optional, but recommended)
+   opkg remove dropbear
+   ```
+
+4. **Test SSH access** from your workstation:
 
    ```bash
    ssh root@10.11.12.1
    # Should connect with password
    ```
+
+   **Note**: If you get disconnected during the switch from Dropbear to OpenSSH, wait 30 seconds and reconnect.
 
 ### Prepare for SSH Key Authentication
 
