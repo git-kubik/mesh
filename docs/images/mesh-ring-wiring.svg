@@ -7,46 +7,72 @@
 
   <defs>
     <marker id="arrow-wire" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
-      <polygon points="0 0, 10 3, 0 6" fill="#495057"/>
+      <polygon points="0 0, 10 3, 0 6" fill="#343a40"/>
     </marker>
 
     <marker id="arrow-wire-bidirectional" markerWidth="10" markerHeight="10" refX="1" refY="3" orient="auto">
-      <polygon points="10 0, 0 3, 10 6" fill="#495057"/>
+      <polygon points="10 0, 0 3, 10 6" fill="#343a40"/>
     </marker>
 
+    <!-- Design System Styles -->
     <style>
-      .node-circle { fill: #e9ecef; stroke: #495057; stroke-width: 3; }
-      .wire-connection { stroke: #495057; stroke-width: 3; fill: none; }
-      .text-node { font-family: system-ui, sans-serif; font-size: 16px; font-weight: 600; fill: #212529; text-anchor: middle; }
-      .text-port { font-family: system-ui, sans-serif; font-size: 13px; fill: #495057; }
+      /* Network Nodes */
+      .network-node {
+        fill: #fff3cd;
+        stroke: #ffc107;
+        stroke-width: 3;
+      }
+
+      /* Physical Wiring Connections */
+      .wire-connection {
+        stroke: #343a40;
+        stroke-width: 3;
+        fill: none;
+      }
+
+      /* Typography */
+      .text-component {
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        font-size: 16px;
+        font-weight: 500;
+        fill: #212529;
+        text-anchor: middle;
+      }
+
+      .text-label {
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        font-size: 13px;
+        font-weight: 400;
+        fill: #495057;
+      }
     </style>
   </defs>
 
   <!-- Node 1 (left) -->
   <g id="node1-wire">
-    <circle class="node-circle" cx="150" cy="200" r="60"/>
-    <text class="text-node" x="150" y="200">Node1</text>
+    <circle class="network-node" cx="150" cy="200" r="60"/>
+    <text class="text-component" x="150" y="205">Node1</text>
     <!-- Port labels -->
-    <text class="text-port" x="220" y="160">lan3</text>
-    <text class="text-port" x="115" y="290">lan4</text>
+    <text class="text-label" x="220" y="160">lan3</text>
+    <text class="text-label" x="115" y="290">lan4</text>
   </g>
 
   <!-- Node 2 (top right) -->
   <g id="node2-wire">
-    <circle class="node-circle" cx="450" cy="120" r="60"/>
-    <text class="text-node" x="450" y="120">Node2</text>
+    <circle class="network-node" cx="450" cy="120" r="60"/>
+    <text class="text-component" x="450" y="125">Node2</text>
     <!-- Port labels -->
-    <text class="text-port" x="280" y="140">lan3</text>
-    <text class="text-port" x="470" y="200">lan4</text>
+    <text class="text-label" x="280" y="140">lan3</text>
+    <text class="text-label" x="470" y="200">lan4</text>
   </g>
 
   <!-- Node 3 (bottom right) -->
   <g id="node3-wire">
-    <circle class="node-circle" cx="450" cy="320" r="60"/>
-    <text class="text-node" x="450" y="320">Node3</text>
+    <circle class="network-node" cx="450" cy="320" r="60"/>
+    <text class="text-component" x="450" y="325">Node3</text>
     <!-- Port labels -->
-    <text class="text-port" x="380" y="250">lan3</text>
-    <text class="text-port" x="350" y="345">lan4</text>
+    <text class="text-label" x="380" y="250">lan3</text>
+    <text class="text-label" x="350" y="345">lan4</text>
   </g>
 
   <!-- Connection: Node1 lan3 <-> Node2 lan3 -->
