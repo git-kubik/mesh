@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg"
-     viewBox="0 0 1000 800"
+     viewBox="0 0 1200 800"
      role="img"
      aria-labelledby="docker-arch-title docker-arch-desc">
   <title id="docker-arch-title">Docker Architecture for OpenWrt Mesh Network</title>
@@ -91,83 +91,83 @@
   <!-- Host Machine Container (Infrastructure) -->
   <g id="host-machine">
     <rect class="infrastructure"
-          x="50" y="50"
+          x="150" y="50"
           width="900" height="700"
           rx="8"/>
-    <text class="text-title" x="500" y="90">
+    <text class="text-title" x="600" y="90">
       Host Machine
     </text>
 
     <!-- Docker Compose Network -->
     <g id="docker-network">
       <rect class="container"
-            x="100" y="140"
+            x="200" y="140"
             width="800" height="460"
             rx="5"/>
-      <text class="text-subtitle" x="500" y="175">
+      <text class="text-subtitle" x="600" y="175">
         Docker Compose Network
       </text>
 
       <!-- PostgreSQL Database -->
       <g id="postgres">
         <rect class="database"
-              x="700" y="240"
+              x="800" y="240"
               width="140" height="100"
               rx="5"/>
-        <text class="text-component" x="770" y="280">Postgres</text>
-        <text class="text-component" x="770" y="305">DB</text>
+        <text class="text-component" x="870" y="280">Postgres</text>
+        <text class="text-component" x="870" y="305">DB</text>
       </g>
 
       <!-- Semaphore Web UI (Service) -->
       <g id="semaphore">
         <rect class="service"
-              x="480" y="240"
+              x="580" y="240"
               width="140" height="100"
               rx="5"/>
-        <text class="text-component" x="550" y="280">Semaphore</text>
-        <text class="text-component" x="550" y="305">Web UI</text>
+        <text class="text-component" x="650" y="280">Semaphore</text>
+        <text class="text-component" x="650" y="305">Web UI</text>
       </g>
 
       <!-- Ansible Container (Service) -->
       <g id="ansible">
         <rect class="service"
-              x="260" y="240"
+              x="360" y="240"
               width="140" height="100"
               rx="5"/>
-        <text class="text-component" x="330" y="280">Ansible</text>
-        <text class="text-component" x="330" y="305">Container</text>
+        <text class="text-component" x="430" y="280">Ansible</text>
+        <text class="text-component" x="430" y="305">Container</text>
       </g>
 
       <!-- Connection: Postgres -> Semaphore -->
       <g id="conn-postgres-semaphore">
         <line class="connection"
-              x1="700" y1="290"
-              x2="620" y2="290"
+              x1="800" y1="290"
+              x2="720" y2="290"
               marker-end="url(#arrowhead)"/>
       </g>
 
       <!-- Connection: Semaphore -> Ansible -->
       <g id="conn-semaphore-ansible">
         <line class="connection"
-              x1="480" y1="290"
-              x2="400" y2="290"
+              x1="580" y1="290"
+              x2="500" y2="290"
               marker-end="url(#arrowhead)"/>
       </g>
 
       <!-- Connection: Semaphore -> Port 3000 (downward) -->
       <g id="conn-semaphore-port">
         <line class="connection"
-              x1="550" y1="340"
-              x2="550" y2="520"
+              x1="650" y1="340"
+              x2="650" y2="520"
               marker-end="url(#arrowhead)"/>
-        <text class="text-label" x="570" y="430">Port 3000</text>
+        <text class="text-label" x="670" y="430">Port 3000</text>
       </g>
 
       <!-- Connection: Ansible -> SSH nodes (downward) -->
       <g id="conn-ansible-ssh">
         <line class="connection"
-              x1="330" y1="340"
-              x2="330" y2="520"
+              x1="430" y1="340"
+              x2="430" y2="520"
               marker-end="url(#arrowhead)"/>
       </g>
     </g>
@@ -175,16 +175,16 @@
     <!-- External connections labels -->
     <g id="external-labels">
       <!-- Port 3000 label -->
-      <text class="text-label" x="550" y="650">
+      <text class="text-label" x="650" y="650">
         Port 3000
       </text>
 
       <!-- SSH connection label -->
       <g id="ssh-label">
-        <text class="text-label" x="330" y="650">
+        <text class="text-label" x="430" y="650">
           SSH to OpenWrt Nodes
         </text>
-        <text class="text-label" x="330" y="670">
+        <text class="text-label" x="430" y="670">
           (10.11.12.1, 10.11.12.2, 10.11.12.3)
         </text>
       </g>
