@@ -4,11 +4,13 @@ Unit tests for test helper functions.
 Tests validate helper utilities used across the test suite.
 """
 
+from typing import Any, Dict, List
+
 import pytest
 
 
 @pytest.mark.unit
-def test_mesh_network_config_fixture(mesh_network_config: dict) -> None:
+def test_mesh_network_config_fixture(mesh_network_config: Dict[str, Any]) -> None:
     """
     Test that mesh_network_config fixture provides valid data.
 
@@ -21,7 +23,7 @@ def test_mesh_network_config_fixture(mesh_network_config: dict) -> None:
 
 
 @pytest.mark.unit
-def test_node_ips_fixture(node_ips: list) -> None:
+def test_node_ips_fixture(node_ips: List[str]) -> None:
     """
     Test that node_ips fixture provides valid IP addresses.
 
@@ -35,7 +37,7 @@ def test_node_ips_fixture(node_ips: list) -> None:
 
 
 @pytest.mark.unit
-def test_batman_config_fixture(batman_config: dict) -> None:
+def test_batman_config_fixture(batman_config: Dict[str, Any]) -> None:
     """
     Test that batman_config fixture provides valid configuration.
 
@@ -49,7 +51,7 @@ def test_batman_config_fixture(batman_config: dict) -> None:
 
 
 @pytest.mark.unit
-def test_cleanup_fixture(cleanup_test_files: list) -> None:
+def test_cleanup_fixture(cleanup_test_files: List[str]) -> None:
     """
     Test that cleanup fixture provides a mutable list.
 

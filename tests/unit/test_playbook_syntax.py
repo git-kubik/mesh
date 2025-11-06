@@ -5,13 +5,14 @@ Tests validate playbook YAML syntax and basic structure.
 """
 
 import os
+from typing import Dict
 
 import pytest
 import yaml
 
 
 @pytest.mark.unit
-def test_all_playbooks_exist(playbook_paths: dict) -> None:
+def test_all_playbooks_exist(playbook_paths: Dict[str, str]) -> None:
     """
     Test that all expected playbooks exist.
 
@@ -23,7 +24,7 @@ def test_all_playbooks_exist(playbook_paths: dict) -> None:
 
 
 @pytest.mark.unit
-def test_playbooks_valid_yaml(playbook_paths: dict) -> None:
+def test_playbooks_valid_yaml(playbook_paths: Dict[str, str]) -> None:
     """
     Test that all playbooks are valid YAML.
 
@@ -39,7 +40,7 @@ def test_playbooks_valid_yaml(playbook_paths: dict) -> None:
 
 
 @pytest.mark.unit
-def test_playbooks_are_lists(playbook_paths: dict) -> None:
+def test_playbooks_are_lists(playbook_paths: Dict[str, str]) -> None:
     """
     Test that playbooks are lists of plays.
 
@@ -49,13 +50,11 @@ def test_playbooks_are_lists(playbook_paths: dict) -> None:
     for name, path in playbook_paths.items():
         with open(path, "r") as f:
             content = yaml.safe_load(f)
-            assert isinstance(
-                content, list
-            ), f"Playbook '{name}' should be a list of plays"
+            assert isinstance(content, list), f"Playbook '{name}' should be a list of plays"
 
 
 @pytest.mark.unit
-def test_deploy_playbook_structure(playbook_paths: dict) -> None:
+def test_deploy_playbook_structure(playbook_paths: Dict[str, str]) -> None:
     """
     Test that deploy playbook has expected structure.
 
@@ -74,7 +73,7 @@ def test_deploy_playbook_structure(playbook_paths: dict) -> None:
 
 
 @pytest.mark.unit
-def test_verify_playbook_structure(playbook_paths: dict) -> None:
+def test_verify_playbook_structure(playbook_paths: Dict[str, str]) -> None:
     """
     Test that verify playbook has expected structure.
 

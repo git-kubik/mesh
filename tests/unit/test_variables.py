@@ -98,9 +98,7 @@ def test_mtu_settings_valid(group_vars_path: str) -> None:
 
         assert 1280 <= wired_mtu <= 1600, "Wired MTU should be in reasonable range"
         assert 1280 <= wireless_mtu <= 1600, "Wireless MTU should be in reasonable range"
-        assert (
-            wireless_mtu < wired_mtu
-        ), "Wireless MTU should be less than wired due to overhead"
+        assert wireless_mtu < wired_mtu, "Wireless MTU should be less than wired due to overhead"
 
 
 @pytest.mark.unit
@@ -139,9 +137,5 @@ def test_encryption_types_valid(group_vars_path: str) -> None:
     mesh_enc = config["mesh_encryption"]
     client_enc = config["client_encryption"]
 
-    assert (
-        mesh_enc in valid_mesh_encryption
-    ), f"Invalid mesh encryption: {mesh_enc}"
-    assert (
-        client_enc in valid_client_encryption
-    ), f"Invalid client encryption: {client_enc}"
+    assert mesh_enc in valid_mesh_encryption, f"Invalid mesh encryption: {mesh_enc}"
+    assert client_enc in valid_client_encryption, f"Invalid client encryption: {client_enc}"

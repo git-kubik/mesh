@@ -8,6 +8,7 @@ This module provides common fixtures for testing the mesh network deployment:
 - Cleanup fixtures
 """
 
+import os
 from typing import Any, Dict, Generator, List
 
 import pytest
@@ -49,7 +50,7 @@ def inventory_path() -> str:
     Returns:
         Absolute path to hosts.yml inventory file.
     """
-    return "openwrt-mesh-ansible/inventory/hosts.yml"
+    return os.path.abspath("openwrt-mesh-ansible/inventory/hosts.yml")
 
 
 @pytest.fixture
@@ -60,7 +61,7 @@ def group_vars_path() -> str:
     Returns:
         Absolute path to all.yml group variables file.
     """
-    return "openwrt-mesh-ansible/group_vars/all.yml"
+    return os.path.abspath("openwrt-mesh-ansible/group_vars/all.yml")
 
 
 @pytest.fixture
@@ -69,13 +70,13 @@ def playbook_paths() -> Dict[str, str]:
     Provide paths to all Ansible playbooks.
 
     Returns:
-        Dictionary mapping playbook names to their file paths.
+        Dictionary mapping playbook names to their absolute file paths.
     """
     return {
-        "deploy": "openwrt-mesh-ansible/playbooks/deploy.yml",
-        "verify": "openwrt-mesh-ansible/playbooks/verify.yml",
-        "backup": "openwrt-mesh-ansible/playbooks/backup.yml",
-        "update": "openwrt-mesh-ansible/playbooks/update.yml",
+        "deploy": os.path.abspath("openwrt-mesh-ansible/playbooks/deploy.yml"),
+        "verify": os.path.abspath("openwrt-mesh-ansible/playbooks/verify.yml"),
+        "backup": os.path.abspath("openwrt-mesh-ansible/playbooks/backup.yml"),
+        "update": os.path.abspath("openwrt-mesh-ansible/playbooks/update.yml"),
     }
 
 
@@ -174,9 +175,7 @@ def pytest_configure(config: Any) -> None:
         config: Pytest configuration object.
     """
     config.addinivalue_line("markers", "unit: Unit tests (no node access required)")
-    config.addinivalue_line(
-        "markers", "integration: Integration tests (requires node access)"
-    )
+    config.addinivalue_line("markers", "integration: Integration tests (requires node access)")
     config.addinivalue_line("markers", "functional: Functional end-to-end tests")
     config.addinivalue_line("markers", "performance: Performance benchmark tests")
     config.addinivalue_line("markers", "failover: Failover scenario tests")

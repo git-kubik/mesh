@@ -4,6 +4,8 @@ Unit tests for Ansible inventory validation.
 Tests validate inventory structure, node definitions, and host variables.
 """
 
+from typing import List
+
 import pytest
 import yaml
 
@@ -75,7 +77,7 @@ def test_inventory_has_three_nodes(inventory_path: str) -> None:
 
 
 @pytest.mark.unit
-def test_inventory_node_ips(inventory_path: str, node_ips: list) -> None:
+def test_inventory_node_ips(inventory_path: str, node_ips: List[str]) -> None:
     """
     Test that node IPs are correctly defined.
 
@@ -181,7 +183,5 @@ def test_inventory_mesh_ports_defined(inventory_path: str) -> None:
     for group in mesh_nodes.values():
         if "hosts" in group:
             for hostname, host_vars in group["hosts"].items():
-                assert (
-                    "mesh_ports" in host_vars
-                ), f"Missing mesh_ports for host {hostname}"
+                assert "mesh_ports" in host_vars, f"Missing mesh_ports for host {hostname}"
                 assert len(host_vars["mesh_ports"]) > 0, f"No mesh ports defined for {hostname}"

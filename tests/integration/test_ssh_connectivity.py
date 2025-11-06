@@ -4,12 +4,14 @@ Integration tests for SSH connectivity to mesh nodes.
 Tests validate SSH access and authentication to all mesh nodes.
 """
 
+from typing import Any, List
+
 import pytest
 
 
 @pytest.mark.integration
 @pytest.mark.requires_nodes
-def test_ssh_connection_to_node1(node_ips: list, ssh_client: any) -> None:
+def test_ssh_connection_to_node1(node_ips: List[str], ssh_client: Any) -> None:
     """
     Test SSH connection to node1.
 
@@ -23,7 +25,7 @@ def test_ssh_connection_to_node1(node_ips: list, ssh_client: any) -> None:
 
 @pytest.mark.integration
 @pytest.mark.requires_nodes
-def test_ssh_connection_to_node2(node_ips: list, ssh_client: any) -> None:
+def test_ssh_connection_to_node2(node_ips: List[str], ssh_client: Any) -> None:
     """
     Test SSH connection to node2.
 
@@ -37,7 +39,7 @@ def test_ssh_connection_to_node2(node_ips: list, ssh_client: any) -> None:
 
 @pytest.mark.integration
 @pytest.mark.requires_nodes
-def test_ssh_connection_to_node3(node_ips: list, ssh_client: any) -> None:
+def test_ssh_connection_to_node3(node_ips: List[str], ssh_client: Any) -> None:
     """
     Test SSH connection to node3.
 
@@ -51,7 +53,7 @@ def test_ssh_connection_to_node3(node_ips: list, ssh_client: any) -> None:
 
 @pytest.mark.integration
 @pytest.mark.requires_nodes
-def test_ssh_authentication_all_nodes(node_ips: list, ssh_client: any) -> None:
+def test_ssh_authentication_all_nodes(node_ips: List[str], ssh_client: Any) -> None:
     """
     Test SSH authentication to all mesh nodes.
 
@@ -66,7 +68,7 @@ def test_ssh_authentication_all_nodes(node_ips: list, ssh_client: any) -> None:
 
 @pytest.mark.integration
 @pytest.mark.requires_nodes
-def test_execute_command_via_ssh(node_ips: list, ssh_client: any) -> None:
+def test_execute_command_via_ssh(node_ips: List[str], ssh_client: Any) -> None:
     """
     Test executing a simple command via SSH.
 

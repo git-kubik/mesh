@@ -4,12 +4,14 @@ Integration tests for node reachability.
 Tests validate network reachability between mesh nodes.
 """
 
+from typing import List
+
 import pytest
 
 
 @pytest.mark.integration
 @pytest.mark.requires_nodes
-def test_ping_node1_from_host(node_ips: list) -> None:
+def test_ping_node1_from_host(node_ips: List[str]) -> None:
     """
     Test ping to node1 from test host.
 
@@ -21,7 +23,7 @@ def test_ping_node1_from_host(node_ips: list) -> None:
 
 @pytest.mark.integration
 @pytest.mark.requires_nodes
-def test_ping_all_nodes_from_host(node_ips: list) -> None:
+def test_ping_all_nodes_from_host(node_ips: List[str]) -> None:
     """
     Test ping to all nodes from test host.
 

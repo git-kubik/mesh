@@ -5,8 +5,6 @@ Tests validate group_vars configuration including network settings,
 Batman-adv configuration, wireless settings, and DHCP configuration.
 """
 
-from typing import Any, Dict
-
 import pytest
 import yaml
 

@@ -45,7 +45,7 @@ def test_jinja2_templates_syntax() -> None:
 
     # Find all .j2 files
     template_files: List[str] = []
-    for root, dirs, files in os.walk(templates_dir):
+    for root, _dirs, files in os.walk(templates_dir):
         for file in files:
             if file.endswith(".j2"):
                 template_files.append(os.path.join(root, file))
