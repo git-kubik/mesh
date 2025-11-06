@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg"
-     viewBox="0 0 600 400"
+     viewBox="0 0 1200 800"
      role="img"
      aria-labelledby="wiring-title wiring-desc">
   <title id="wiring-title">Mesh Network Ring Topology Wiring</title>
@@ -50,36 +50,36 @@
 
   <!-- Node 1 (left) -->
   <g id="node1-wire">
-    <circle class="network-node" cx="150" cy="200" r="60"/>
-    <text class="text-component" x="150" y="205">Node1</text>
+    <circle class="network-node" cx="300" cy="400" r="120"/>
+    <text class="text-component" x="300" y="410">Node1</text>
     <!-- Port labels -->
-    <text class="text-label" x="220" y="160">lan3</text>
-    <text class="text-label" x="115" y="290">lan4</text>
+    <text class="text-label" x="440" y="320">lan3</text>
+    <text class="text-label" x="230" y="580">lan4</text>
   </g>
 
   <!-- Node 2 (top right) -->
   <g id="node2-wire">
-    <circle class="network-node" cx="450" cy="120" r="60"/>
-    <text class="text-component" x="450" y="125">Node2</text>
+    <circle class="network-node" cx="900" cy="240" r="120"/>
+    <text class="text-component" x="900" y="250">Node2</text>
     <!-- Port labels -->
-    <text class="text-label" x="280" y="140">lan3</text>
-    <text class="text-label" x="470" y="200">lan4</text>
+    <text class="text-label" x="560" y="280">lan3</text>
+    <text class="text-label" x="940" y="400">lan4</text>
   </g>
 
   <!-- Node 3 (bottom right) -->
   <g id="node3-wire">
-    <circle class="network-node" cx="450" cy="320" r="60"/>
-    <text class="text-component" x="450" y="325">Node3</text>
+    <circle class="network-node" cx="900" cy="640" r="120"/>
+    <text class="text-component" x="900" y="650">Node3</text>
     <!-- Port labels -->
-    <text class="text-label" x="380" y="250">lan3</text>
-    <text class="text-label" x="350" y="345">lan4</text>
+    <text class="text-label" x="760" y="500">lan3</text>
+    <text class="text-label" x="700" y="690">lan4</text>
   </g>
 
   <!-- Connection: Node1 lan3 <-> Node2 lan3 -->
   <g id="wire-n1-n2">
     <line class="wire-connection"
-          x1="210" y1="185"
-          x2="400" y2="135"
+          x1="420" y1="370"
+          x2="800" y2="270"
           marker-end="url(#arrow-wire)"
           marker-start="url(#arrow-wire-bidirectional)"/>
   </g>
@@ -87,15 +87,15 @@
   <!-- Connection: Node2 lan4 -> Node3 lan3 -->
   <g id="wire-n2-n3">
     <line class="wire-connection"
-          x1="450" y1="180"
-          x2="450" y2="260"
+          x1="900" y1="360"
+          x2="900" y2="520"
           marker-end="url(#arrow-wire)"/>
   </g>
 
   <!-- Connection: Node3 lan4 -> Node1 lan4 (curved) -->
   <g id="wire-n3-n1">
     <path class="wire-connection"
-          d="M 390 320 Q 150 350, 150 260"
+          d="M 780 640 Q 300 700, 300 520"
           marker-end="url(#arrow-wire)"/>
   </g>
 </svg>

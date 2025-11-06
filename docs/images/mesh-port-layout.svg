@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg"
-     viewBox="0 0 1200 500"
+     viewBox="0 0 1200 800"
      role="img"
      aria-labelledby="port-layout-title port-layout-desc">
   <title id="port-layout-title">Mesh Network Detailed Port Layout</title>
@@ -80,103 +80,103 @@
 
   <!-- Node 1 -->
   <g id="node1-detail">
-    <rect class="node-container" x="50" y="80" width="280" height="280" rx="8"/>
-    <text class="text-node-name" x="190" y="110">Node 1 (10.11.12.1)</text>
+    <rect class="node-container" x="50" y="230" width="280" height="280" rx="8"/>
+    <text class="text-node-name" x="190" y="260">Node 1 (10.11.12.1)</text>
 
     <!-- WAN -->
-    <rect class="port-wan" x="70" y="130" width="240" height="30" rx="3"/>
-    <text class="text-port" x="80" y="150">WAN: ISP #1</text>
+    <rect class="port-wan" x="70" y="280" width="240" height="30" rx="3"/>
+    <text class="text-port" x="80" y="300">WAN: ISP #1</text>
 
     <!-- LAN1 -->
-    <rect class="port-client" x="70" y="170" width="240" height="30" rx="3"/>
-    <text class="text-port" x="80" y="190">LAN1: Clients</text>
+    <rect class="port-client" x="70" y="320" width="240" height="30" rx="3"/>
+    <text class="text-port" x="80" y="340">LAN1: Clients</text>
 
     <!-- LAN2 -->
-    <rect class="port-client" x="70" y="210" width="240" height="30" rx="3"/>
-    <text class="text-port" x="80" y="230">LAN2: Clients</text>
+    <rect class="port-client" x="70" y="360" width="240" height="30" rx="3"/>
+    <text class="text-port" x="80" y="380">LAN2: Clients</text>
 
     <!-- LAN3 -->
-    <rect class="port-mesh" x="70" y="250" width="240" height="30" rx="3"/>
-    <text class="text-port" x="80" y="270">LAN3: → Node2</text>
+    <rect class="port-mesh" x="70" y="400" width="240" height="30" rx="3"/>
+    <text class="text-port" x="80" y="420">LAN3: → Node2</text>
 
     <!-- LAN4 -->
-    <rect class="port-mesh" x="70" y="290" width="240" height="30" rx="3"/>
-    <text class="text-port" x="80" y="310">LAN4: → Node3</text>
+    <rect class="port-mesh" x="70" y="440" width="240" height="30" rx="3"/>
+    <text class="text-port" x="80" y="460">LAN4: → Node3</text>
   </g>
 
   <!-- Node 2 -->
   <g id="node2-detail">
-    <rect class="node-container" x="460" y="80" width="280" height="280" rx="8"/>
-    <text class="text-node-name" x="600" y="110">Node 2 (10.11.12.2)</text>
+    <rect class="node-container" x="460" y="230" width="280" height="280" rx="8"/>
+    <text class="text-node-name" x="600" y="260">Node 2 (10.11.12.2)</text>
 
     <!-- WAN -->
-    <rect class="port-wan" x="480" y="130" width="240" height="30" rx="3"/>
-    <text class="text-port" x="490" y="150">WAN: ISP #2</text>
+    <rect class="port-wan" x="480" y="280" width="240" height="30" rx="3"/>
+    <text class="text-port" x="490" y="300">WAN: ISP #2</text>
 
     <!-- LAN1 -->
-    <rect class="port-client" x="480" y="170" width="240" height="30" rx="3"/>
-    <text class="text-port" x="490" y="190">LAN1: Clients</text>
+    <rect class="port-client" x="480" y="320" width="240" height="30" rx="3"/>
+    <text class="text-port" x="490" y="340">LAN1: Clients</text>
 
     <!-- LAN2 -->
-    <rect class="port-client" x="480" y="210" width="240" height="30" rx="3"/>
-    <text class="text-port" x="490" y="230">LAN2: Clients</text>
+    <rect class="port-client" x="480" y="360" width="240" height="30" rx="3"/>
+    <text class="text-port" x="490" y="380">LAN2: Clients</text>
 
     <!-- LAN3 -->
-    <rect class="port-mesh" x="480" y="250" width="240" height="30" rx="3"/>
-    <text class="text-port" x="490" y="270">LAN3: ← Node1</text>
+    <rect class="port-mesh" x="480" y="400" width="240" height="30" rx="3"/>
+    <text class="text-port" x="490" y="420">LAN3: ← Node1</text>
 
     <!-- LAN4 -->
-    <rect class="port-mesh" x="480" y="290" width="240" height="30" rx="3"/>
-    <text class="text-port" x="490" y="310">LAN4: → Node3</text>
+    <rect class="port-mesh" x="480" y="440" width="240" height="30" rx="3"/>
+    <text class="text-port" x="490" y="460">LAN4: → Node3</text>
   </g>
 
   <!-- Node 3 -->
   <g id="node3-detail">
-    <rect class="node-container" x="870" y="80" width="280" height="280" rx="8"/>
-    <text class="text-node-name" x="1010" y="110">Node 3 (10.11.12.3)</text>
+    <rect class="node-container" x="870" y="230" width="280" height="280" rx="8"/>
+    <text class="text-node-name" x="1010" y="260">Node 3 (10.11.12.3)</text>
 
     <!-- WAN -->
-    <rect class="port-wan" x="890" y="130" width="240" height="30" rx="3"/>
-    <text class="text-port" x="900" y="150">WAN: ISP #3</text>
+    <rect class="port-wan" x="890" y="280" width="240" height="30" rx="3"/>
+    <text class="text-port" x="900" y="300">WAN: ISP #3</text>
 
     <!-- LAN1 -->
-    <rect class="port-client" x="890" y="170" width="240" height="30" rx="3"/>
-    <text class="text-port" x="900" y="190">LAN1: Clients</text>
+    <rect class="port-client" x="890" y="320" width="240" height="30" rx="3"/>
+    <text class="text-port" x="900" y="340">LAN1: Clients</text>
 
     <!-- LAN2 -->
-    <rect class="port-client" x="890" y="210" width="240" height="30" rx="3"/>
-    <text class="text-port" x="900" y="230">LAN2: Clients</text>
+    <rect class="port-client" x="890" y="360" width="240" height="30" rx="3"/>
+    <text class="text-port" x="900" y="380">LAN2: Clients</text>
 
     <!-- LAN3 -->
-    <rect class="port-mesh" x="890" y="250" width="240" height="30" rx="3"/>
-    <text class="text-port" x="900" y="270">LAN3: ← Node2</text>
+    <rect class="port-mesh" x="890" y="400" width="240" height="30" rx="3"/>
+    <text class="text-port" x="900" y="420">LAN3: ← Node2</text>
 
     <!-- LAN4 -->
-    <rect class="port-mesh" x="890" y="290" width="240" height="30" rx="3"/>
-    <text class="text-port" x="900" y="310">LAN4: ← Node1</text>
+    <rect class="port-mesh" x="890" y="440" width="240" height="30" rx="3"/>
+    <text class="text-port" x="900" y="460">LAN4: ← Node1</text>
   </g>
 
   <!-- Connection: Node1 LAN3 -> Node2 LAN3 -->
   <g id="conn-n1lan3-n2lan3">
     <line class="connection"
-          x1="330" y1="265"
-          x2="480" y2="265"/>
+          x1="330" y1="415"
+          x2="480" y2="415"/>
   </g>
 
   <!-- Connection: Node1 LAN4 -> Node3 LAN4 (curved down and around) -->
   <g id="conn-n1lan4-n3lan4">
     <path class="connection"
-          d="M 330 305 Q 600 400, 890 305"/>
+          d="M 330 455 Q 600 550, 890 455"/>
   </g>
 
   <!-- Connection: Node2 LAN4 -> Node3 LAN3 -->
   <g id="conn-n2lan4-n3lan3">
     <line class="connection"
-          x1="720" y1="305"
-          x2="890" y2="265"/>
+          x1="720" y1="455"
+          x2="890" y2="415"/>
   </g>
 
   <!-- Wireless mesh note -->
-  <text class="text-note" x="600" y="440">2.4GHz Mesh (backup): Node1 ←→ Node2 ←→ Node3 ←→ Node1</text>
-  <text class="text-note" x="600" y="465">5GHz Client AP: All nodes broadcast "HA-Network-5G" (unified SSID)</text>
+  <text class="text-note" x="600" y="690">2.4GHz Mesh (backup): Node1 ←→ Node2 ←→ Node3 ←→ Node1</text>
+  <text class="text-note" x="600" y="715">5GHz Client AP: All nodes broadcast "HA-Network-5G" (unified SSID)</text>
 </svg>
