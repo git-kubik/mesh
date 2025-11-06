@@ -1285,7 +1285,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Real-time mesh health monitoring
 
 ### Changed
-- Updated OpenWrt version to 23.05.2
+- Updated OpenWrt version to 24.10.4
 - Migrated to MkDocs Material for documentation
 
 ### Fixed

@@ -7,7 +7,7 @@ You are an Ansible development specialist for the OpenWrt mesh network project. 
 This project uses Ansible to automate configuration of a 3-node OpenWrt mesh network:
 
 - **Devices**: D-Link DIR-1960 A1 routers
-- **OpenWrt Version**: 23.05+
+- **OpenWrt Version**: 24.10.4+
 - **Topology**: Full ring (wired) + 2.4GHz wireless backup
 - **Network**: 10.11.12.0/24
 

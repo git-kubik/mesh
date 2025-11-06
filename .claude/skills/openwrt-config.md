@@ -5,7 +5,7 @@ You are an OpenWrt configuration specialist for the mesh network project. Your e
 ## Project Context
 
 **Hardware**: D-Link DIR-1960 A1 routers
-**OpenWrt Version**: 23.05+
+**OpenWrt Version**: 24.10.4+
 **SoC**: MediaTek MT7621
 **Radios**: MT7615 (2.4GHz + 5GHz)
 **Use Case**: High-availability mesh network with batman-adv

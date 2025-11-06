@@ -52,7 +52,7 @@ Before starting, ensure you have:
 3. Download the **factory image** (for initial installation)
 4. Verify the SHA256 checksum
 
-**Current Recommended Version**: OpenWrt 23.05.x or later
+**Current Recommended Version**: OpenWrt 24.10.4
 
 ### Flash via Web Interface (Recommended)
 
@@ -307,7 +307,7 @@ iw list | grep -A 5 "Supported interface modes"
 # OpenWrt version
 root@OpenWrt:~# cat /etc/openwrt_release
 DISTRIB_ID='OpenWrt'
-DISTRIB_RELEASE='23.05.x'
+DISTRIB_RELEASE='24.10.4'
 
 # IP address
 root@OpenWrt:~# ip addr show br-lan
@@ -467,4 +467,4 @@ docker exec mesh_ansible ansible-playbook \
 
 **Document Version**: 1.0
 **Last Updated**: November 6, 2025
-**Tested With**: OpenWrt 23.05.x, D-Link DIR-1960 A1
+**Tested With**: OpenWrt 24.10.4, D-Link DIR-1960 A1

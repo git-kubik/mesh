@@ -30,7 +30,7 @@ Closes #(issue)
 ### Test Configuration
 
 - **Hardware**: (e.g., 3x D-Link DIR-1960 A1 routers)
-- **OpenWrt Version**: (e.g., 23.05.2)
+- **OpenWrt Version**: (e.g., 24.10.4)
 - **Test Environment**: (e.g., Docker container, physical nodes, VM)
 
 ### Test Results

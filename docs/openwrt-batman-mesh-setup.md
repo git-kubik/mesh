@@ -275,7 +275,7 @@ ping -c 3 google.com
 
 ### Required Software/Packages
 
-- OpenWrt 23.05 or later (snapshot recommended for latest batman-adv)
+- OpenWrt 24.10.4 or later
 - Packages to install on each node:
   - `kmod-batman-adv` - Batman kernel module
   - `batctl` - Batman control utility
