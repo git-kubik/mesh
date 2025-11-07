@@ -23,18 +23,16 @@ config dnsmasq
 
 config dhcp 'lan'
 	option interface 'lan'
-{% if dhcp_server %}
-	option start '{{ dhcp_start }}'
-	option limit '{{ dhcp_limit }}'
+	option start '{{ dhcp_pools[inventory_hostname].start }}'
+	option limit '{{ dhcp_pools[inventory_hostname].limit }}'
 	option leasetime '{{ dhcp_leasetime }}'
 	option dhcpv4 'server'
 	option dhcpv6 'server'
 	option ra 'server'
 	list ra_flags 'managed-config'
 	list ra_flags 'other-config'
-{% else %}
-	option ignore '1'
-{% endif %}
+	# Provide all nodes as DNS servers for redundancy
+	list dhcp_option '6,10.11.12.1,10.11.12.2,10.11.12.3'
 
 config dhcp 'wan'
 	option interface 'wan'
@@ -46,8 +44,8 @@ config odhcpd 'odhcpd'
 	option leasetrigger '/usr/sbin/odhcpd-update'
 	option loglevel '4'
 
-{% if dhcp_server and static_hosts|length > 0 %}
-# Static Host Reservations
+{% if static_hosts|length > 0 %}
+# Static Host Reservations (configured on all nodes for consistency)
 {% for host in static_hosts %}
 config host
 	option name '{{ host.name }}'

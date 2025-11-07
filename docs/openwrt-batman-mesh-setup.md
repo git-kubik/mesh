@@ -79,7 +79,8 @@ Workstation ─→ Node2 LAN1 ─→ br-lan bridge ─→ bat0 mesh
 - **2 client ports per node** (LAN1, LAN2)
 - **6 total wired clients** across 3-node mesh (2 per node)
 - All clients on same 10.11.12.0/24 network
-- DHCP provided by Node 1 (via mesh)
+- **Redundant DHCP** - all 3 nodes serve DHCP with non-overlapping pools
+- **Redundant DNS** - all 3 nodes cache DNS queries
 - Automatic gateway selection
 - If local node loses WAN, traffic routes through mesh to another gateway
 
@@ -90,9 +91,9 @@ Workstation ─→ Node2 LAN1 ─→ br-lan bridge ─→ bat0 mesh
 ```
 Your PC ─→ Node2 LAN1
               ↓
-         Gets: 10.11.12.105 (DHCP from Node1 via mesh)
-         Gateway: 10.11.12.1
-         DNS: 1.1.1.1, 8.8.8.8
+         Gets: 10.11.12.150-199 (DHCP from Node2, or Node1/Node3 if Node2 down)
+         Gateway: Best available (Node1, Node2, or Node3 via Batman-adv)
+         DNS: 10.11.12.1, 10.11.12.2, 10.11.12.3 (redundant, tries in order)
          Internet: Via Node2's WAN (if available) or via mesh to Node1/Node3
 ```
 
@@ -285,11 +286,11 @@ ping -c 3 google.com
 
 ### Network Planning
 
-| Node | IP Address | WAN Port | Mesh Ports | Role |
-|------|------------|----------|------------|------|
-| Node1 | 10.11.12.1 | wan | lan3→Node2, lan4→Node3 | Gateway + DHCP Server |
-| Node2 | 10.11.12.2 | wan | lan3→Node1, lan4→Node3 | Gateway |
-| Node3 | 10.11.12.3 | wan | lan3→Node2, lan4→Node1 | Gateway |
+| Node | IP Address | WAN Port | Mesh Ports | DHCP Pool | Role |
+|------|------------|----------|------------|-----------|------|
+| Node1 | 10.11.12.1 | wan | lan3→Node2, lan4→Node3 | 100-149 | Gateway + DHCP + DNS |
+| Node2 | 10.11.12.2 | wan | lan3→Node1, lan4→Node3 | 150-199 | Gateway + DHCP + DNS |
+| Node3 | 10.11.12.3 | wan | lan3→Node2, lan4→Node1 | 200-249 | Gateway + DHCP + DNS |
 
 **Port Usage:**
 
@@ -768,13 +769,20 @@ config interface 'lan'
 #### /etc/config/dhcp
 
 ```bash
-# Disable DHCP server on Node 2
+# DHCP server with dedicated pool (150-199) for redundancy
 config dhcp 'lan'
  option interface 'lan'
- option ignore '1'  # Changed to disable DHCP
+ option start '150'
+ option limit '50'
+ option leasetime '12h'
+ option dhcpv4 'server'
+ # Provide all nodes as DNS servers for redundancy
+ list dhcp_option '6,10.11.12.1,10.11.12.2,10.11.12.3'
 ```
 
 **All other configuration files remain identical to Node 1.**
+
+**Redundancy:** Node2 serves DHCP pool 10.11.12.150-199. If any node fails, the other two continue serving DHCP and DNS.
 
 ---
 
@@ -799,13 +807,20 @@ config interface 'lan'
 #### /etc/config/dhcp
 
 ```bash
-# Disable DHCP server on Node 3
+# DHCP server with dedicated pool (200-249) for redundancy
 config dhcp 'lan'
  option interface 'lan'
- option ignore '1'  # Changed to disable DHCP
+ option start '200'
+ option limit '50'
+ option leasetime '12h'
+ option dhcpv4 'server'
+ # Provide all nodes as DNS servers for redundancy
+ list dhcp_option '6,10.11.12.1,10.11.12.2,10.11.12.3'
 ```
 
 **All other configuration files remain identical to Node 1.**
+
+**Redundancy:** Node3 serves DHCP pool 10.11.12.200-249. If any node fails, the other two continue serving DHCP and DNS.
 
 ---
 
@@ -2631,11 +2646,13 @@ reboot
 ### IP Address Allocation
 
 ```
-10.11.12.1      - Node 1 (DHCP server, primary)
-10.11.12.2      - Node 2 (gateway)
-10.11.12.3      - Node 3 (gateway)
+10.11.12.1      - Node 1 (Gateway + DHCP + DNS)
+10.11.12.2      - Node 2 (Gateway + DHCP + DNS)
+10.11.12.3      - Node 3 (Gateway + DHCP + DNS)
 10.11.12.10-99  - Reserved for static IPs
-10.11.12.100-250 - DHCP pool (clients)
+10.11.12.100-149 - DHCP pool (Node1 serves)
+10.11.12.150-199 - DHCP pool (Node2 serves)
+10.11.12.200-249 - DHCP pool (Node3 serves)
 ```
 
 ### Important Files

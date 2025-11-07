@@ -238,8 +238,8 @@ static_hosts:
     mac: '11:22:33:44:55:66'
     ip: 10.11.12.50
 
-# 2. Deploy DHCP config (Node 1 only since it's DHCP server)
-make deploy-node1 --tags dhcp
+# 2. Deploy DHCP config to all nodes (all serve DHCP for redundancy)
+make deploy --tags dhcp
 
 # 3. Renew DHCP on client device
 ```

@@ -125,7 +125,11 @@ Node1 (10.11.12.1) ←lan3→ Node2 (10.11.12.2)
 **Network Details:**
 
 - **LAN**: 10.11.12.0/24
-- **DHCP**: 10.11.12.100-250 (served by Node1)
+- **DHCP**: Split pools across all nodes for redundancy
+  - Node1: 10.11.12.100-149
+  - Node2: 10.11.12.150-199
+  - Node3: 10.11.12.200-249
+- **DNS**: All 3 nodes provide caching DNS (redundant)
 - **Gateways**: All 3 nodes (automatic failover)
 - **Client AP**: HA-Network-5G (5GHz, WPA2/WPA3)
 

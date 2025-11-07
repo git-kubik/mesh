@@ -12,10 +12,22 @@ dns_servers:
   - 1.1.1.1
   - 8.8.8.8
 
-# DHCP Configuration
-dhcp_start: 100
-dhcp_limit: 150
+# DHCP Configuration - Split pools for redundancy
+# Each node serves a non-overlapping range to prevent conflicts
+# Total pool: 10.11.12.100-249 (150 addresses)
 dhcp_leasetime: 12h
+
+# Per-node DHCP pools (defined in inventory)
+dhcp_pools:
+  node1:
+    start: 100  # 10.11.12.100-149 (50 addresses)
+    limit: 50
+  node2:
+    start: 150  # 10.11.12.150-199 (50 addresses)
+    limit: 50
+  node3:
+    start: 200  # 10.11.12.200-249 (50 addresses)
+    limit: 50
 
 # Static Host Reservations (optional)
 static_hosts: []

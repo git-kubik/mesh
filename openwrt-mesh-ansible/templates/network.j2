@@ -78,10 +78,8 @@ config interface 'lan'
 	option ipaddr '{{ node_ip }}'
 	option netmask '{{ mesh_netmask }}'
 	option ip6assign '60'
-{% if not dhcp_server %}
-	option gateway '{{ mesh_gateway }}'
-	list dns '{{ mesh_gateway }}'
-{% endif %}
+	# DNS provided by local dnsmasq on each node
+	list dns '127.0.0.1'
 
 {% if enable_vlans %}
 # VLAN Configurations
