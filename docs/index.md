@@ -30,7 +30,7 @@ Complete step-by-step guide for manual configuration. Perfect for:
 - Learning OpenWrt and Batman-adv concepts
 - Customizing beyond automation capabilities
 
-**Documentation**: [Manual Setup Guide](docs/openwrt-batman-mesh-setup.md) | [Initial Node Setup](docs/INITIAL-NODE-SETUP.md)
+**Documentation**: [Manual Setup Guide](openwrt-batman-mesh-setup.md) | [Initial Node Setup](INITIAL-NODE-SETUP.md)
 
 ### 2. 🐳 Docker CLI Automation (Developer Path)
 
@@ -43,7 +43,7 @@ docker-compose exec ansible ansible-playbook -i /ansible/inventory/hosts.yml /an
 ```
 
 **Benefits**: Direct CLI access, scriptable, version controlled
-**Documentation**: [Docker README](docker/README.md) | [Ansible Quick Start](docs/ANSIBLE-QUICKSTART.md)
+**Documentation**: [Docker README](docker-README.md) | [Ansible Quick Start](ANSIBLE-QUICKSTART.md)
 
 ### 3. 🌐 Web Interface Automation (User-Friendly Path)
 
@@ -55,7 +55,7 @@ Use Semaphore web UI for point-and-click deployment:
 4. Monitor progress in real-time
 
 **Benefits**: Visual feedback, job history, scheduling, notifications
-**Documentation**: [Docker README](docker/README.md)
+**Documentation**: [Docker README](docker-README.md)
 
 ---
 
@@ -67,9 +67,9 @@ Use Semaphore web UI for point-and-click deployment:
 
 Select a deployment method from the [Deployment Options](#deployment-options) above, then follow the appropriate guide:
 
-- **Manual**: [Initial Node Setup](docs/INITIAL-NODE-SETUP.md) → [Manual Setup Guide](docs/openwrt-batman-mesh-setup.md)
-- **Docker CLI**: [Docker README](docker/README.md) → [Ansible Quick Start](docs/ANSIBLE-QUICKSTART.md)
-- **Web Interface**: [Docker README](docker/README.md)
+- **Manual**: [Initial Node Setup](INITIAL-NODE-SETUP.md) → [Manual Setup Guide](openwrt-batman-mesh-setup.md)
+- **Docker CLI**: [Docker README](docker-README.md) → [Ansible Quick Start](ANSIBLE-QUICKSTART.md)
+- **Web Interface**: [Docker README](docker-README.md)
 
 ### Prerequisites (Automation Paths)
 
@@ -86,7 +86,7 @@ Select a deployment method from the [Deployment Options](#deployment-options) ab
    cd mesh
 
    # Prepare initial node (manual step required)
-   # Follow: docs/INITIAL-NODE-SETUP.md for first node
+   # Follow: INITIAL-NODE-SETUP.md for first node
    ```
 
 2. **Start automation environment:**
@@ -233,7 +233,7 @@ This project adheres to high-quality standards:
 - 20+ character passwords
 - ED25519 or RSA 4096 SSH keys
 
-For complete standards, see [project-standards skill](.claude/skills/project-standards.md).
+For complete standards, see [project-standards skill](https://github.com/git-kubik/mesh/blob/main/.claude/skills/project-standards.md).
 
 ### Testing
 
@@ -306,9 +306,9 @@ mesh/
 
 ## Documentation
 
-- **Quick Start**: [ANSIBLE-QUICKSTART.md](docs/ANSIBLE-QUICKSTART.md)
-- **Technical Guide**: [openwrt-batman-mesh-setup.md](docs/openwrt-batman-mesh-setup.md)
-- **Testing Guide**: [TESTING.md](docs/TESTING.md) (to be created)
+- **Quick Start**: [ANSIBLE-QUICKSTART.md](ANSIBLE-QUICKSTART.md)
+- **Technical Guide**: [openwrt-batman-mesh-setup.md](openwrt-batman-mesh-setup.md)
+- **Testing Guide**: [tests-README.md](tests-README.md)
 - **Contributing**: [CONTRIBUTING.md](CONTRIBUTING.md)
 - **Full Documentation**: <https://yourusername.github.io/mesh/>
 
@@ -369,7 +369,7 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guid
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License - see the [LICENSE](https://github.com/git-kubik/mesh/blob/main/LICENSE) file for details.
 
 ## Acknowledgments
 
