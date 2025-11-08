@@ -60,7 +60,8 @@ plugins:
       enable_creation_date: true
       type: timeago
       fallback_to_build_date: true
-      enable_git_follow: false
+      enable_git_follow: true
+      strict: false
   - minify:
       minify_html: true
       minify_js: true

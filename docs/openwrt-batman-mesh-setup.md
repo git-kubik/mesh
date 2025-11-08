@@ -259,8 +259,8 @@ ping -c 3 google.com
 5. [Base Configuration](#base-configuration)
 6. [Node-Specific Configurations](#node-specific-configurations)
 7. [VLAN Configuration](#vlan-configuration)
-8. [Testing & Verification](#testing--verification)
-9. [Monitoring & Maintenance](#monitoring--maintenance)
+8. [Testing & Verification](#testing-verification)
+9. [Monitoring & Maintenance](#monitoring-maintenance)
 10. [Troubleshooting](#troubleshooting)
 
 ---
