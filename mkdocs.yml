@@ -160,6 +160,8 @@ nav:
   - GitHub Integration:
       - Setup Guide: GITHUB-SETUP.md
       - Complete Integration: GITHUB-COMPLETE-SETUP.md
+  - Architecture:
+      - Multi-Network VLANs: MULTI-NETWORK-ARCHITECTURE.md
   - Reference:
       - Docker Setup: docker-README.md
       - Test Suite: tests-README.md
