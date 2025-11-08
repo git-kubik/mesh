@@ -161,16 +161,25 @@ def test_dhcp_configuration(group_vars_path: str) -> None:
     with open(group_vars_path, "r") as f:
         config = yaml.safe_load(f)
 
-    required_keys = ["dhcp_start", "dhcp_limit", "dhcp_leasetime"]
+    # Check for new redundant DHCP configuration
+    required_keys = ["dhcp_pools", "dhcp_leasetime"]
 
     for key in required_keys:
         assert key in config, f"DHCP config missing: {key}"
 
-    # Validate DHCP range
-    assert isinstance(config["dhcp_start"], int), "dhcp_start must be integer"
-    assert isinstance(config["dhcp_limit"], int), "dhcp_limit must be integer"
-    assert config["dhcp_start"] > 0, "dhcp_start must be positive"
-    assert config["dhcp_limit"] > 0, "dhcp_limit must be positive"
+    # Validate DHCP pools structure
+    assert isinstance(config["dhcp_pools"], dict), "dhcp_pools must be dictionary"
+    required_nodes = ["node1", "node2", "node3"]
+
+    for node in required_nodes:
+        assert node in config["dhcp_pools"], f"DHCP pool missing for {node}"
+        pool = config["dhcp_pools"][node]
+        assert "start" in pool, f"start missing in {node} DHCP pool"
+        assert "limit" in pool, f"limit missing in {node} DHCP pool"
+        assert isinstance(pool["start"], int), f"{node} start must be integer"
+        assert isinstance(pool["limit"], int), f"{node} limit must be integer"
+        assert pool["start"] > 0, f"{node} start must be positive"
+        assert pool["limit"] > 0, f"{node} limit must be positive"
 
 
 @pytest.mark.unit

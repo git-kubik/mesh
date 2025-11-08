@@ -114,7 +114,8 @@ def test_inventory_node_variables(inventory_path: str) -> None:
 
     mesh_nodes = inventory["all"]["children"]["mesh_nodes"]["children"]
 
-    required_vars = ["ansible_host", "node_ip", "node_id", "dhcp_server"]
+    # Note: dhcp_server removed - all nodes now run DHCP with split pools
+    required_vars = ["ansible_host", "node_ip", "node_id"]
 
     for group in mesh_nodes.values():
         if "hosts" in group:
@@ -147,7 +148,10 @@ def test_inventory_gateway_groups(inventory_path: str) -> None:
 @pytest.mark.unit
 def test_inventory_dhcp_server_configuration(inventory_path: str) -> None:
     """
-    Test that exactly one node has DHCP server enabled.
+    Test that dhcp_server variable is not present (redundant DHCP architecture).
+
+    All nodes now run DHCP with split pools, so the dhcp_server boolean
+    should not exist in the inventory.
 
     Args:
         inventory_path: Path to inventory file from fixture.
@@ -157,14 +161,13 @@ def test_inventory_dhcp_server_configuration(inventory_path: str) -> None:
 
     mesh_nodes = inventory["all"]["children"]["mesh_nodes"]["children"]
 
-    dhcp_servers = []
+    # Verify no nodes have the deprecated dhcp_server variable
     for group in mesh_nodes.values():
         if "hosts" in group:
             for hostname, host_vars in group["hosts"].items():
-                if host_vars.get("dhcp_server", False):
-                    dhcp_servers.append(hostname)
-
-    assert len(dhcp_servers) == 1, f"Expected 1 DHCP server, found {len(dhcp_servers)}"
+                assert (
+                    "dhcp_server" not in host_vars
+                ), f"Deprecated dhcp_server variable found in {hostname}. All nodes now run DHCP."
 
 
 @pytest.mark.unit
