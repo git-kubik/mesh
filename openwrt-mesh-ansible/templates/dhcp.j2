@@ -61,12 +61,19 @@ config host
 {% if enable_vlans %}
 # VLAN DHCP Configurations (all nodes provide DHCP for redundancy)
 {% for vlan_name, vlan_config in vlans.items() %}
+{% set vlan_ip = vlan_config.network.split('/')[0] %}
+{% set vlan_octets = vlan_ip.split('.') %}
+{% set node_octets = node_ip.split('.') %}
 config dhcp '{{ vlan_name }}'
 	option interface '{{ vlan_name }}_bridge'
 	option start '{{ vlan_config.dhcp_start }}'
 	option limit '{{ vlan_config.dhcp_limit }}'
 	option leasetime '{{ dhcp_leasetime }}'
 	option dhcpv4 'server'
+	# Provide all nodes as DNS servers for redundancy
+	list dhcp_option '6,{{ vlan_octets[0] }}.{{ vlan_octets[1] }}.{{ vlan_octets[2] }}.1,{{ vlan_octets[0] }}.{{ vlan_octets[1] }}.{{ vlan_octets[2] }}.2,{{ vlan_octets[0] }}.{{ vlan_octets[1] }}.{{ vlan_octets[2] }}.3'
+	# Gateway: this node's IP in the VLAN subnet
+	list dhcp_option '3,{{ vlan_octets[0] }}.{{ vlan_octets[1] }}.{{ vlan_octets[2] }}.{{ node_octets[3] }}'
 
 {% endfor %}
 {% endif %}
