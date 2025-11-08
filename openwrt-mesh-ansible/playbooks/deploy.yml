@@ -233,7 +233,7 @@
         msg: |
           ✓ Configuration deployed successfully to {{ inventory_hostname }}
           ✓ Node IP: {{ node_ip }}
-          ✓ DHCP Server: {{ dhcp_server }}
+          ✓ DHCP Pool: 10.11.12.{{ dhcp_pools[inventory_hostname].start }}-{{ dhcp_pools[inventory_hostname].start + dhcp_pools[inventory_hostname].limit - 1 }}
           ✓ Services reloaded
 
           Next steps:
