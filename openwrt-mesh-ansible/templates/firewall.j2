@@ -150,6 +150,15 @@ config forwarding
 	option dest 'wan'
 
 {% if vlan_config.isolation is defined and vlan_config.isolation %}
+# Allow DHCP/DNS for isolated {{ vlan_name }} network
+config rule
+	option name 'Allow-{{ vlan_name }}-DHCP-DNS'
+	option src '{{ vlan_name }}'
+	option proto 'udp'
+	list dest_port '53'
+	list dest_port '67'
+	option target 'ACCEPT'
+
 # Block {{ vlan_name }} access to LAN
 config rule
 	option name 'Block-{{ vlan_name }}-to-LAN'
