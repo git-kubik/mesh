@@ -1,9 +1,9 @@
 # OpenWrt Multi-Gateway Batman-adv Mesh Network
 
-[![Pre-commit Checks](https://github.com/yourusername/mesh/workflows/Pre-commit%20Checks/badge.svg)](https://github.com/yourusername/mesh/actions)
-[![Tests](https://github.com/yourusername/mesh/workflows/Tests/badge.svg)](https://github.com/yourusername/mesh/actions)
-[![codecov](https://codecov.io/gh/yourusername/mesh/branch/main/graph/badge.svg)](https://codecov.io/gh/yourusername/mesh)
-[![Documentation](https://img.shields.io/badge/docs-mkdocs-blue.svg)](https://yourusername.github.io/mesh/)
+[![Pre-commit Checks](https://github.com/git-kubik/mesh/workflows/Pre-commit%20Checks/badge.svg)](https://github.com/git-kubik/mesh/actions)
+[![Tests](https://github.com/git-kubik/mesh/workflows/Tests/badge.svg)](https://github.com/git-kubik/mesh/actions)
+[![codecov](https://codecov.io/gh/git-kubik/mesh/branch/main/graph/badge.svg)](https://codecov.io/gh/git-kubik/mesh)
+[![Documentation](https://img.shields.io/badge/docs-mkdocs-blue.svg)](https://git-kubik.github.io/mesh/)
 
 High-availability OpenWrt mesh network with Batman-adv routing, multi-gateway failover, and comprehensive automated testing.
 
@@ -82,7 +82,7 @@ Select a deployment method from the [Deployment Options](#deployment-options) ab
 1. **Clone and prepare:**
 
    ```bash
-   git clone https://github.com/yourusername/mesh.git
+   git clone https://github.com/git-kubik/mesh.git
    cd mesh
 
    # Prepare initial node (manual step required)
@@ -139,7 +139,7 @@ Node1 (10.11.12.1) ←lan3→ Node2 (10.11.12.2)
 
 ```bash
 # Clone and setup
-git clone https://github.com/yourusername/mesh.git
+git clone https://github.com/git-kubik/mesh.git
 cd mesh
 
 # Automated development environment setup
@@ -314,7 +314,7 @@ mesh/
 - **Technical Guide**: [openwrt-batman-mesh-setup.md](openwrt-batman-mesh-setup.md)
 - **Testing Guide**: [tests-README.md](tests-README.md)
 - **Contributing**: [CONTRIBUTING.md](CONTRIBUTING.md)
-- **Full Documentation**: <https://yourusername.github.io/mesh/>
+- **Full Documentation**: <https://git-kubik.github.io/mesh/>
 
 ## CI/CD
 
@@ -384,9 +384,9 @@ This project is licensed under the MIT License - see the [LICENSE](https://githu
 
 ## Support
 
-- **Documentation**: <https://yourusername.github.io/mesh/>
-- **Issues**: [GitHub Issues](https://github.com/yourusername/mesh/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/yourusername/mesh/discussions)
+- **Documentation**: <https://git-kubik.github.io/mesh/>
+- **Issues**: [GitHub Issues](https://github.com/git-kubik/mesh/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/git-kubik/mesh/discussions)
 
 ## Roadmap
 
