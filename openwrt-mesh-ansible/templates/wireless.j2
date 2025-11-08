@@ -22,6 +22,17 @@ config wifi-iface 'mesh0'
 	option key '{{ mesh_password }}'
 	option mcast_rate '{{ mesh_mcast_rate }}'
 
+{% if enable_vlans and vlans.management is defined %}
+# 2.4GHz Management AP (VLAN {{ vlans.management.vid }})
+config wifi-iface 'mgmt0'
+	option device 'radio0'
+	option mode 'ap'
+	option network 'management_bridge'
+	option ssid '{{ vlans.management.ssid }}'
+	option encryption '{{ vlans.management.encryption }}'
+	option key '{{ vlans.management.password }}'
+{% endif %}
+
 config wifi-device 'radio1'
 	option type 'mac80211'
 	option path 'platform/soc/1e140000.pcie/pci0000:00/0000:00:00.0/0000:00:00.0'
@@ -31,7 +42,7 @@ config wifi-device 'radio1'
 	option country '{{ client_country }}'
 	option cell_density '0'
 
-# 5GHz Client AP
+# 5GHz Internal/Trusted AP (Main LAN)
 config wifi-iface 'wlan0'
 	option device 'radio1'
 	option mode 'ap'
@@ -47,14 +58,14 @@ config wifi-iface 'wlan0'
 	option rsn_preauth '1'
 {% endif %}
 
-{% if enable_vlans and vlans.guest is defined and vlans.guest.guest_ssid is defined %}
-# Guest WiFi on VLAN {{ vlans.guest.vid }}
-config wifi-iface 'guest_wifi'
+{% if enable_vlans and vlans.guest is defined %}
+# 5GHz Guest AP (VLAN {{ vlans.guest.vid }} - Isolated)
+config wifi-iface 'guest0'
 	option device 'radio1'
 	option mode 'ap'
 	option network 'guest_bridge'
-	option ssid '{{ vlans.guest.guest_ssid }}'
-	option encryption '{{ client_encryption }}'
-	option key '{{ vlans.guest.guest_password }}'
+	option ssid '{{ vlans.guest.ssid }}'
+	option encryption '{{ vlans.guest.encryption }}'
+	option key '{{ vlans.guest.password }}'
 	option isolate '1'
 {% endif %}

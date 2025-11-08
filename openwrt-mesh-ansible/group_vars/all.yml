@@ -104,22 +104,20 @@ enable_services:
   - dnsmasq
   - sshd
 
-# VLAN Configuration (optional - set to true to enable)
-enable_vlans: false
+# VLAN Configuration - ENABLED for multi-network support
+enable_vlans: true
 
-# VLAN Definitions (if enable_vlans: true)
+# VLAN Definitions
 vlans:
   management:
     vid: 10
     network: 10.11.10.0/24
     dhcp_start: 100
     dhcp_limit: 50
-
-  trusted:
-    vid: 20
-    network: 10.11.20.0/24
-    dhcp_start: 100
-    dhcp_limit: 100
+    description: "Management network - 2.4GHz AP for admin access"
+    ssid: HA-Management
+    password: YourMgmtPassword123!  # CHANGE THIS!  # pragma: allowlist secret
+    encryption: psk2+ccmp
 
   guest:
     vid: 30
@@ -127,11 +125,7 @@ vlans:
     dhcp_start: 100
     dhcp_limit: 50
     isolation: true
-    guest_ssid: HA-Guest
-    guest_password: GuestPassword123!  # pragma: allowlist secret
-
-  iot:
-    vid: 40
-    network: 10.11.40.0/24
-    dhcp_start: 100
-    dhcp_limit: 100
+    description: "Guest network - 5GHz AP with LAN isolation"
+    ssid: HA-Guest
+    password: YourGuestPassword123!  # CHANGE THIS!  # pragma: allowlist secret
+    encryption: psk2+ccmp

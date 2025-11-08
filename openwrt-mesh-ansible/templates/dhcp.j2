@@ -58,14 +58,15 @@ config host
 {% endfor %}
 {% endif %}
 
-{% if enable_vlans and dhcp_server %}
-# VLAN DHCP Configurations
+{% if enable_vlans %}
+# VLAN DHCP Configurations (all nodes provide DHCP for redundancy)
 {% for vlan_name, vlan_config in vlans.items() %}
 config dhcp '{{ vlan_name }}'
 	option interface '{{ vlan_name }}_bridge'
 	option start '{{ vlan_config.dhcp_start }}'
 	option limit '{{ vlan_config.dhcp_limit }}'
 	option leasetime '{{ dhcp_leasetime }}'
+	option dhcpv4 'server'
 
 {% endfor %}
 {% endif %}
