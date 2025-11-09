@@ -680,7 +680,7 @@ sudo ip route add 10.11.12.0/24 via <gateway-ip>
 ### Check Connectivity to All Nodes
 
 ```bash
-make check-connectivity
+make check-all
 ```
 
 **Expected output: All 3 nodes show READY**

@@ -218,19 +218,24 @@ After running the deployment playbook, nodes are at:
 Before running the full audit, verify connectivity:
 
 ```bash
-# Check all configured nodes (after deployment)
-make check-connectivity
+# Fresh nodes (192.168.1.1) - Check ONE at a time
+make check-node1         # Check node1 only
+make check-node2         # Check node2 only (after node1 is disconnected)
+make check-node3         # Check node3 only (after node2 is disconnected)
 
-# Check specific node
-make check-node1         # For configured nodes
-ansible node1 -m ping    # Alternative method
+# Configured nodes (10.11.12.x) - After deployment
+make check-all           # Check ALL nodes at once
+make check-node1         # Or check specific node
+
+# Alternative methods
+ansible node1 -m ping    # Ansible ping
 
 # Test SSH manually
 ssh root@10.11.12.1 'echo "Connection successful"'  # Configured node
 ssh root@192.168.1.1 'echo "Connection successful"' # Fresh node
 ```
 
-**Note**: For fresh nodes, you can only check **one at a time** since they all have IP 192.168.1.1
+**Note**: Fresh nodes all start at 192.168.1.1, so you can only check **ONE at a time**
 
 ### Troubleshooting Connection Issues
 
@@ -382,7 +387,7 @@ sudo dhclient eth0
 # 4. Connect all nodes to mesh network (wire mesh links)
 # 5. Connect workstation to mesh network or configure routing
 # 6. Verify all nodes are reachable
-make check-connectivity
+make check-all
 
 # 7. Verify mesh network
 make verify
@@ -394,7 +399,7 @@ If nodes are **already configured** with different IPs, you can work on them sim
 
 ```bash
 # All nodes already have 10.11.12.1, 10.11.12.2, 10.11.12.3
-make check-connectivity  # Check all at once
+make check-all          # Check all at once
 make audit              # Audit all at once
 make deploy             # Deploy to all at once
 ```

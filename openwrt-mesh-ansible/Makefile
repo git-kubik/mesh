@@ -1,19 +1,21 @@
 # Makefile for OpenWrt Mesh Network Ansible
 
-.PHONY: help check-connectivity audit deploy verify backup update check clean
+.PHONY: help check-all check-connectivity audit deploy verify backup update check clean
 
 help:
 	@echo "OpenWrt Mesh Network - Ansible Commands"
 	@echo ""
-	@echo "Node Audit & Preparation:"
-	@echo "  make check-connectivity - Quick SSH connectivity check (run first!)"
-	@echo "  make check-node1        - Check connectivity to Node 1 only"
-	@echo "  make check-node2        - Check connectivity to Node 2 only"
-	@echo "  make check-node3        - Check connectivity to Node 3 only"
-	@echo "  make audit              - Audit all nodes (check readiness)"
-	@echo "  make audit-node1        - Audit Node 1 only"
-	@echo "  make audit-node2        - Audit Node 2 only"
-	@echo "  make audit-node3        - Audit Node 3 only"
+	@echo "Fresh Node Setup (use ONE at a time - all start at 192.168.1.1):"
+	@echo "  make check-node1        - Check fresh/configured Node 1"
+	@echo "  make check-node2        - Check fresh/configured Node 2"
+	@echo "  make check-node3        - Check fresh/configured Node 3"
+	@echo "  make audit-node1        - Audit Node 1 (check readiness)"
+	@echo "  make audit-node2        - Audit Node 2 (check readiness)"
+	@echo "  make audit-node3        - Audit Node 3 (check readiness)"
+	@echo ""
+	@echo "Configured Mesh (after all nodes deployed with different IPs):"
+	@echo "  make check-all          - Check connectivity to ALL nodes"
+	@echo "  make audit              - Audit all nodes"
 	@echo ""
 	@echo "Available targets:"
 	@echo "  make deploy         - Deploy configuration to all nodes"
@@ -40,9 +42,16 @@ help:
 	@echo "  make logs            - Fetch recent logs"
 
 # Node Connectivity Check
-check-connectivity:
+# check-all: Use AFTER nodes are configured with different IPs (10.11.12.x)
+check-all:
 	ansible-playbook playbooks/check-connectivity.yml
 
+# Backwards compatibility alias
+check-connectivity: check-all
+
+# check-nodeX: Use for BOTH fresh (192.168.1.1) and configured (10.11.12.x) nodes
+# For fresh nodes: Check ONE at a time (they all have same IP)
+# For configured nodes: Check individually or use check-all
 check-node1:
 	ansible-playbook playbooks/check-connectivity.yml --limit node1
 
