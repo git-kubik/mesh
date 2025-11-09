@@ -1,0 +1,271 @@
+---
+###############################################################################
+# OpenWrt Mesh Node Connectivity Check Playbook
+###############################################################################
+#
+# Purpose: Quick validation of SSH connectivity to nodes before running
+#          the full audit or deployment playbooks.
+#
+# Usage:
+#   # Check all nodes
+#   ansible-playbook -i inventory/hosts.yml playbooks/check-connectivity.yml
+#
+#   # Check specific node
+#   ansible-playbook -i inventory/hosts.yml playbooks/check-connectivity.yml -l node1
+#
+#   # Or use Makefile
+#   make check-connectivity
+#   make check-node1
+#
+# What it checks:
+#   - SSH port is reachable
+#   - SSH authentication succeeds
+#   - Python interpreter exists
+#   - Basic command execution works
+#   - Node is an OpenWrt system
+#
+# Exit codes:
+#   0 - All checks passed
+#   1 - One or more checks failed
+#
+###############################################################################
+
+- name: Check Node Connectivity
+  hosts: mesh_nodes
+  gather_facts: false
+  vars:
+    ssh_timeout: 10
+
+  tasks:
+    ###########################################################################
+    # Phase 1: Network Connectivity
+    ###########################################################################
+
+    - name: Check if SSH port is reachable
+      ansible.builtin.wait_for:
+        host: "{{ ansible_host }}"
+        port: 22
+        timeout: "{{ ssh_timeout }}"
+        state: started
+      delegate_to: localhost
+      register: port_check
+      ignore_errors: true
+      tags: [network]
+
+    - name: Display network connectivity result
+      ansible.builtin.debug:
+        msg: |
+          {% if port_check.failed %}
+          ❌ FAILED: Cannot reach {{ inventory_hostname }} at {{ ansible_host }}:22
+          Possible causes:
+            - Node is powered off
+            - Wrong IP address in inventory
+            - Network cable disconnected
+            - Firewall blocking port 22
+          {% else %}
+          ✅ PASSED: SSH port reachable at {{ ansible_host }}:22
+          {% endif %}
+      tags: [network]
+
+    - name: Fail if port is not reachable
+      ansible.builtin.fail:
+        msg: "Cannot reach {{ inventory_hostname }} - check network connectivity"
+      when: port_check.failed
+      tags: [network]
+
+    ###########################################################################
+    # Phase 2: SSH Authentication
+    ###########################################################################
+
+    - name: Test SSH authentication and basic connectivity
+      ansible.builtin.wait_for_connection:
+        timeout: "{{ ssh_timeout }}"
+        delay: 1
+      register: auth_check
+      ignore_errors: true
+      tags: [auth]
+
+    - name: Display authentication result
+      ansible.builtin.debug:
+        msg: |
+          {% if auth_check.failed %}
+          ❌ FAILED: SSH authentication failed for {{ inventory_hostname }}
+          Possible causes:
+            - SSH key not installed on node
+            - Wrong password (if using password auth)
+            - Root login disabled
+          Solutions:
+            - Copy SSH key: ssh-copy-id root@{{ ansible_host }}
+            - Or set ansible_ssh_pass in inventory
+          {% else %}
+          ✅ PASSED: SSH authentication successful
+          {% endif %}
+      tags: [auth]
+
+    - name: Fail if authentication fails
+      ansible.builtin.fail:
+        msg: "SSH authentication failed for {{ inventory_hostname }}"
+      when: auth_check.failed
+      tags: [auth]
+
+    ###########################################################################
+    # Phase 3: Python Interpreter
+    ###########################################################################
+
+    - name: Check if Python interpreter exists
+      ansible.builtin.raw: |
+        if [ -f {{ ansible_python_interpreter }} ]; then
+          echo "Python found: {{ ansible_python_interpreter }}"
+          {{ ansible_python_interpreter }} --version
+        else
+          echo "ERROR: Python not found at {{ ansible_python_interpreter }}"
+          exit 1
+        fi
+      register: python_check
+      changed_when: false
+      ignore_errors: true
+      tags: [python]
+
+    - name: Display Python interpreter result
+      ansible.builtin.debug:
+        msg: |
+          {% if python_check.failed %}
+          ❌ FAILED: Python interpreter not found at {{ ansible_python_interpreter }}
+          Solutions:
+            - Install Python: ssh root@{{ ansible_host }} 'opkg update && opkg install python3'
+            - Or update ansible_python_interpreter in inventory
+          {% else %}
+          ✅ PASSED: {{ python_check.stdout_lines[0] if python_check.stdout_lines else 'Python available' }}
+          {% endif %}
+      tags: [python]
+
+    - name: Warn if Python not found (non-fatal for raw commands)
+      ansible.builtin.debug:
+        msg: "⚠️  WARNING: Python not found, but raw commands will still work"
+      when: python_check.failed
+      tags: [python]
+
+    ###########################################################################
+    # Phase 4: OpenWrt Validation
+    ###########################################################################
+
+    - name: Verify node is running OpenWrt
+      ansible.builtin.raw: |
+        if [ -f /etc/openwrt_release ]; then
+          . /etc/openwrt_release
+          echo "OpenWrt ${DISTRIB_RELEASE} (${DISTRIB_CODENAME})"
+          echo "Device: $(cat /tmp/sysinfo/model 2>/dev/null || echo 'Unknown')"
+        else
+          echo "ERROR: This does not appear to be an OpenWrt system"
+          exit 1
+        fi
+      register: openwrt_check
+      changed_when: false
+      ignore_errors: true
+      tags: [openwrt]
+
+    - name: Display OpenWrt validation result
+      ansible.builtin.debug:
+        msg: |
+          {% if openwrt_check.failed %}
+          ❌ FAILED: Node is not running OpenWrt
+          Check that you are connected to the correct device
+          {% else %}
+          ✅ PASSED: {{ openwrt_check.stdout_lines | join(', ') }}
+          {% endif %}
+      tags: [openwrt]
+
+    - name: Fail if not OpenWrt
+      ansible.builtin.fail:
+        msg: "{{ inventory_hostname }} is not an OpenWrt system"
+      when: openwrt_check.failed
+      tags: [openwrt]
+
+    ###########################################################################
+    # Phase 5: Basic Command Execution
+    ###########################################################################
+
+    - name: Test basic command execution
+      ansible.builtin.raw: |
+        echo "Hostname: $(uname -n)"
+        echo "Uptime: $(uptime | awk '{print $3,$4}' | sed 's/,//')"
+        echo "Free Memory: $(free | grep Mem | awk '{printf "%.1f MB\n", $4/1024}')"
+      register: command_test
+      changed_when: false
+      tags: [commands]
+
+    - name: Display command execution result
+      ansible.builtin.debug:
+        msg: |
+          ✅ PASSED: Command execution successful
+          {{ command_test.stdout_lines | join('\n  ') }}
+      tags: [commands]
+
+    ###########################################################################
+    # Phase 6: Summary Report
+    ###########################################################################
+
+    - name: Collect connectivity summary
+      ansible.builtin.set_fact:
+        connectivity_summary:
+          node: "{{ inventory_hostname }}"
+          ip: "{{ ansible_host }}"
+          port_reachable: "{{ not port_check.failed }}"
+          auth_success: "{{ not auth_check.failed }}"
+          python_available: "{{ not python_check.failed }}"
+          is_openwrt: "{{ not openwrt_check.failed }}"
+          status: "{{ 'READY' if (not port_check.failed and not auth_check.failed and not openwrt_check.failed) else 'FAILED' }}"
+      tags: [summary]
+
+    - name: Display connectivity summary
+      ansible.builtin.debug:
+        msg: |
+          ================================================================================
+          CONNECTIVITY CHECK SUMMARY: {{ inventory_hostname }}
+          ================================================================================
+          Node IP: {{ ansible_host }}
+          User: {{ ansible_user }}
+          Python: {{ ansible_python_interpreter }}
+
+          Checks:
+            [{{ '✓' if not port_check.failed else '✗' }}] Network - SSH port reachable
+            [{{ '✓' if not auth_check.failed else '✗' }}] Authentication - SSH login successful
+            [{{ '✓' if not python_check.failed else '⚠' }}] Python - Interpreter available
+            [{{ '✓' if not openwrt_check.failed else '✗' }}] OpenWrt - Valid OpenWrt system
+            [✓] Commands - Execution working
+
+          Overall Status: {{ connectivity_summary.status }}
+
+          {% if connectivity_summary.status == 'READY' %}
+          ✅ Node is ready for audit and deployment
+          Next steps:
+            - Run audit: make audit-{{ inventory_hostname }}
+            - Or deploy: make deploy-{{ inventory_hostname }}
+          {% else %}
+          ❌ Node is NOT ready - resolve issues above
+          {% endif %}
+          ================================================================================
+      tags: [summary]
+
+###############################################################################
+# Post-Play Report (All Nodes)
+###############################################################################
+
+- name: Overall Connectivity Report
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Display overall summary
+      ansible.builtin.debug:
+        msg: |
+          ================================================================================
+          OVERALL CONNECTIVITY CHECK COMPLETE
+          ================================================================================
+          Check individual node summaries above for details.
+
+          Quick reference:
+            - make audit          # Run full audit on all nodes
+            - make deploy         # Deploy configuration to all nodes
+            - make verify         # Verify mesh network status
+          ================================================================================
+      run_once: true
