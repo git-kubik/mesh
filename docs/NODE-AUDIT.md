@@ -42,6 +42,401 @@ This system ensures nodes are ready for full Ansible deployment before proceedin
    - Service status
    - Actionable recommendations
 
+5. **`playbooks/check-connectivity.yml`** - Connectivity check playbook
+   - Validates SSH access to nodes
+   - Tests authentication methods
+   - Verifies Python interpreter
+   - Quick pre-audit validation
+
+## Initial Node Connection Setup
+
+Before running the audit, you need to ensure SSH connectivity to your OpenWrt nodes.
+
+### Connection Methods
+
+The audit playbook connects via SSH using these settings (from `inventory/hosts.yml`):
+
+```yaml
+ansible_connection: ssh
+ansible_user: root
+ansible_python_interpreter: /usr/bin/python3
+ansible_ssh_common_args: '-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
+```
+
+### Authentication Options
+
+#### Option 1: SSH Key Authentication (Recommended)
+
+1. **Generate SSH key** (if you don't have one):
+
+   ```bash
+   ssh-keygen -t ed25519 -C "ansible@mesh-network"
+   ```
+
+2. **Copy key to each node**:
+
+   ```bash
+   # For configured nodes (10.11.12.x)
+   ssh-copy-id root@10.11.12.1
+   ssh-copy-id root@10.11.12.2
+   ssh-copy-id root@10.11.12.3
+
+   # For fresh/unconfigured nodes (factory default)
+   ssh-copy-id root@192.168.1.1
+   ```
+
+3. **Test connection**:
+
+   ```bash
+   ssh root@10.11.12.1 'uname -a'
+   ```
+
+#### Option 2: Password Authentication
+
+1. **Edit inventory file** (`inventory/hosts.yml`):
+
+   ```yaml
+   all:
+     vars:
+       ansible_ssh_pass: your_openwrt_password  # Uncomment and set
+   ```
+
+2. **Install sshpass** (required for password auth):
+
+   ```bash
+   # Ubuntu/Debian
+   sudo apt-get install sshpass
+
+   # macOS
+   brew install hudochenkov/sshpass/sshpass
+   ```
+
+### Node IP Addresses
+
+#### Fresh/Unconfigured Nodes (Factory Default)
+
+**IMPORTANT**: All fresh OpenWrt nodes start with the **same default IP** (192.168.1.1), so you can only connect to **ONE node at a time** during initial setup.
+
+New OpenWrt nodes typically start at:
+
+- **IP**: 192.168.1.1 (factory default)
+- **Access**: Connect your computer directly to LAN port
+
+**Setup Process for Each Node**:
+
+1. **Configure your workstation network interface**:
+
+   ```bash
+   # Find your network interface (e.g., eth0, enp0s31f6)
+   ip link show
+
+   # Ubuntu/Debian - Set static IP on your workstation
+   sudo ip addr add 192.168.1.100/24 dev eth0  # Replace eth0 with your interface
+   sudo ip link set eth0 up
+
+   # Or use nmcli (NetworkManager)
+   nmcli con add type ethernet ifname eth0 con-name openwrt-setup \
+     ip4 192.168.1.100/24
+
+   # macOS - Set static IP
+   sudo ifconfig en0 192.168.1.100 netmask 255.255.255.0  # Replace en0 with your interface
+   ```
+
+2. **Connect computer to node's LAN port** (use any LAN port, NOT WAN)
+
+3. **Verify connectivity**:
+
+   ```bash
+   ping 192.168.1.1
+   ```
+
+4. **Update `inventory/hosts.yml` temporarily** for this ONE node:
+
+   ```yaml
+   node1:
+     ansible_host: 192.168.1.1  # Temporary for initial setup
+   ```
+
+5. **Run connectivity check** (recommended):
+
+   ```bash
+   make check-node1
+   ```
+
+6. **Run audit**:
+
+   ```bash
+   make audit-node1
+   ```
+
+7. **Execute preparation script** (if needed):
+
+   ```bash
+   scp audit_reports/node1_prepare.sh root@192.168.1.1:/tmp/
+   ssh root@192.168.1.1 'sh /tmp/node1_prepare.sh'
+   ```
+
+8. **Deploy configuration** (this changes node IP to 10.11.12.1):
+
+   ```bash
+   make deploy-node1
+   ```
+
+9. **DISCONNECT the configured node** and **reset your workstation network**:
+
+   ```bash
+   # Ubuntu/Debian - Remove static IP
+   sudo ip addr del 192.168.1.100/24 dev eth0
+   # Or if using NetworkManager
+   nmcli con delete openwrt-setup
+
+   # macOS - Reset to DHCP
+   sudo ipconfig set en0 DHCP
+   ```
+
+10. **Update `inventory/hosts.yml` to final IP**:
+
+    ```yaml
+    node1:
+      ansible_host: 10.11.12.1  # Permanent mesh network IP
+    ```
+
+11. **Reconnect your workstation** to your regular network (or connect to the mesh network)
+
+12. **Repeat steps 1-11 for node2 and node3** (one at a time)
+
+#### Configured Nodes (After Deployment)
+
+After running the deployment playbook, nodes are at:
+
+- **node1**: 10.11.12.1
+- **node2**: 10.11.12.2
+- **node3**: 10.11.12.3
+
+### Quick Connectivity Check
+
+Before running the full audit, verify connectivity:
+
+```bash
+# Check all configured nodes (after deployment)
+make check-connectivity
+
+# Check specific node
+make check-node1         # For configured nodes
+ansible node1 -m ping    # Alternative method
+
+# Test SSH manually
+ssh root@10.11.12.1 'echo "Connection successful"'  # Configured node
+ssh root@192.168.1.1 'echo "Connection successful"' # Fresh node
+```
+
+**Note**: For fresh nodes, you can only check **one at a time** since they all have IP 192.168.1.1
+
+### Troubleshooting Connection Issues
+
+#### "Connection timed out"
+
+**Causes**:
+
+- Node is powered off
+- Wrong IP address
+- Network cable disconnected
+- Firewall blocking SSH
+
+**Solutions**:
+
+1. Verify node is powered on and booting (LED activity)
+2. Ping the node: `ping 10.11.12.1`
+3. Check network cable connection
+4. Verify IP address: `ip addr` or check DHCP leases on your router
+5. Test SSH port: `nc -zv 10.11.12.1 22`
+
+#### "Permission denied (publickey,password)"
+
+**Causes**:
+
+- SSH key not installed on node
+- Wrong password
+- Root login disabled
+
+**Solutions**:
+
+1. Try password auth: `ssh root@10.11.12.1` (enter password manually)
+2. Check if root login is allowed in `/etc/config/dropbear` on node
+3. Copy SSH key again: `ssh-copy-id root@10.11.12.1`
+4. Use password authentication in inventory (see above)
+
+#### "Host key verification failed"
+
+**Causes**:
+
+- Node was rebuilt/reflashed with different SSH key
+- IP address was reassigned to different node
+
+**Solutions**:
+
+1. Remove old key: `ssh-keygen -R 10.11.12.1`
+2. Or use the SSH options already in inventory (disables strict checking)
+
+#### "No Python interpreter found"
+
+**Causes**:
+
+- Python3 not installed on OpenWrt node
+- Wrong Python path
+
+**Solutions**:
+
+1. Install Python: `ssh root@10.11.12.1 'opkg update && opkg install python3'`
+2. Verify path: `ssh root@10.11.12.1 'which python3'`
+3. Update inventory if different path:
+
+   ```yaml
+   ansible_python_interpreter: /usr/bin/python3
+   ```
+
+### Multi-Node Setup Strategy
+
+For setting up multiple fresh nodes:
+
+**Sequential Approach** (Required for Fresh Nodes):
+
+Since all fresh nodes start at 192.168.1.1, you MUST configure them one at a time:
+
+```bash
+# ============================================================================
+# NODE 1 SETUP
+# ============================================================================
+
+# 1a. Set workstation IP to 192.168.1.100
+sudo ip addr add 192.168.1.100/24 dev eth0
+
+# 1b. Connect node1 to workstation
+# 1c. Update inventory: node1.ansible_host = 192.168.1.1
+# 1d. Check connectivity
+make check-node1
+
+# 1e. Run audit and deploy
+make audit-node1
+# ... review and execute preparation script if needed ...
+make deploy-node1  # Node IP changes to 10.11.12.1
+
+# 1f. DISCONNECT node1
+# 1g. Reset workstation network
+sudo ip addr del 192.168.1.100/24 dev eth0
+
+# 1h. Update inventory: node1.ansible_host = 10.11.12.1
+
+# ============================================================================
+# NODE 2 SETUP (Repeat process)
+# ============================================================================
+
+# 2a. Set workstation IP to 192.168.1.100 again
+sudo ip addr add 192.168.1.100/24 dev eth0
+
+# 2b. Connect node2 to workstation
+# 2c. Update inventory: node2.ansible_host = 192.168.1.1
+# 2d. Check connectivity
+make check-node2
+
+# 2e. Run audit and deploy
+make audit-node2
+# ... review and execute preparation script if needed ...
+make deploy-node2  # Node IP changes to 10.11.12.2
+
+# 2f. DISCONNECT node2
+# 2g. Reset workstation network
+sudo ip addr del 192.168.1.100/24 dev eth0
+
+# 2h. Update inventory: node2.ansible_host = 10.11.12.2
+
+# ============================================================================
+# NODE 3 SETUP (Repeat process)
+# ============================================================================
+
+# 3a. Set workstation IP to 192.168.1.100 again
+sudo ip addr add 192.168.1.100/24 dev eth0
+
+# 3b. Connect node3 to workstation
+# 3c. Update inventory: node3.ansible_host = 192.168.1.1
+# 3d. Check connectivity
+make check-node3
+
+# 3e. Run audit and deploy
+make audit-node3
+# ... review and execute preparation script if needed ...
+make deploy-node3  # Node IP changes to 10.11.12.3
+
+# 3f. DISCONNECT node3
+# 3g. Reset workstation network to normal
+sudo ip addr del 192.168.1.100/24 dev eth0
+# Or restore DHCP
+sudo dhclient eth0
+
+# 3h. Update inventory: node3.ansible_host = 10.11.12.3
+
+# ============================================================================
+# ALL NODES CONFIGURED
+# ============================================================================
+
+# 4. Connect all nodes to mesh network (wire mesh links)
+# 5. Connect workstation to mesh network or configure routing
+# 6. Verify all nodes are reachable
+make check-connectivity
+
+# 7. Verify mesh network
+make verify
+```
+
+**Parallel Approach** (Only for Pre-Configured Nodes):
+
+If nodes are **already configured** with different IPs, you can work on them simultaneously:
+
+```bash
+# All nodes already have 10.11.12.1, 10.11.12.2, 10.11.12.3
+make check-connectivity  # Check all at once
+make audit              # Audit all at once
+make deploy             # Deploy to all at once
+```
+
+**Advanced: Using Multiple Network Interfaces** (Not Recommended)
+
+If you have multiple Ethernet adapters (USB adapters, multiple NICs), you could theoretically configure multiple fresh nodes in parallel, but this requires manually changing each node's IP first:
+
+```bash
+# This is complex and error-prone - sequential approach is recommended
+# Adapter 1 (eth0) → node1 @ 192.168.1.1
+# Adapter 2 (eth1) → node2 @ 192.168.2.1  # Requires manually changing node2's IP via web UI
+# Adapter 3 (eth2) → node3 @ 192.168.3.1  # Requires manually changing node3's IP via web UI
+```
+
+### Security Considerations
+
+**SSH Options**:
+
+```yaml
+ansible_ssh_common_args: '-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
+```
+
+These options are **appropriate for**:
+
+- Lab/home environments
+- Nodes that are frequently rebuilt/reflashed
+- Rapid prototyping
+
+These options are **NOT recommended for**:
+
+- Production environments
+- Internet-facing systems
+- Security-critical deployments
+
+**For production**, remove these options and:
+
+1. Use proper SSH key management
+2. Maintain known_hosts file
+3. Enable strict host key checking
+4. Use SSH certificates or HashKnown
+
 ## Usage
 
 ### Quick Start

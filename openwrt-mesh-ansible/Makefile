@@ -1,15 +1,19 @@
 # Makefile for OpenWrt Mesh Network Ansible
 
-.PHONY: help audit deploy verify backup update check clean
+.PHONY: help check-connectivity audit deploy verify backup update check clean
 
 help:
 	@echo "OpenWrt Mesh Network - Ansible Commands"
 	@echo ""
 	@echo "Node Audit & Preparation:"
-	@echo "  make audit          - Audit all nodes (check readiness)"
-	@echo "  make audit-node1    - Audit Node 1 only"
-	@echo "  make audit-node2    - Audit Node 2 only"
-	@echo "  make audit-node3    - Audit Node 3 only"
+	@echo "  make check-connectivity - Quick SSH connectivity check (run first!)"
+	@echo "  make check-node1        - Check connectivity to Node 1 only"
+	@echo "  make check-node2        - Check connectivity to Node 2 only"
+	@echo "  make check-node3        - Check connectivity to Node 3 only"
+	@echo "  make audit              - Audit all nodes (check readiness)"
+	@echo "  make audit-node1        - Audit Node 1 only"
+	@echo "  make audit-node2        - Audit Node 2 only"
+	@echo "  make audit-node3        - Audit Node 3 only"
 	@echo ""
 	@echo "Available targets:"
 	@echo "  make deploy         - Deploy configuration to all nodes"
@@ -34,6 +38,19 @@ help:
 	@echo "  make packages        - Install packages only"
 	@echo "  make batman-status   - Check batman-adv status"
 	@echo "  make logs            - Fetch recent logs"
+
+# Node Connectivity Check
+check-connectivity:
+	ansible-playbook playbooks/check-connectivity.yml
+
+check-node1:
+	ansible-playbook playbooks/check-connectivity.yml --limit node1
+
+check-node2:
+	ansible-playbook playbooks/check-connectivity.yml --limit node2
+
+check-node3:
+	ansible-playbook playbooks/check-connectivity.yml --limit node3
 
 # Node Audit & Preparation
 audit:
