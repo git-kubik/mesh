@@ -1,9 +1,15 @@
 # Makefile for OpenWrt Mesh Network Ansible
 
-.PHONY: help deploy verify backup update check clean
+.PHONY: help audit deploy verify backup update check clean
 
 help:
 	@echo "OpenWrt Mesh Network - Ansible Commands"
+	@echo ""
+	@echo "Node Audit & Preparation:"
+	@echo "  make audit          - Audit all nodes (check readiness)"
+	@echo "  make audit-node1    - Audit Node 1 only"
+	@echo "  make audit-node2    - Audit Node 2 only"
+	@echo "  make audit-node3    - Audit Node 3 only"
 	@echo ""
 	@echo "Available targets:"
 	@echo "  make deploy         - Deploy configuration to all nodes"
@@ -29,6 +35,20 @@ help:
 	@echo "  make batman-status   - Check batman-adv status"
 	@echo "  make logs            - Fetch recent logs"
 
+# Node Audit & Preparation
+audit:
+	ansible-playbook playbooks/audit.yml
+
+audit-node1:
+	ansible-playbook playbooks/audit.yml --limit node1
+
+audit-node2:
+	ansible-playbook playbooks/audit.yml --limit node2
+
+audit-node3:
+	ansible-playbook playbooks/audit.yml --limit node3
+
+# Deployment targets
 deploy:
 	ansible-playbook playbooks/deploy.yml
 

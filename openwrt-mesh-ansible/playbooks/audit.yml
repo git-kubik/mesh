@@ -1,0 +1,294 @@
+---
+###############################################################################
+# OpenWrt Mesh Node Audit & Preparation Playbook
+###############################################################################
+#
+# Purpose: Audit mesh nodes to identify hardware, installed software, and
+#          generate preparation scripts for automation deployment.
+#
+# Usage:
+#   # Audit all nodes
+#   ansible-playbook -i inventory/hosts.yml playbooks/audit.yml
+#
+#   # Audit specific node
+#   ansible-playbook -i inventory/hosts.yml playbooks/audit.yml -l node1
+#
+#   # Save report to custom location
+#   ansible-playbook -i inventory/hosts.yml playbooks/audit.yml \
+#     -e "audit_report_dir=/path/to/reports"
+#
+# Output:
+#   - JSON report: ./audit_reports/<hostname>_audit_YYYY-MM-DD_HH-MM-SS.json
+#   - Preparation script: ./audit_reports/<hostname>_prepare.sh
+#   - Summary: Displayed at end of playbook run
+#
+###############################################################################
+
+- name: Audit OpenWrt Mesh Nodes
+  hosts: mesh_nodes
+  gather_facts: false
+  vars:
+    audit_report_dir: "./audit_reports"
+    audit_timestamp: "{{ lookup('pipe', 'date +%Y-%m-%d_%H-%M-%S') }}"
+
+  tasks:
+    ###########################################################################
+    # Phase 1: Connection & Basic Info
+    ###########################################################################
+
+    - name: Wait for nodes to be reachable
+      ansible.builtin.wait_for_connection:
+        timeout: 60
+        delay: 2
+      tags: [always]
+
+    - name: Gather basic system information
+      ansible.builtin.raw: |
+        cat /etc/os-release 2>/dev/null || echo "UNKNOWN"
+        uname -a
+      register: system_info_raw
+      changed_when: false
+      tags: [info]
+
+    ###########################################################################
+    # Phase 2: Hardware Identification
+    ###########################################################################
+
+    - name: Identify hardware model
+      ansible.builtin.raw: cat /tmp/sysinfo/model 2>/dev/null || echo "UNKNOWN"
+      register: hardware_model
+      changed_when: false
+      tags: [hardware]
+
+    - name: Get CPU information
+      ansible.builtin.raw: cat /proc/cpuinfo | grep -E "(model name|cpu model|Hardware)" | head -1
+      register: cpu_info
+      changed_when: false
+      tags: [hardware]
+
+    - name: Get memory information
+      ansible.builtin.raw: free -m | grep Mem | awk '{print $2}'
+      register: memory_mb
+      changed_when: false
+      tags: [hardware]
+
+    - name: Get flash/storage information
+      ansible.builtin.raw: df -h / | tail -1 | awk '{print $2}'
+      register: flash_size
+      changed_when: false
+      tags: [hardware]
+
+    - name: Get OpenWrt version
+      ansible.builtin.raw: cat /etc/openwrt_release | grep DISTRIB_RELEASE | cut -d"'" -f2
+      register: openwrt_version
+      changed_when: false
+      tags: [hardware]
+
+    - name: Get kernel version
+      ansible.builtin.raw: uname -r
+      register: kernel_version
+      changed_when: false
+      tags: [hardware]
+
+    - name: Get network interfaces
+      ansible.builtin.raw: ip -br link show | awk '{print $1}' | grep -v "^lo$"
+      register: network_interfaces
+      changed_when: false
+      tags: [hardware]
+
+    ###########################################################################
+    # Phase 3: Software Inventory
+    ###########################################################################
+
+    - name: Get list of installed packages
+      ansible.builtin.raw: opkg list-installed
+      register: installed_packages_raw
+      changed_when: false
+      tags: [software]
+
+    - name: Parse installed packages
+      ansible.builtin.set_fact:
+        installed_packages: "{{ installed_packages_raw.stdout | parse_opkg_list }}"
+      tags: [software]
+
+    - name: Get opkg repository status
+      ansible.builtin.raw: opkg update --verbosity=0 2>&1 && echo "SUCCESS" || echo "FAILED"
+      register: opkg_update_status
+      changed_when: false
+      tags: [software]
+
+    ###########################################################################
+    # Phase 4: Package Comparison Analysis
+    ###########################################################################
+
+    - name: Compare installed packages against requirements
+      ansible.builtin.set_fact:
+        package_audit: "{{
+          installed_packages | compare_packages(
+            required_packages,
+            remove_packages,
+            optional_packages
+          )
+        }}"
+      tags: [analysis]
+
+    - name: Generate install commands
+      ansible.builtin.set_fact:
+        install_commands: "{{
+          package_audit.missing_required | generate_install_commands
+        }}"
+      when: package_audit.missing_required | length > 0
+      tags: [analysis]
+
+    - name: Generate remove commands
+      ansible.builtin.set_fact:
+        remove_commands: "{{
+          package_audit.conflicting | generate_remove_commands
+        }}"
+      when: package_audit.conflicting | length > 0
+      tags: [analysis]
+
+    ###########################################################################
+    # Phase 5: Service & Configuration Check
+    ###########################################################################
+
+    - name: Check if batman-adv module is loaded
+      ansible.builtin.raw: lsmod | grep batman_adv || echo "NOT_LOADED"
+      register: batman_module_status
+      changed_when: false
+      tags: [services]
+
+    - name: Check critical services status
+      ansible.builtin.raw: |
+        for svc in network firewall dnsmasq dropbear uhttpd; do
+          /etc/init.d/$svc enabled && echo "$svc: ENABLED" || echo "$svc: DISABLED"
+        done
+      register: services_status
+      changed_when: false
+      tags: [services]
+
+    - name: Check SSH configuration
+      ansible.builtin.raw: |
+        grep -E "^PermitRootLogin|^Port" /etc/config/dropbear 2>/dev/null || echo "NONE"
+      register: ssh_config
+      changed_when: false
+      tags: [services]
+
+    ###########################################################################
+    # Phase 6: Report Generation
+    ###########################################################################
+
+    - name: Create audit report directory (local)
+      ansible.builtin.file:
+        path: "{{ audit_report_dir }}"
+        state: directory
+        mode: "0755"
+      delegate_to: localhost
+      run_once: true
+      tags: [report]
+
+    - name: Build comprehensive audit report
+      ansible.builtin.set_fact:
+        audit_report:
+          metadata:
+            hostname: "{{ inventory_hostname }}"
+            audit_timestamp: "{{ audit_timestamp }}"
+            ansible_host: "{{ ansible_host }}"
+          hardware:
+            model: "{{ hardware_model.stdout | trim }}"
+            cpu: "{{ cpu_info.stdout | trim }}"
+            memory_mb: "{{ memory_mb.stdout | trim }}"
+            flash_size: "{{ flash_size.stdout | trim }}"
+            network_interfaces: "{{ network_interfaces.stdout_lines }}"
+          software:
+            openwrt_version: "{{ openwrt_version.stdout | trim }}"
+            kernel_version: "{{ kernel_version.stdout | trim }}"
+            batman_module: "{{ 'loaded' if 'batman_adv' in batman_module_status.stdout else 'not_loaded' }}"
+            opkg_update: "{{ 'success' if 'SUCCESS' in opkg_update_status.stdout else 'failed' }}"
+          packages:
+            installed_count: "{{ installed_packages | length }}"
+            installed_list: "{{ installed_packages }}"
+            audit: "{{ package_audit }}"
+          services:
+            status: "{{ services_status.stdout_lines }}"
+            ssh_config: "{{ ssh_config.stdout_lines }}"
+          recommendations:
+            status: "{{ package_audit.audit_status }}"
+            actions_required: "{{
+              (package_audit.conflicting | length > 0) or
+              (package_audit.missing_required | length > 0)
+            }}"
+            remove_packages: "{{ package_audit.conflicting }}"
+            install_packages: "{{ package_audit.missing_required }}"
+      tags: [report]
+
+    - name: Save audit report to JSON
+      ansible.builtin.copy:
+        content: "{{ audit_report | to_nice_json }}"
+        dest: "{{ audit_report_dir }}/{{ inventory_hostname }}_audit_{{ audit_timestamp }}.json"
+        mode: "0644"
+      delegate_to: localhost
+      tags: [report]
+
+    - name: Generate preparation script from template
+      ansible.builtin.template:
+        src: ../templates/prepare_node.sh.j2
+        dest: "{{ audit_report_dir }}/{{ inventory_hostname }}_prepare.sh"
+        mode: "0755"
+      delegate_to: localhost
+      tags: [report, script]
+
+    ###########################################################################
+    # Phase 7: Summary Output
+    ###########################################################################
+
+    - name: Display audit summary
+      ansible.builtin.debug:
+        msg: |
+          ================================================================================
+          AUDIT SUMMARY: {{ inventory_hostname }}
+          ================================================================================
+          Hardware:
+            Model: {{ hardware_model.stdout | trim }}
+            Memory: {{ memory_mb.stdout | trim }} MB
+            Storage: {{ flash_size.stdout | trim }}
+            OpenWrt: {{ openwrt_version.stdout | trim }}
+            Kernel: {{ kernel_version.stdout | trim }}
+
+          Package Status:
+            Total Installed: {{ installed_packages | length }}
+            Required Installed: {{ package_audit.installed_required | length }}/{{ required_packages | length }}
+            Missing Required: {{ package_audit.missing_required | length }}
+            Conflicts Found: {{ package_audit.conflicting | length }}
+
+          Audit Status: {{ package_audit.audit_status | upper }}
+
+          {% if package_audit.missing_required | length > 0 %}
+          Missing Packages:
+          {% for pkg in package_audit.missing_required %}
+            - {{ pkg }}
+          {% endfor %}
+          {% endif %}
+
+          {% if package_audit.conflicting | length > 0 %}
+          Conflicting Packages (must remove):
+          {% for pkg in package_audit.conflicting %}
+            - {{ pkg }}
+          {% endfor %}
+          {% endif %}
+
+          Reports Generated:
+            - {{ audit_report_dir }}/{{ inventory_hostname }}_audit_{{ audit_timestamp }}.json
+            - {{ audit_report_dir }}/{{ inventory_hostname }}_prepare.sh
+
+          {% if package_audit.audit_status != 'ready' %}
+          Next Steps:
+            1. Review the preparation script
+            2. Copy to node: scp {{ audit_report_dir }}/{{ inventory_hostname }}_prepare.sh root@{{ ansible_host }}:/tmp/
+            3. Execute on node: ssh root@{{ ansible_host }} 'sh /tmp/{{ inventory_hostname }}_prepare.sh'
+            4. Re-run audit to verify
+          {% else %}
+          Node is READY for full Ansible deployment!
+          {% endif %}
+          ================================================================================
+      tags: [summary]
