@@ -479,9 +479,7 @@
     ###########################################################################
 
     - name: Reboot node to apply all configurations
-      shell: "sleep 2 && reboot"
-      async: 1
-      poll: 0
+      shell: "nohup sh -c 'sleep 2 && reboot' >/dev/null 2>&1 &"
       ignore_errors: true
       when:
         - not (lookup('env', 'SKIP_REBOOT') | default('false', true) | bool)
