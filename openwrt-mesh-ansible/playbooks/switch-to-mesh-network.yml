@@ -1,0 +1,114 @@
+---
+# Switch local workstation network to connect to configured mesh nodes
+#
+# This playbook configures the local eth2 interface to 10.11.12.100/24
+# allowing connection to configured OpenWrt mesh nodes at 10.11.12.x
+#
+# Usage:
+#   ansible-playbook playbooks/switch-to-mesh-network.yml
+#   make switch-to-mesh-network
+
+- name: Switch workstation to mesh network (10.11.12.x)
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  become: true
+
+  vars:
+    interface: "{{ lookup('env', 'ETH_INTERFACE') | default('eth2', true) }}"
+    address: "10.11.12.100/24"
+    gateway: "10.11.12.1"
+    network: "10.11.12.0/24"
+    initial_network: "192.168.1.0/24"
+
+  tasks:
+    - name: Check if interface exists
+      command: ip link show {{ interface }}
+      register: interface_check
+      failed_when: false
+      changed_when: false
+
+    - name: Display available interfaces if target not found
+      block:
+        - name: Get available interfaces
+          command: ip -br link show
+          register: available_interfaces
+          changed_when: false
+
+        - name: Show error and available interfaces
+          fail:
+            msg: |
+              Error: Interface {{ interface }} does not exist
+
+              Available interfaces:
+              {{ available_interfaces.stdout }}
+
+              Set ETH_INTERFACE in .env to use a different interface
+      when: interface_check.rc != 0
+
+    - name: Get current IP address
+      shell: ip -4 addr show {{ interface }} | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | head -n1
+      register: current_ip
+      failed_when: false
+      changed_when: false
+
+    - name: Display current configuration
+      debug:
+        msg: |
+          Current IP on {{ interface }}: {{ current_ip.stdout | default('none') }}
+          Switching to: {{ address }}
+
+    - name: Remove old network-specific routes
+      command: ip route del {{ item }}
+      loop:
+        - "{{ network }}"
+        - "{{ initial_network }}"
+      failed_when: false
+      changed_when: false
+
+    - name: Flush current IP addresses on interface
+      command: ip addr flush dev {{ interface }}
+      changed_when: true
+
+    - name: Add new IP address
+      command: ip addr add {{ address }} dev {{ interface }}
+      changed_when: true
+
+    - name: Bring interface up
+      command: ip link set {{ interface }} up
+      changed_when: true
+
+    - name: Display new configuration
+      block:
+        - name: Get interface IP info
+          command: ip -4 addr show {{ interface }}
+          register: interface_info
+          changed_when: false
+
+        - name: Get route table
+          command: ip route show
+          register: route_info
+          changed_when: false
+
+        - name: Show configuration summary
+          debug:
+            msg: |
+              ═══════════════════════════════════════
+              ✓ Successfully switched to mesh network
+              ═══════════════════════════════════════
+
+              Interface: {{ interface }}
+              IP Address: {{ address }}
+              Gateway: {{ gateway }}
+
+              Current configuration:
+              {{ interface_info.stdout }}
+
+              Routes:
+              {{ route_info.stdout }}
+              ═══════════════════════════════════════
+
+              Ready to connect to mesh nodes at:
+              - Node 1: 10.11.12.1
+              - Node 2: 10.11.12.2
+              - Node 3: 10.11.12.3
