@@ -498,7 +498,7 @@
         - reboot
 
     - name: Reboot node to apply all configurations
-      shell: "nohup sh -c 'sleep 2 && reboot' >/dev/null 2>&1 &"
+      shell: "(sleep 2 && reboot) & sleep 1"
       register: reboot_result
       ignore_errors: true
       when:
