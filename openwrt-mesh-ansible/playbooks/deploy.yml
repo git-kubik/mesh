@@ -479,7 +479,7 @@
     ###########################################################################
 
     - name: Reboot node to apply all configurations
-      raw: "sleep 2 && reboot"
+      shell: "sleep 2 && reboot"
       async: 1
       poll: 0
       ignore_errors: true
