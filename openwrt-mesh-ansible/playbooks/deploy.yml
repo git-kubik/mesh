@@ -478,12 +478,48 @@
     # Can be skipped for production redeployments with SKIP_REBOOT=true
     ###########################################################################
 
+    - name: DEBUG - Check reboot command availability
+      raw: "which reboot && echo 'REBOOT_FOUND' || echo 'REBOOT_NOT_FOUND'"
+      register: reboot_check
+      changed_when: false
+      when:
+        - not (lookup('env', 'SKIP_REBOOT') | default('false', true) | bool)
+        - not ansible_check_mode
+      tags:
+        - reboot
+
+    - name: DEBUG - Display reboot command check
+      debug:
+        msg: "Reboot command check: {{ reboot_check.stdout_lines | default(['not checked']) }}"
+      when:
+        - not (lookup('env', 'SKIP_REBOOT') | default('false', true) | bool)
+        - not ansible_check_mode
+      tags:
+        - reboot
+
     - name: Reboot node to apply all configurations
       shell: "nohup sh -c 'sleep 2 && reboot' >/dev/null 2>&1 &"
+      register: reboot_result
       ignore_errors: true
       when:
         - not (lookup('env', 'SKIP_REBOOT') | default('false', true) | bool)
         - not ansible_check_mode
+      tags:
+        - reboot
+
+    - name: DEBUG - Display reboot task result
+      debug:
+        msg: |
+          Reboot task executed:
+          - Return code: {{ reboot_result.rc | default('N/A') }}
+          - Changed: {{ reboot_result.changed | default('N/A') }}
+          - Failed: {{ reboot_result.failed | default('N/A') }}
+          - Stdout: {{ reboot_result.stdout | default('empty') }}
+          - Stderr: {{ reboot_result.stderr | default('empty') }}
+      when:
+        - not (lookup('env', 'SKIP_REBOOT') | default('false', true) | bool)
+        - not ansible_check_mode
+        - reboot_result is defined
       tags:
         - reboot
 
