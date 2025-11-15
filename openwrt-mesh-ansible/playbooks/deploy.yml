@@ -501,6 +501,7 @@
       shell: "(sleep 2 && reboot) & sleep 1"
       register: reboot_result
       ignore_errors: true
+      ignore_unreachable: yes
       when:
         - not (lookup('env', 'SKIP_REBOOT') | default('false', true) | bool)
         - not ansible_check_mode
