@@ -30,6 +30,10 @@
   vars:
     audit_report_dir: "./audit_reports"
     audit_timestamp: "{{ lookup('pipe', 'date +%Y-%m-%d_%H-%M-%S') }}"
+    # Load package lists from group_vars (with fallback defaults)
+    required_packages: "{{ lookup('env', 'REQUIRED_PACKAGES') | default('python3,kmod-batman-adv,batctl,wpad-mesh-mbedtls,ip-full,tcpdump-mini,openssh-server,openssh-sftp-server,openssh-keygen', true) | split(',') }}"
+    remove_packages: "{{ lookup('env', 'REMOVE_PACKAGES') | default('wpad-basic-mbedtls,wpad-basic-wolfssl,wpad-basic', true) | split(',') }}"
+    optional_packages: "{{ lookup('env', 'OPTIONAL_PACKAGES') | default('iperf3,ethtool,nano,htop,rsync', true) | split(',') }}"
 
   tasks:
     ###########################################################################
@@ -108,7 +112,7 @@
 
     - name: Parse installed packages
       ansible.builtin.set_fact:
-        installed_packages: "{{ installed_packages_raw.stdout | parse_opkg_list }}"
+        installed_packages: "{{ installed_packages_raw.stdout_lines | map('regex_replace', '^([^\\s]+)\\s+-.*$', '\\1') | list }}"
       tags: [software]
 
     - name: Get opkg repository status
@@ -123,28 +127,23 @@
 
     - name: Compare installed packages against requirements
       ansible.builtin.set_fact:
-        package_audit: "{{
-          installed_packages | compare_packages(
-            required_packages,
-            remove_packages,
-            optional_packages
-          )
-        }}"
+        package_audit:
+          installed_required: "{{ installed_packages | intersect(required_packages) }}"
+          missing_required: "{{ required_packages | difference(installed_packages) }}"
+          conflicting: "{{ installed_packages | intersect(remove_packages) }}"
+          installed_optional: "{{ installed_packages | intersect(optional_packages) }}"
+          audit_status: "{{ 'ready' if (required_packages | difference(installed_packages) | length == 0 and installed_packages | intersect(remove_packages) | length == 0) else 'needs_preparation' }}"
       tags: [analysis]
 
     - name: Generate install commands
       ansible.builtin.set_fact:
-        install_commands: "{{
-          package_audit.missing_required | generate_install_commands
-        }}"
+        install_commands: "opkg install {{ package_audit.missing_required | join(' ') }}"
       when: package_audit.missing_required | length > 0
       tags: [analysis]
 
     - name: Generate remove commands
       ansible.builtin.set_fact:
-        remove_commands: "{{
-          package_audit.conflicting | generate_remove_commands
-        }}"
+        remove_commands: "opkg remove {{ package_audit.conflicting | join(' ') }}"
       when: package_audit.conflicting | length > 0
       tags: [analysis]
 

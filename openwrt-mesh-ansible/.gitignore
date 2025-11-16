@@ -10,6 +10,9 @@ backups/
 # Logs
 *.log
 
+# Audit reports (generated files)
+audit_reports/
+
 # SSH keys (keep private)
 *.pem
 *.key
@@ -17,7 +20,12 @@ id_rsa*
 id_ed25519*
 
 # Sensitive data
-# Uncomment if you don't want passwords in version control
+# Environment files with passwords and secrets
+.env
+.env.local
+.env.*.local
+
+# Ansible vault files (if used)
 # group_vars/all.yml
 # host_vars/*/secrets.yml
 
