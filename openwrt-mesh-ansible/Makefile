@@ -27,22 +27,28 @@ help:
 	@echo "PHASE 1: Initial Setup (Fresh OpenWrt - Dropbear, No Password)"
 	@echo "=========================================="
 	@echo "Configure ONE node at a time (all start at 192.168.1.1, no root password):"
+	@echo ""
+	@echo "Check connectivity:"
 	@echo "  make check-initial-node1     - Check fresh Node 1 (at 192.168.1.1)"
 	@echo "  make check-initial-node2     - Check fresh Node 2 (at 192.168.1.1)"
 	@echo "  make check-initial-node3     - Check fresh Node 3 (at 192.168.1.1)"
-	@echo "  make deploy-initial-node1    - Deploy to fresh Node 1"
-	@echo "  make deploy-initial-node2    - Deploy to fresh Node 2"
-	@echo "  make deploy-initial-node3    - Deploy to fresh Node 3"
 	@echo ""
-	@echo "Verbose versions (with detailed debugging -vvv + auto network switching):"
-	@echo "  make deploy-initial-node1-verbose    - Deploy Node 1 with verbose output"
-	@echo "  make deploy-initial-node2-verbose    - Deploy Node 2 with verbose output"
-	@echo "  make deploy-initial-node3-verbose    - Deploy Node 3 with verbose output"
+	@echo "Deploy (includes automatic network switching):"
+	@echo "  make deploy-initial-node1            - Deploy to Node 1 (quiet)"
+	@echo "  make deploy-initial-node2            - Deploy to Node 2 (quiet)"
+	@echo "  make deploy-initial-node3            - Deploy to Node 3 (quiet)"
+	@echo "  make deploy-initial-node1 VERBOSE=1  - Deploy to Node 1 (verbose -vvv)"
+	@echo "  make deploy-initial-node2 VERBOSE=1  - Deploy to Node 2 (verbose -vvv)"
+	@echo "  make deploy-initial-node3 VERBOSE=1  - Deploy to Node 3 (verbose -vvv)"
 	@echo ""
-	@echo "Network switching (for workstation eth2 interface):"
-	@echo "  make switch-to-initial-network       - Switch to 192.168.1.100 (for fresh nodes)"
-	@echo "  make switch-to-mesh-network          - Switch to 10.11.12.100 (for mesh nodes)"
-	@echo "  Note: Verbose deployment targets automatically switch networks"
+	@echo "Each deployment automatically:"
+	@echo "  1. Switches workstation to 192.168.1.100 (initial network)"
+	@echo "  2. Deploys configuration to node at 192.168.1.1"
+	@echo "  3. Switches workstation to 10.11.12.100 (mesh network)"
+	@echo ""
+	@echo "Manual network switching (if needed):"
+	@echo "  make switch-to-initial-network       - Switch to 192.168.1.100"
+	@echo "  make switch-to-mesh-network          - Switch to 10.11.12.100"
 	@echo ""
 	@echo "=========================================="
 	@echo "PHASE 2: Production (OpenSSH with SSH Key)"
@@ -106,13 +112,19 @@ check-initial-node3:
 	@bash -c "$(ANSIBLE_CMD) -i inventory/hosts-initial.yml playbooks/check-connectivity.yml --limit node3"
 
 deploy-initial-node1:
-	@bash -c "$(ANSIBLE_CMD) -i inventory/hosts-initial.yml playbooks/deploy.yml --limit node1"
+	@bash -c "$(ANSIBLE_CMD) playbooks/switch-to-initial-network.yml && \
+	          $(ANSIBLE_CMD) -i inventory/hosts-initial.yml playbooks/deploy.yml --limit node1 $(if $(VERBOSE),-vvv) && \
+	          $(ANSIBLE_CMD) playbooks/switch-to-mesh-network.yml"
 
 deploy-initial-node2:
-	@bash -c "$(ANSIBLE_CMD) -i inventory/hosts-initial.yml playbooks/deploy.yml --limit node2"
+	@bash -c "$(ANSIBLE_CMD) playbooks/switch-to-initial-network.yml && \
+	          $(ANSIBLE_CMD) -i inventory/hosts-initial.yml playbooks/deploy.yml --limit node2 $(if $(VERBOSE),-vvv) && \
+	          $(ANSIBLE_CMD) playbooks/switch-to-mesh-network.yml"
 
 deploy-initial-node3:
-	@bash -c "$(ANSIBLE_CMD) -i inventory/hosts-initial.yml playbooks/deploy.yml --limit node3"
+	@bash -c "$(ANSIBLE_CMD) playbooks/switch-to-initial-network.yml && \
+	          $(ANSIBLE_CMD) -i inventory/hosts-initial.yml playbooks/deploy.yml --limit node3 $(if $(VERBOSE),-vvv) && \
+	          $(ANSIBLE_CMD) playbooks/switch-to-mesh-network.yml"
 
 # Network switching (for workstation eth interface)
 switch-to-initial-network:
@@ -121,22 +133,15 @@ switch-to-initial-network:
 switch-to-mesh-network:
 	@bash -c "$(ANSIBLE_CMD) playbooks/switch-to-mesh-network.yml"
 
-# Verbose versions (with -vvv for detailed debugging)
-# deploy-initial-node1-verbose also handles network switching automatically
+# Backward compatibility aliases (deprecated - use VERBOSE=1 instead)
 deploy-initial-node1-verbose:
-	@bash -c "$(ANSIBLE_CMD) playbooks/switch-to-initial-network.yml && \
-	          $(ANSIBLE_CMD) -i inventory/hosts-initial.yml playbooks/deploy.yml --limit node1 -vvv && \
-	          $(ANSIBLE_CMD) playbooks/switch-to-mesh-network.yml"
+	@$(MAKE) deploy-initial-node1 VERBOSE=1
 
 deploy-initial-node2-verbose:
-	@bash -c "$(ANSIBLE_CMD) playbooks/switch-to-initial-network.yml && \
-	          $(ANSIBLE_CMD) -i inventory/hosts-initial.yml playbooks/deploy.yml --limit node2 -vvv && \
-	          $(ANSIBLE_CMD) playbooks/switch-to-mesh-network.yml"
+	@$(MAKE) deploy-initial-node2 VERBOSE=1
 
 deploy-initial-node3-verbose:
-	@bash -c "$(ANSIBLE_CMD) playbooks/switch-to-initial-network.yml && \
-	          $(ANSIBLE_CMD) -i inventory/hosts-initial.yml playbooks/deploy.yml --limit node3 -vvv && \
-	          $(ANSIBLE_CMD) playbooks/switch-to-mesh-network.yml"
+	@$(MAKE) deploy-initial-node3 VERBOSE=1
 
 # ============================================================================
 # PHASE 2: Production - Configured Mesh Nodes (10.11.12.x)
