@@ -169,7 +169,7 @@
 
     - name: Remove conflicting packages
       raw: "opkg remove {{ item }} --force-removal-of-dependent-packages"
-      loop: "{{ lookup('env', 'REMOVE_PACKAGES') | default('wpad-basic-mbedtls,wpad-basic-wolfssl,wpad-basic', true) | split(',') }}"
+      loop: "{{ lookup('env', 'REMOVE_PACKAGES') | default('wpad-basic-mbedtls,wpad-basic-wolfssl,wpad-basic,batctl-tiny', true) | split(',') }}"
       register: remove_result
       changed_when: "'Removing package' in remove_result.stdout"
       failed_when: false
