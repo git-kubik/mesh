@@ -183,6 +183,20 @@
       failed_when: "'Cannot install package' in install_result.stderr"
       tags: packages
 
+    - name: Remove batctl-tiny if installed (kmod-batman-adv dependency)
+      raw: "opkg remove batctl-tiny --force-removal-of-dependent-packages"
+      register: remove_batctl_tiny
+      changed_when: "'Removing package' in remove_batctl_tiny.stdout"
+      failed_when: false
+      tags: packages
+
+    - name: Install full batctl package
+      raw: "opkg install batctl --force-overwrite"
+      register: batctl_install
+      changed_when: "'Installing' in batctl_install.stdout or 'Configuring' in batctl_install.stdout"
+      failed_when: false
+      tags: packages
+
     - name: Install optional packages
       raw: "opkg install {{ item }}"
       loop: "{{ lookup('env', 'OPTIONAL_PACKAGES') | default('iperf3,ethtool,nano,htop,rsync', true) | split(',') }}"
