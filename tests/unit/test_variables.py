@@ -4,8 +4,51 @@ Unit tests for Ansible variable validation.
 Tests validate variable types, ranges, and interdependencies.
 """
 
+import re
+from typing import Any
+
 import pytest
 import yaml
+
+
+def extract_default(value: Any) -> Any:
+    """
+    Extract default value from Jinja2 template string.
+
+    Handles templates like:
+    - "{{ lookup('env', 'VAR') | default('value', true) }}"
+    - "{{ lookup('env', 'VAR') | default('value', true) | int }}"
+    - "{{ lookup('env', 'VAR') | default('a,b,c', true) | split(',') }}"
+
+    Args:
+        value: Raw value from YAML (may be template or actual value)
+
+    Returns:
+        Extracted default value with proper type conversion
+    """
+    if not isinstance(value, str):
+        return value
+
+    # Check if it's a Jinja2 template
+    if not value.startswith("{{") or not value.endswith("}}"):
+        return value
+
+    # Extract default value from | default('value', true)
+    match = re.search(r"\|\s*default\('([^']+)',\s*true\)", value)
+    if not match:
+        return value
+
+    default_val = match.group(1)
+
+    # Check if there's a type filter (int, bool, split)
+    if "| int" in value:
+        return int(default_val)
+    elif "| bool" in value:
+        return default_val.lower() in ("true", "yes", "1")
+    elif "| split(',')" in value:
+        return [item.strip() for item in default_val.split(",")]
+
+    return default_val
 
 
 @pytest.mark.unit
@@ -21,9 +64,9 @@ def test_network_variables_consistency(group_vars_path: str) -> None:
     with open(group_vars_path, "r") as f:
         config = yaml.safe_load(f)
 
-    network = config["mesh_network"]
-    gateway = config["mesh_gateway"]
-    cidr = config["mesh_cidr"]
+    network = extract_default(config["mesh_network"])
+    gateway = extract_default(config["mesh_gateway"])
+    cidr = extract_default(config["mesh_cidr"])
 
     # Basic validation
     assert network.startswith("10.11.12"), "Network should be in 10.11.12.0/24 range"
@@ -44,7 +87,7 @@ def test_batman_bandwidth_format(group_vars_path: str) -> None:
     with open(group_vars_path, "r") as f:
         config = yaml.safe_load(f)
 
-    bandwidth = config["batman_gw_bandwidth"]
+    bandwidth = extract_default(config["batman_gw_bandwidth"])
     assert "/" in bandwidth, "Bandwidth should be in download/upload format"
 
     parts = bandwidth.split("/")
@@ -69,8 +112,8 @@ def test_wireless_channel_validity(group_vars_path: str) -> None:
     with open(group_vars_path, "r") as f:
         config = yaml.safe_load(f)
 
-    mesh_channel = config["mesh_channel"]
-    client_channel = config["client_channel"]
+    mesh_channel = extract_default(config["mesh_channel"])
+    client_channel = extract_default(config["client_channel"])
 
     # Mesh is 2.4GHz
     assert 1 <= mesh_channel <= 14, "Mesh channel must be in 2.4GHz range (1-14)"
@@ -93,8 +136,8 @@ def test_mtu_settings_valid(group_vars_path: str) -> None:
         config = yaml.safe_load(f)
 
     if "mtu_wired_mesh" in config and "mtu_wireless_mesh" in config:
-        wired_mtu = config["mtu_wired_mesh"]
-        wireless_mtu = config["mtu_wireless_mesh"]
+        wired_mtu = extract_default(config["mtu_wired_mesh"])
+        wireless_mtu = extract_default(config["mtu_wireless_mesh"])
 
         assert 1280 <= wired_mtu <= 1600, "Wired MTU should be in reasonable range"
         assert 1280 <= wireless_mtu <= 1600, "Wireless MTU should be in reasonable range"
@@ -134,8 +177,8 @@ def test_encryption_types_valid(group_vars_path: str) -> None:
     valid_mesh_encryption = ["none", "sae"]
     valid_client_encryption = ["none", "psk", "psk2", "psk+ccmp", "psk2+ccmp"]
 
-    mesh_enc = config["mesh_encryption"]
-    client_enc = config["client_encryption"]
+    mesh_enc = extract_default(config["mesh_encryption"])
+    client_enc = extract_default(config["client_encryption"])
 
     assert mesh_enc in valid_mesh_encryption, f"Invalid mesh encryption: {mesh_enc}"
     assert client_enc in valid_client_encryption, f"Invalid client encryption: {client_enc}"
