@@ -5,8 +5,51 @@ Tests validate group_vars configuration including network settings,
 Batman-adv configuration, wireless settings, and DHCP configuration.
 """
 
+import re
+from typing import Any
+
 import pytest
 import yaml
+
+
+def extract_default(value: Any) -> Any:
+    """
+    Extract default value from Jinja2 template string.
+
+    Handles templates like:
+    - "{{ lookup('env', 'VAR') | default('value', true) }}"
+    - "{{ lookup('env', 'VAR') | default('value', true) | int }}"
+    - "{{ lookup('env', 'VAR') | default('a,b,c', true) | split(',') }}"
+
+    Args:
+        value: Raw value from YAML (may be template or actual value)
+
+    Returns:
+        Extracted default value with proper type conversion
+    """
+    if not isinstance(value, str):
+        return value
+
+    # Check if it's a Jinja2 template
+    if not value.startswith("{{") or not value.endswith("}}"):
+        return value
+
+    # Extract default value from | default('value', true)
+    match = re.search(r"\|\s*default\('([^']+)',\s*true\)", value)
+    if not match:
+        return value
+
+    default_val = match.group(1)
+
+    # Check if there's a type filter (int, bool, split)
+    if "| int" in value:
+        return int(default_val)
+    elif "| bool" in value:
+        return default_val.lower() in ("true", "yes", "1")
+    elif "| split(',')" in value:
+        return [item.strip() for item in default_val.split(",")]
+
+    return default_val
 
 
 @pytest.mark.unit
@@ -55,9 +98,9 @@ def test_mesh_network_configuration(group_vars_path: str) -> None:
     assert "mesh_cidr" in config, "mesh_cidr not defined"
     assert "mesh_gateway" in config, "mesh_gateway not defined"
 
-    # Validate values
-    assert config["mesh_network"] == "10.11.12.0", "Unexpected mesh network"
-    assert config["mesh_cidr"] == 24, "Unexpected CIDR notation"
+    # Validate values (extract defaults from templates)
+    assert extract_default(config["mesh_network"]) == "10.11.12.0", "Unexpected mesh network"
+    assert extract_default(config["mesh_cidr"]) == 24, "Unexpected CIDR notation"
 
 
 @pytest.mark.unit
@@ -83,8 +126,8 @@ def test_batman_configuration(group_vars_path: str) -> None:
     for key in required_keys:
         assert key in config, f"Batman config missing: {key}"
 
-    # Validate algorithm
-    assert config["batman_routing_algo"] in [
+    # Validate algorithm (extract default from template)
+    assert extract_default(config["batman_routing_algo"]) in [
         "BATMAN_IV",
         "BATMAN_V",
     ], "Invalid routing algorithm"
@@ -115,8 +158,10 @@ def test_wireless_mesh_configuration(group_vars_path: str) -> None:
     for key in required_keys:
         assert key in config, f"Mesh wireless config missing: {key}"
 
-    # Validate channel is in 2.4GHz range
-    assert 1 <= config["mesh_channel"] <= 14, "Invalid 2.4GHz channel"
+    # Validate channel is in 2.4GHz range (extract default from template)
+    mesh_channel = extract_default(config["mesh_channel"])
+    assert isinstance(mesh_channel, int), "mesh_channel must be integer"
+    assert 1 <= mesh_channel <= 14, "Invalid 2.4GHz channel"
 
 
 @pytest.mark.unit
@@ -144,8 +189,10 @@ def test_client_wireless_configuration(group_vars_path: str) -> None:
     for key in required_keys:
         assert key in config, f"Client wireless config missing: {key}"
 
-    # Validate 5GHz channel
-    assert config["client_channel"] >= 36, "Client channel should be in 5GHz range"
+    # Validate 5GHz channel (extract default from template)
+    client_channel = extract_default(config["client_channel"])
+    assert isinstance(client_channel, int), "client_channel must be integer"
+    assert client_channel >= 36, "Client channel should be in 5GHz range"
 
 
 @pytest.mark.unit
@@ -176,10 +223,15 @@ def test_dhcp_configuration(group_vars_path: str) -> None:
         pool = config["dhcp_pools"][node]
         assert "start" in pool, f"start missing in {node} DHCP pool"
         assert "limit" in pool, f"limit missing in {node} DHCP pool"
-        assert isinstance(pool["start"], int), f"{node} start must be integer"
-        assert isinstance(pool["limit"], int), f"{node} limit must be integer"
-        assert pool["start"] > 0, f"{node} start must be positive"
-        assert pool["limit"] > 0, f"{node} limit must be positive"
+
+        # Extract defaults from templates
+        start = extract_default(pool["start"])
+        limit = extract_default(pool["limit"])
+
+        assert isinstance(start, int), f"{node} start must be integer"
+        assert isinstance(limit, int), f"{node} limit must be integer"
+        assert start > 0, f"{node} start must be positive"
+        assert limit > 0, f"{node} limit must be positive"
 
 
 @pytest.mark.unit
@@ -199,6 +251,12 @@ def test_dns_servers_defined(group_vars_path: str) -> None:
     assert isinstance(config["dns_servers"], list), "dns_servers must be a list"
     assert len(config["dns_servers"]) > 0, "At least one DNS server required"
 
+    # Validate DNS server values (extract defaults from templates)
+    for dns_server in config["dns_servers"]:
+        dns_value = extract_default(dns_server)
+        assert isinstance(dns_value, str), "DNS server must be string"
+        assert len(dns_value) > 0, "DNS server cannot be empty"
+
 
 @pytest.mark.unit
 def test_required_packages_defined(group_vars_path: str) -> None:
@@ -214,7 +272,10 @@ def test_required_packages_defined(group_vars_path: str) -> None:
         config = yaml.safe_load(f)
 
     assert "required_packages" in config, "required_packages not defined"
-    packages = config["required_packages"]
+
+    # Extract package list from template
+    packages = extract_default(config["required_packages"])
+    assert isinstance(packages, list), "required_packages must be list"
 
     # Check for essential packages
     essential = ["kmod-batman-adv", "batctl"]
