@@ -177,7 +177,7 @@
 
     - name: Install required packages
       raw: "opkg install {{ item }}"
-      loop: "{{ lookup('env', 'REQUIRED_PACKAGES') | default('python3,kmod-batman-adv,batctl,wpad-mesh-mbedtls,ip-full,tcpdump-mini,openssh-server,openssh-sftp-server,openssh-keygen', true) | split(',') }}"
+      loop: "{{ lookup('env', 'REQUIRED_PACKAGES') | default('python3,batctl,kmod-batman-adv,wpad-mesh-mbedtls,ip-full,tcpdump-mini,openssh-server,openssh-sftp-server,openssh-keygen', true) | split(',') }}"
       register: install_result
       changed_when: "'Installing' in install_result.stdout or 'Configuring' in install_result.stdout"
       failed_when: "'Cannot install package' in install_result.stderr"
