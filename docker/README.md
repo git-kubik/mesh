@@ -65,7 +65,12 @@ Complete manual setup without automation - see:
 
 ### 1. Initial Setup
 
+**IMPORTANT**: The `.env` file is located at the **repository root** (`/home/m/repos/mesh/.env`), not in the `docker/` directory. This consolidated file is shared by both Docker and Ansible.
+
 ```bash
+# Navigate to repository root
+cd /home/m/repos/mesh
+
 # Copy environment variables template
 cp .env.example .env
 
@@ -73,9 +78,13 @@ cp .env.example .env
 nano .env
 
 # IMPORTANT: Set secure passwords for:
-# - POSTGRES_PASSWORD
-# - SEMAPHORE_ADMIN_PASSWORD
-# - MESH_PASSWORD, CLIENT_PASSWORD, GUEST_PASSWORD
+# - POSTGRES_PASSWORD (Docker - PostgreSQL)
+# - SEMAPHORE_ADMIN_PASSWORD (Docker - Semaphore)
+# - ROOT_PASSWORD, MESH_PASSWORD, CLIENT_PASSWORD (Ansible - OpenWrt)
+# - MGMT_PASSWORD, GUEST_PASSWORD (Ansible - VLANs, if enabled)
+
+# Return to docker directory to run docker-compose
+cd docker
 ```
 
 ### 2. Start Services
@@ -135,14 +144,17 @@ Web-based Ansible management interface.
 
 **Automated Setup (Recommended):**
 
-First, ensure you have a `.env` file with credentials:
+First, ensure you have the consolidated `.env` file at repository root:
 
 ```bash
+cd /home/m/repos/mesh
+# If .env doesn't exist:
 cp .env.example .env
 # Edit .env and set SEMAPHORE_ADMIN_PASSWORD
+nano .env
 ```
 
-Then run the automated configuration script:
+Then run the automated configuration script from the docker directory:
 
 ```bash
 ./setup-semaphore.sh
@@ -389,10 +401,11 @@ docker system prune -a
 ## Files
 
 - `Dockerfile` - Ansible container image definition
-- `docker-compose.yml` - Service orchestration
+- `docker-compose.yml` - Service orchestration (references `../.env` from root)
 - `entrypoint.sh` - Container initialization script
 - `requirements.txt` - Python dependencies
-- `.env.example` - Environment variables template
+- `../.env.example` - Environment variables template (located at repository root)
+- `../.env` - Actual environment configuration (located at repository root, NOT in git)
 - `.dockerignore` - Build context exclusions
 - `README.md` - This file
 

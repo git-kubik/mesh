@@ -1,0 +1,65 @@
+---
+# OpenWrt Mesh Network Inventory - INITIAL SETUP
+#
+# Use this inventory when setting up a FRESH OpenWrt node at 192.168.1.1
+#
+# IMPORTANT: Fresh OpenWrt nodes all start at 192.168.1.1 (factory default)
+#            Factory OpenWrt has Dropbear SSH and NO root password set
+#            You MUST configure nodes ONE AT A TIME
+#
+# Usage:
+#   1. Flash OpenWrt on a router (it will be at 192.168.1.1)
+#   2. Connect your computer to the router's LAN port
+#   3. Run: make deploy-initial-node1  (or node2/node3)
+#   4. After deployment, the node will be at 10.11.12.X
+#   5. Disconnect and repeat for next node
+#
+# After ALL nodes are configured, switch to inventory/hosts.yml for management
+
+all:
+  children:
+    mesh_nodes:
+      children:
+        gateway_primary:
+          hosts:
+            node1:
+              ansible_host: 192.168.1.1  # Fresh OpenWrt default
+              node_ip: 10.11.12.1         # Target IP after configuration
+              node_id: 1
+              mesh_ports:
+                lan3: node2
+                lan4: node3
+
+        gateway_secondary:
+          hosts:
+            node2:
+              ansible_host: 192.168.1.1  # Fresh OpenWrt default
+              node_ip: 10.11.12.2         # Target IP after configuration
+              node_id: 2
+              mesh_ports:
+                lan3: node1
+                lan4: node3
+
+            node3:
+              ansible_host: 192.168.1.1  # Fresh OpenWrt default
+              node_ip: 10.11.12.3         # Target IP after configuration
+              node_id: 3
+              mesh_ports:
+                lan3: node2
+                lan4: node1
+
+  vars:
+    ansible_connection: ssh
+    ansible_user: root
+    ansible_python_interpreter: /usr/bin/python3
+
+    # Factory OpenWrt has NO root password set (password authentication with empty password)
+    # This is the OpenWrt factory default - root account has no password
+    ansible_ssh_pass: ''
+
+    # Dropbear-specific SSH options
+    # - PubkeyAuthentication=no: Don't try key auth first (no keys installed yet)
+    # - PreferredAuthentications=password: Use password auth directly (with empty password)
+    # - StrictHostKeyChecking=no: Accept dropbear host keys
+    # - UserKnownHostsFile=/dev/null: Don't save dropbear keys (will change to openssh)
+    ansible_ssh_common_args: '-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o PubkeyAuthentication=no -o PreferredAuthentications=password'

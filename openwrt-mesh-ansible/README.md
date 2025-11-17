@@ -2,6 +2,40 @@
 
 Automated deployment and management of a highly-available OpenWrt mesh network using Ansible.
 
+## Quick Reference
+
+**For experienced users - complete workflow:**
+
+```bash
+# 1. Setup
+cp .env.example .env && nano .env  # Set passwords
+chmod 600 .env
+set -a; source .env; set +a
+make validate-env
+
+# 2. Initial deployment (one node at a time at 192.168.1.1)
+make check-initial-node1 && make deploy-initial-node1
+make check-initial-node2 && make deploy-initial-node2
+make check-initial-node3 && make deploy-initial-node3
+
+# 3. Production management (all nodes at 10.11.12.x)
+make check-all     # Check connectivity
+make deploy        # Deploy changes
+make verify        # Verify mesh
+make backup        # Backup configs
+```
+
+**Key features:**
+
+- Environment-based configuration (`.env` file)
+- Automatic SSH key authentication
+- Two-phase deployment (initial @ 192.168.1.1 → production @ 10.11.12.x)
+- Comprehensive validation and error checking
+
+See below for detailed documentation.
+
+---
+
 ## Overview
 
 This Ansible project automates the deployment and configuration of a 3-node OpenWrt mesh network with:
@@ -12,6 +46,8 @@ This Ansible project automates the deployment and configuration of a 3-node Open
 - 5GHz client access point with roaming
 - Batman-adv mesh routing
 - Optional VLAN support
+- SSH key authentication (automatic)
+- Environment-based configuration
 
 ## Directory Structure
 
@@ -83,68 +119,111 @@ git clone <repository> openwrt-mesh-ansible
 cd openwrt-mesh-ansible
 ```
 
-### 2. Customize Configuration
+### 2. Configure Environment Variables
 
-**Edit `group_vars/all.yml`:**
+**ALL configuration is now managed through environment variables in a `.env` file at the repository root.**
 
-```yaml
-# REQUIRED: Change these passwords!
-mesh_password: YourSecureMeshPassword123!
-client_password: YourClientPassword123!
+```bash
+# From repository root (/home/m/repos/mesh/)
+cp .env.example .env
 
+# Edit .env and set required passwords (minimum 3 required)
+nano .env
+```
+
+**REQUIRED variables (must be set):**
+
+```bash
+# Root password for console/serial access (NOT used for SSH)
+ROOT_PASSWORD=YourSecureRootPassword123!
+
+# 2.4GHz mesh network password (WPA3-SAE)
+MESH_PASSWORD=YourSecureMeshPassword123!
+
+# 5GHz client AP password
+CLIENT_PASSWORD=YourSecureClientPassword123!
+```
+
+**Optional: Customize network settings** in `.env`:
+
+```bash
 # Adjust to your WAN speeds (in kbit/s)
-batman_gw_bandwidth: 100000/100000
+BATMAN_GW_BANDWIDTH=100000/100000
 
-# Optional: Add static host reservations
-static_hosts:
-  - name: admin-workstation
-    mac: 'AA:BB:CC:DD:EE:FF'
-    ip: 10.11.12.10
+# Network settings (defaults work for most setups)
+MESH_NETWORK=10.11.12.0
+MESH_GATEWAY=10.11.12.1
+
+# WiFi settings
+CLIENT_SSID=HA-Network-5G
+CLIENT_CHANNEL=36
+CLIENT_COUNTRY=AU
+
+# See .env.example for 60+ configurable variables
 ```
 
-**Edit `inventory/hosts.yml`:**
+**Secure the .env file:**
 
-```yaml
-# For initial setup, set ansible_host to 192.168.1.1
-# After node is configured, change to 10.11.12.X
-
-# Optional: Set password for initial connection
-# ansible_ssh_pass: your_initial_password
+```bash
+chmod 600 .env
 ```
 
-### 3. Initial Node Setup (One at a Time)
+### 3. Load and Validate Environment
+
+```bash
+# Load environment variables
+set -a; source .env; set +a
+
+# Validate configuration (IMPORTANT - run this first!)
+make validate-env
+```
+
+You should see:
+
+```
+✅ Environment Validation PASSED
+Required passwords: All set ✓
+Ready for deployment!
+```
+
+### 4. Initial Node Setup (One at a Time)
+
+Fresh OpenWrt routers start at **192.168.1.1** with **NO root password set**.
+After configuration, they move to **10.11.12.x** with **SSH key authentication**.
 
 **Configure Node 1:**
 
 ```bash
-# 1. Connect ONLY Node 1 to your network
-# 2. Set its IP in inventory to 192.168.1.1
-# 3. Deploy configuration
-ansible-playbook -i inventory/hosts.yml playbooks/deploy.yml --limit node1
+# 1. Connect ONLY Node 1 to your network (it's at 192.168.1.1)
+# 2. Check connectivity
+make check-initial-node1
 
-# 4. After deployment, node1 will be at 10.11.12.1
-# 5. Update inventory/hosts.yml with ansible_host: 10.11.12.1
+# 3. Deploy (installs OpenSSH, sets up SSH keys, moves to 10.11.12.1)
+make deploy-initial-node1
+
+# 4. Node 1 is now at 10.11.12.1 with SSH key auth
 ```
 
 **Configure Node 2:**
 
 ```bash
-# 1. Disconnect Node 1, connect Node 2
-# 2. Set Node 2's IP in inventory to 192.168.1.1
-# 3. Deploy configuration
-ansible-playbook -i inventory/hosts.yml playbooks/deploy.yml --limit node2
+# 1. Disconnect Node 1, connect Node 2 (also at 192.168.1.1)
+# 2. Check connectivity
+make check-initial-node2
 
-# 4. Update inventory with ansible_host: 10.11.12.2
+# 3. Deploy (moves to 10.11.12.2)
+make deploy-initial-node2
 ```
 
 **Configure Node 3:**
 
 ```bash
-# Same process as Node 2
-ansible-playbook -i inventory/hosts.yml playbooks/deploy.yml --limit node3
+# Same process
+make check-initial-node3
+make deploy-initial-node3
 ```
 
-### 4. Physical Wiring
+### 5. Physical Wiring
 
 After all nodes are configured:
 
@@ -152,11 +231,14 @@ After all nodes are configured:
 2. Connect WAN ports to internet
 3. Power on all nodes
 
-### 5. Verify Deployment
+### 6. Verify Deployment
 
 ```bash
-# Check all nodes
-ansible-playbook -i inventory/hosts.yml playbooks/verify.yml
+# Check connectivity to all nodes
+make check-all
+
+# OR use Ansible directly
+ansible-playbook playbooks/verify.yml
 
 # Should show:
 # - All nodes reachable
@@ -167,62 +249,109 @@ ansible-playbook -i inventory/hosts.yml playbooks/verify.yml
 
 ## Usage
 
+**IMPORTANT:** Always load environment variables before running commands:
+
+```bash
+set -a; source .env; set +a
+```
+
 ### Deploy Configuration
 
 **Deploy to all nodes:**
 
 ```bash
-ansible-playbook -i inventory/hosts.yml playbooks/deploy.yml
+make deploy
+
+# OR using Ansible directly
+ansible-playbook playbooks/deploy.yml
 ```
 
 **Deploy to specific node:**
 
 ```bash
-ansible-playbook -i inventory/hosts.yml playbooks/deploy.yml --limit node1
+make deploy-node1    # Deploy to Node 1 only
+make deploy-node2    # Deploy to Node 2 only
+make deploy-node3    # Deploy to Node 3 only
+
+# OR using Ansible directly
+ansible-playbook playbooks/deploy.yml --limit node1
 ```
 
 **Dry run (check mode):**
 
 ```bash
-ansible-playbook -i inventory/hosts.yml playbooks/deploy.yml --check
+make check
+
+# OR using Ansible directly
+ansible-playbook playbooks/deploy.yml --check
 ```
 
 **Deploy only specific components:**
 
 ```bash
 # Network configuration only
-ansible-playbook -i inventory/hosts.yml playbooks/deploy.yml --tags network
+make deploy-network
 
 # Wireless configuration only
-ansible-playbook -i inventory/hosts.yml playbooks/deploy.yml --tags wireless
+make deploy-wireless
 
 # DHCP configuration only
-ansible-playbook -i inventory/hosts.yml playbooks/deploy.yml --tags dhcp
+make deploy-dhcp
 
-# Skip package installation
-ansible-playbook -i inventory/hosts.yml playbooks/deploy.yml --skip-tags packages
+# Firewall configuration only
+make deploy-firewall
+
+# Packages only
+make packages
+
+# OR using Ansible directly with tags
+ansible-playbook playbooks/deploy.yml --tags network
+ansible-playbook playbooks/deploy.yml --tags wireless
+ansible-playbook playbooks/deploy.yml --skip-tags packages
+```
+
+### Check Connectivity
+
+```bash
+# Check all configured nodes (at 10.11.12.x)
+make check-all
+
+# Check individual nodes
+make check-node1
+make check-node2
+make check-node3
+
+# Audit all nodes
+make audit
 ```
 
 ### Verify Mesh Status
 
 ```bash
-# Check all nodes
-ansible-playbook -i inventory/hosts.yml playbooks/verify.yml
+# Verify mesh configuration
+make verify
 
-# Output shows:
-# - Node reachability
-# - Batman module status
-# - Mesh topology
-# - Gateway status
-# - Interface status
-# - WAN connectivity
+# Check Batman status
+make batman-status
+
+# Check logs
+make logs
+
+# Check uptime
+make uptime
+
+# OR using Ansible directly
+ansible-playbook playbooks/verify.yml
 ```
 
 ### Backup Configuration
 
 ```bash
 # Backup all nodes
-ansible-playbook -i inventory/hosts.yml playbooks/backup.yml
+make backup
+
+# OR using Ansible directly
+ansible-playbook playbooks/backup.yml
 
 # Backups saved to: backups/YYYY-MM-DD/
 ```
@@ -233,8 +362,8 @@ ansible-playbook -i inventory/hosts.yml playbooks/backup.yml
 # 1. Copy backup to node
 scp backups/2025-11-05/backup-node1-*.tar.gz root@10.11.12.1:/tmp/
 
-# 2. SSH to node
-ssh root@10.11.12.1
+# 2. SSH to node (uses SSH key)
+ssh -i ~/.ssh/openwrt_mesh_rsa root@10.11.12.1
 
 # 3. Restore
 sysupgrade -r /tmp/backup-node1-*.tar.gz
@@ -245,106 +374,169 @@ reboot
 
 ```bash
 # Check for updates (dry run)
-ansible-playbook -i inventory/hosts.yml playbooks/update.yml --tags check
+make update-check
 
-# Perform updates (one node at a time)
-ansible-playbook -i inventory/hosts.yml playbooks/update.yml
+# Perform updates
+make update
+
+# OR using Ansible directly
+ansible-playbook playbooks/update.yml --tags check
+ansible-playbook playbooks/update.yml
 ```
 
 ### Ad-hoc Commands
 
 ```bash
-# Run arbitrary commands on all nodes
-ansible mesh_nodes -i inventory/hosts.yml -a "batctl o"
+# Ping all nodes
+make ping
+
+# Check Batman status
+make batman-status
+
+# View logs
+make logs
 
 # Check uptime
-ansible mesh_nodes -i inventory/hosts.yml -a "uptime"
-
-# Check batman interfaces
-ansible mesh_nodes -i inventory/hosts.yml -a "batctl if"
+make uptime
 
 # Restart network on all nodes
-ansible mesh_nodes -i inventory/hosts.yml -a "/etc/init.d/network restart"
+make restart-network
 
-# Reboot all nodes
-ansible mesh_nodes -i inventory/hosts.yml -a "reboot" --become
+# Restart wireless
+make restart-wireless
+
+# OR using Ansible directly
+ansible mesh_nodes -a "batctl o"
+ansible mesh_nodes -a "uptime"
+ansible mesh_nodes -a "batctl if"
+ansible mesh_nodes -a "/etc/init.d/network restart"
 ```
 
 ## Configuration Management
+
+**IMPORTANT:** All configuration is now managed through the `.env` file.
 
 ### Modifying Configuration
 
 **To change network settings:**
 
-1. Edit `group_vars/all.yml`
-2. Run deployment: `ansible-playbook -i inventory/hosts.yml playbooks/deploy.yml`
-3. Configuration updated and services reloaded automatically
+1. Edit `.env` file:
 
-**To add static DHCP reservations:**
+   ```bash
+   nano .env
+   ```
 
-```yaml
-# Edit group_vars/all.yml
-static_hosts:
-  - name: my-server
-    mac: '00:11:22:33:44:55'
-    ip: 10.11.12.50
-```
+2. Update variables (example):
+
+   ```bash
+   MESH_NETWORK=10.20.30.0
+   MESH_GATEWAY=10.20.30.1
+   DNS_PRIMARY=1.1.1.1
+   ```
+
+3. Load environment:
+
+   ```bash
+   set -a; source .env; set +a
+   ```
+
+4. Validate and deploy:
+
+   ```bash
+   make validate-env
+   make deploy
+   ```
 
 **To change WiFi passwords:**
 
-```yaml
-# Edit group_vars/all.yml
-mesh_password: NewMeshPassword123!
-client_password: NewClientPassword123!
+```bash
+# 1. Edit .env
+nano .env
 
-# Deploy
-ansible-playbook -i inventory/hosts.yml playbooks/deploy.yml --tags wireless
+# 2. Update passwords
+MESH_PASSWORD=NewMeshPassword123!
+CLIENT_PASSWORD=NewClientPassword123!
+
+# 3. Load and deploy
+set -a; source .env; set +a
+make deploy-wireless
+```
+
+**To adjust WAN speeds:**
+
+```bash
+# Edit .env
+BATMAN_GW_BANDWIDTH=500000/50000  # 500/50 Mbps
+
+# Load and deploy
+set -a; source .env; set +a
+make deploy
 ```
 
 ### Version Control
 
-Track your configuration with Git:
+**IMPORTANT: Never commit .env to git** (contains passwords!)
+
+Track configuration changes with Git:
 
 ```bash
 git init
 git add .
 git commit -m "Initial mesh configuration"
 
-# After changes
-git add group_vars/all.yml
-git commit -m "Updated WiFi passwords"
+# After changing .env (only commit .env.example if you add new variables)
+git add .env.example
+git commit -m "Added new configuration options"
+
+# .env is excluded via .gitignore - passwords stay safe
 ```
 
 ## VLAN Configuration
 
 ### Enable VLANs
 
-**Edit `group_vars/all.yml`:**
+VLANs provide network segmentation for management and guest access.
 
-```yaml
-enable_vlans: true
+**Edit `.env` to enable and configure VLANs:**
 
-vlans:
-  management:
-    vid: 10
-    network: 10.11.10.0/24
-    dhcp_start: 100
-    dhcp_limit: 50
+```bash
+# Enable VLAN support
+ENABLE_VLANS=true
 
-  guest:
-    vid: 30
-    network: 10.11.30.0/24
-    dhcp_start: 100
-    dhcp_limit: 50
-    isolation: true
-    guest_ssid: My-Guest-WiFi
-    guest_password: GuestPassword123!
+# Management VLAN (2.4GHz AP for admin access)
+MGMT_PASSWORD=YourSecureMgmtPassword123!
+MGMT_VLAN_VID=10
+MGMT_VLAN_NETWORK=10.11.10.0/24
+MGMT_VLAN_SSID=HA-Management
+
+# Guest VLAN (5GHz AP with isolation)
+GUEST_PASSWORD=YourSecureGuestPassword123!
+GUEST_VLAN_VID=30
+GUEST_VLAN_NETWORK=10.11.30.0/24
+GUEST_VLAN_SSID=HA-Guest
+GUEST_VLAN_ISOLATION=true
 ```
 
 **Deploy VLAN configuration:**
 
 ```bash
-ansible-playbook -i inventory/hosts.yml playbooks/deploy.yml
+# Load environment and validate
+set -a; source .env; set +a
+make validate-env
+
+# Deploy to all nodes
+make deploy
+```
+
+**Disable VLANs:**
+
+```bash
+# Edit .env
+ENABLE_VLANS=false
+
+# Redeploy
+set -a; source .env; set +a
+make deploy
 ```
 
 ## Troubleshooting
@@ -438,21 +630,47 @@ ansible mesh_nodes -i inventory/hosts.yml -a "iw dev mesh0 station dump"
 
 ### SSH Key Authentication
 
-**Setup SSH keys:**
+**SSH keys are configured automatically during initial deployment!**
+
+- Keys generated at `~/.ssh/openwrt_mesh_rsa` (4096-bit RSA)
+- Public key deployed to nodes automatically
+- Production nodes use key-based auth only (passwordless)
+- No manual SSH key setup required
+
+**Manual SSH access:**
 
 ```bash
-# Generate key (if you don't have one)
-ssh-keygen -t ed25519 -f ~/.ssh/openwrt_mesh
+# Access nodes using SSH key (automatic after deployment)
+ssh root@10.11.12.1
+ssh root@10.11.12.2
+ssh root@10.11.12.3
 
-# Copy to each node
-ssh-copy-id -i ~/.ssh/openwrt_mesh.pub root@10.11.12.1
-ssh-copy-id -i ~/.ssh/openwrt_mesh.pub root@10.11.12.2
-ssh-copy-id -i ~/.ssh/openwrt_mesh.pub root@10.11.12.3
-
-# Update inventory to use key
-# Edit inventory/hosts.yml:
-ansible_ssh_private_key_file: ~/.ssh/openwrt_mesh
+# OR specify key explicitly
+ssh -i ~/.ssh/openwrt_mesh_rsa root@10.11.12.1
 ```
+
+**Backup your SSH key:**
+
+```bash
+# Backup private key (IMPORTANT!)
+cp ~/.ssh/openwrt_mesh_rsa ~/secure-backup/
+chmod 600 ~/secure-backup/openwrt_mesh_rsa
+
+# If key is lost, you'll need console/serial access to recover
+```
+
+**Advanced: Custom SSH key:**
+
+```bash
+# Edit .env before initial deployment
+SSH_KEY_PATH=~/.ssh/custom_mesh_key
+SSH_KEY_TYPE=ed25519
+SSH_KEY_BITS=256
+
+# Keys will be generated at custom location
+```
+
+See `docs/SSH-KEY-AUTHENTICATION.md` for detailed SSH key management.
 
 ### Parallel Execution
 
@@ -496,29 +714,43 @@ ansible mesh_nodes -i inventory/hosts.yml -a "logread -f" -f 10
 
 ## Security Best Practices
 
-1. **Change default passwords:**
-   - Edit `group_vars/all.yml` and update all password fields
-   - Use strong, unique passwords
+1. **Secure .env file:**
+   - Never commit `.env` to git (contains passwords!)
+   - Set proper permissions: `chmod 600 .env`
+   - Keep backups of `.env` in secure location
+   - Use strong, unique passwords (16+ characters recommended)
 
-2. **Use SSH keys:**
-   - Disable password authentication after setting up keys
-   - Keep private keys secure
+2. **SSH key authentication (automatically configured):**
+   - Production nodes use SSH key auth only (passwordless)
+   - SSH keys auto-generated during initial deployment
+   - Password authentication disabled for SSH (security)
+   - Root password only for console/serial access
+   - Keep SSH private key secure: `~/.ssh/openwrt_mesh_rsa`
 
-3. **Restrict SSH access:**
+3. **Environment validation:**
+   - Always run `make validate-env` before deployment
+   - Validates all required passwords are set
+   - Catches configuration errors early
+
+4. **Restrict SSH access:**
    - Configure firewall to allow SSH only from management network
-   - Consider changing SSH port
+   - Consider changing SSH port (edit templates)
 
-4. **Regular updates:**
-   - Run update playbook monthly
+5. **Regular updates:**
+   - Run `make update-check` monthly
+   - Apply updates: `make update`
    - Subscribe to OpenWrt security announcements
 
-5. **Backup regularly:**
-   - Schedule regular backups
+6. **Backup regularly:**
+   - Schedule regular backups: `make backup`
    - Store backups securely off-site
+   - Include `.env` file in backup strategy
 
-6. **Audit configuration:**
-   - Review configuration changes before deploying
-   - Use Git to track all changes
+7. **Configuration auditing:**
+   - Review `.env` changes before deploying
+   - Use Git to track `.env.example` changes
+   - Run `make check` (dry-run) before actual deployment
+   - Test changes on one node first with `make deploy-node1`
 
 ## Maintenance Schedule
 
@@ -611,8 +843,35 @@ ansible-playbook -i inventory/hosts.yml playbooks/deploy.yml --syntax-check
 ansible-playbook -i inventory/hosts.yml playbooks/deploy.yml --check
 ```
 
+## Documentation
+
+Comprehensive documentation is available in the `docs/` directory:
+
+- **`docs/ENV-CONFIGURATION.md`** - Complete environment variable reference
+  - All 60+ configurable variables
+  - Password generation examples
+  - Security best practices
+  - Troubleshooting guide
+
+- **`docs/SSH-KEY-AUTHENTICATION.md`** - SSH key management guide
+  - Key generation and deployment process
+  - Backup and rotation procedures
+  - Troubleshooting SSH access
+  - Security considerations
+
+- **`inventory/README.md`** - Two-phase deployment architecture
+  - Initial setup vs production workflows
+  - Inventory file details
+  - Requirements and dependencies
+
+- **`REFACTORING-SUMMARY.md`** - Complete change history
+  - Detailed refactoring documentation
+  - Migration checklist
+  - Testing results
+
 ## Support and Resources
 
+- **Project Documentation:** See `docs/` directory
 - OpenWrt Documentation: <https://openwrt.org/docs>
 - Batman-adv Project: <https://www.open-mesh.org/>
 - Ansible Documentation: <https://docs.ansible.com/>
@@ -632,5 +891,13 @@ To improve these playbooks:
 
 ---
 
-**Last Updated:** 2025-11-05
-**Version:** 1.0
+**Last Updated:** 2025-11-09
+**Version:** 2.0 (Environment Variable Refactoring)
+
+**Major Changes in v2.0:**
+
+- All configuration moved to `.env` file (60+ variables)
+- Two-phase deployment (initial vs production)
+- Automatic SSH key generation and deployment
+- Environment validation before deployment
+- Enhanced security (no passwords in git)

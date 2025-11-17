@@ -78,11 +78,10 @@
     ###########################################################################
 
     - name: Test SSH authentication and basic connectivity
-      ansible.builtin.wait_for_connection:
-        timeout: "{{ ssh_timeout }}"
-        delay: 1
+      ansible.builtin.raw: echo "SSH connection successful"
       register: auth_check
       ignore_errors: true
+      changed_when: false
       tags: [auth]
 
     - name: Display authentication result

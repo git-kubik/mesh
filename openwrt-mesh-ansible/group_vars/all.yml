@@ -121,7 +121,7 @@ mtu_wireless_mesh: "{{ lookup('env', 'MTU_WIRELESS_MESH') | default('1532', true
 required_packages: "{{ lookup('env', 'REQUIRED_PACKAGES') | default('python3,batctl,kmod-batman-adv,wpad-mesh-mbedtls,ip-full,tcpdump-mini,openssh-server,openssh-sftp-server,openssh-keygen', true) | split(',') }}"
 
 # Packages to remove (converted from comma-separated string to list)
-remove_packages: "{{ lookup('env', 'REMOVE_PACKAGES') | default('wpad-basic-mbedtls,wpad-basic-wolfssl,wpad-basic,batctl-tiny', true) | split(',') }}"
+remove_packages: "{{ lookup('env', 'REMOVE_PACKAGES') | default('wpad-basic-mbedtls,wpad-basic-wolfssl,wpad-basic', true) | split(',') }}"
 
 # Optional packages (converted from comma-separated string to list)
 optional_packages: "{{ lookup('env', 'OPTIONAL_PACKAGES') | default('iperf3,ethtool,nano,htop,rsync', true) | split(',') }}"

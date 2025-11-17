@@ -1,0 +1,200 @@
+---
+# Environment Variable Validation Playbook
+#
+# Validates that all required environment variables are set before deployment
+# Usage: make validate-env  OR  ansible-playbook playbooks/validate-env.yml
+
+- name: Validate Environment Configuration
+  hosts: localhost
+  gather_facts: false
+
+  vars:
+    # Required environment variables (must be set)
+    required_vars:
+      - ROOT_PASSWORD
+      - MESH_PASSWORD
+      - CLIENT_PASSWORD
+
+    # Optional environment variables (have defaults but should be reviewed)
+    optional_vars:
+      - SSH_KEY_PATH
+      - MESH_NETWORK
+      - MESH_GATEWAY
+      - DNS_PRIMARY
+      - DNS_SECONDARY
+      - BATMAN_GW_BANDWIDTH
+      - MESH_ID
+      - CLIENT_SSID
+      - CLIENT_COUNTRY
+      - TIMEZONE
+      - ZONENAME
+
+    # VLAN variables (required if ENABLE_VLANS=true)
+    vlan_vars:
+      - MGMT_PASSWORD
+      - GUEST_PASSWORD
+
+  tasks:
+    - name: Display validation header
+      debug:
+        msg: |
+          ================================================================================
+          Environment Variable Validation
+          ================================================================================
+          Checking that all required environment variables are set...
+
+    # ========================================================================
+    # Check Required Variables
+    # ========================================================================
+
+    - name: Check required environment variables
+      set_fact:
+        missing_required: []
+
+    - name: Validate each required variable
+      set_fact:
+        missing_required: "{{ missing_required + [item] }}"
+      when: lookup('env', item) == '' or lookup('env', item) == 'CHANGE_THIS_PASSWORD'
+      loop: "{{ required_vars }}"
+
+    - name: Display required variables status
+      debug:
+        msg: |
+          {% if missing_required | length == 0 %}
+          ✅ All required variables are set:
+          {% for var in required_vars %}
+            - {{ var }}: {{ '***' if 'PASSWORD' in var else lookup('env', var) | default('NOT SET', true) }}
+          {% endfor %}
+          {% else %}
+          ❌ Missing or invalid required variables:
+          {% for var in missing_required %}
+            - {{ var }}: {{ lookup('env', var) | default('NOT SET', true) }}
+          {% endfor %}
+          {% endif %}
+
+    - name: Fail if required variables are missing
+      fail:
+        msg: |
+          ================================================================================
+          ERROR: Required environment variables are not set!
+          ================================================================================
+
+          Missing variables: {{ missing_required | join(', ') }}
+
+          Required steps:
+          1. Copy .env.example to .env:
+             cp .env.example .env
+
+          2. Edit .env and set all required passwords:
+             nano .env
+
+          3. Load environment variables:
+             set -a; source .env; set +a
+
+          4. Re-run validation:
+             make validate-env
+
+          See docs/ENV-CONFIGURATION.md for details.
+          ================================================================================
+      when: missing_required | length > 0
+
+    # ========================================================================
+    # Check VLAN Variables (if enabled)
+    # ========================================================================
+
+    - name: Check if VLANs are enabled
+      set_fact:
+        vlans_enabled: "{{ lookup('env', 'ENABLE_VLANS') | default('true', true) | bool }}"
+
+    - name: Check VLAN environment variables
+      set_fact:
+        missing_vlan: []
+      when: vlans_enabled
+
+    - name: Validate VLAN variables
+      set_fact:
+        missing_vlan: "{{ missing_vlan + [item] }}"
+      when:
+        - vlans_enabled
+        - lookup('env', item) == '' or lookup('env', item) == 'CHANGE_THIS_PASSWORD'
+      loop: "{{ vlan_vars }}"
+
+    - name: Display VLAN variables status
+      debug:
+        msg: |
+          {% if vlans_enabled %}
+          VLANs are ENABLED - checking VLAN passwords...
+          {% if missing_vlan | length == 0 %}
+          ✅ All VLAN passwords are set
+          {% else %}
+          ⚠️  Missing VLAN passwords: {{ missing_vlan | join(', ') }}
+          Set these in .env or disable VLANs (ENABLE_VLANS=false)
+          {% endif %}
+          {% else %}
+          ℹ️  VLANs are DISABLED - VLAN passwords not required
+          {% endif %}
+
+    - name: Fail if VLAN variables are missing when VLANs enabled
+      fail:
+        msg: |
+          ================================================================================
+          ERROR: VLANs are enabled but passwords are not set!
+          ================================================================================
+
+          Missing VLAN passwords: {{ missing_vlan | join(', ') }}
+
+          Options:
+          1. Set VLAN passwords in .env:
+             MGMT_PASSWORD=your-secure-password
+             GUEST_PASSWORD=your-secure-password
+
+          2. OR disable VLANs in .env:
+             ENABLE_VLANS=false
+
+          See docs/ENV-CONFIGURATION.md for details.
+          ================================================================================
+      when:
+        - vlans_enabled
+        - missing_vlan | length > 0
+
+    # ========================================================================
+    # Display Optional Variables
+    # ========================================================================
+
+    - name: Check optional variables with defaults
+      debug:
+        msg: |
+
+          Optional variables (using defaults if not set):
+          {% for var in optional_vars %}
+            - {{ var }}: {{ lookup('env', var) | default('(using default)', true) }}
+          {% endfor %}
+
+    # ========================================================================
+    # Summary
+    # ========================================================================
+
+    - name: Display validation summary
+      debug:
+        msg: |
+
+          ================================================================================
+          ✅ Environment Validation PASSED
+          ================================================================================
+
+          Required passwords: All set ✓
+          VLAN configuration: {{ 'Enabled and configured ✓' if vlans_enabled else 'Disabled ✓' }}
+
+          Configuration summary:
+            - Mesh Network: {{ lookup('env', 'MESH_NETWORK') | default('10.11.12.0', true) }}/{{ lookup('env', 'MESH_CIDR') | default('24', true) }}
+            - Gateway: {{ lookup('env', 'MESH_GATEWAY') | default('10.11.12.1', true) }}
+            - Mesh SSID: {{ lookup('env', 'MESH_ID') | default('ha-mesh-net', true) }}
+            - Client SSID: {{ lookup('env', 'CLIENT_SSID') | default('HA-Network-5G', true) }}
+            - Country: {{ lookup('env', 'CLIENT_COUNTRY') | default('AU', true) }}
+            - Timezone: {{ lookup('env', 'ZONENAME') | default('Australia/Adelaide', true) }}
+
+          Ready for deployment!
+          Next steps:
+            - make check-initial-node1
+            - make deploy-initial-node1
+          ================================================================================

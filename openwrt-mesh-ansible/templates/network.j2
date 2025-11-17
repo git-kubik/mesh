@@ -99,7 +99,7 @@ config interface '{{ vlan_name }}_bridge'
 	option proto 'static'
 	option type 'bridge'
 	list ports '{{ vlan_name }}'
-	option ipaddr '{{ vlan_config.network | ipaddr('1') | ipaddr('address') }}'
-	option netmask '{{ vlan_config.network | ipaddr('netmask') }}'
+	option ipaddr '{{ vlan_config.gateway_ip }}'
+	option netmask '{{ vlan_config.netmask }}'
 {% endfor %}
 {% endif %}
