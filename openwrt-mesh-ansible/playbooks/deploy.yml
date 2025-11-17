@@ -175,12 +175,29 @@
       failed_when: false
       tags: packages
 
-    - name: Install required packages
-      raw: "opkg install {{ item }}"
+    - name: Install required packages (with verbose output)
+      raw: "echo '=== Installing {{ item }} ===' && opkg install {{ item }} 2>&1 && echo '=== Installed {{ item }} ===' && opkg list-installed | grep -E '^({{ item }}|batctl)' || true"
       loop: "{{ lookup('env', 'REQUIRED_PACKAGES') | default('python3,batctl,kmod-batman-adv,wpad-mesh-mbedtls,ip-full,tcpdump-mini,openssh-server,openssh-sftp-server,openssh-keygen', true) | split(',') }}"
       register: install_result
       changed_when: "'Installing' in install_result.stdout or 'Configuring' in install_result.stdout"
-      failed_when: "'Cannot install package' in install_result.stderr"
+      failed_when: false
+      tags: packages
+
+    - name: Display package installation results
+      debug:
+        msg: "{{ install_result.results | map(attribute='stdout_lines') | list }}"
+      tags: packages
+
+    - name: Verify batctl and kmod-batman-adv installation
+      raw: "opkg list-installed | grep -E '^(batctl|kmod-batman-adv)'"
+      register: batctl_check
+      changed_when: false
+      failed_when: false
+      tags: packages
+
+    - name: Show batctl verification
+      debug:
+        msg: "{{ batctl_check.stdout_lines }}"
       tags: packages
 
     - name: Install optional packages

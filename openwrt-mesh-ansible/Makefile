@@ -6,7 +6,9 @@ export
 
 # Command prefix to source .env for ansible-playbook commands
 ENV_FILE := ../.env
-ANSIBLE_CMD := $(if $(wildcard $(ENV_FILE)),set -a && source $(ENV_FILE) && set +a &&,) ansible-playbook
+TIMESTAMP := $(shell date +%Y-%m-%d_%H-%M-%S)
+ANSIBLE_LOG := logs/ansible_$(TIMESTAMP).log
+ANSIBLE_CMD := $(if $(wildcard $(ENV_FILE)),set -a && source $(ENV_FILE) && set +a &&,) ANSIBLE_LOG_PATH=$(ANSIBLE_LOG) ansible-playbook
 
 .PHONY: help validate-env check-all check-connectivity check-initial-node1 check-initial-node2 check-initial-node3 \
         deploy-initial-node1 deploy-initial-node2 deploy-initial-node3 \
