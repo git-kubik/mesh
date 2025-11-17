@@ -177,7 +177,7 @@
 
     - name: Install required packages (with verbose output)
       raw: "echo '=== Installing {{ item }} ===' && opkg install {{ item }} 2>&1 && echo '=== Installed {{ item }} ===' && opkg list-installed | grep -E '^({{ item }}|batctl)' || true"
-      loop: "{{ lookup('env', 'REQUIRED_PACKAGES') | default('python3,batctl,kmod-batman-adv,wpad-mesh-mbedtls,ip-full,tcpdump-mini,openssh-server,openssh-sftp-server,openssh-keygen', true) | split(',') }}"
+      loop: "{{ lookup('env', 'REQUIRED_PACKAGES') | default('python3,batctl-full,kmod-batman-adv,wpad-mesh-mbedtls,ip-full,tcpdump-mini,openssh-server,openssh-sftp-server,openssh-keygen', true) | split(',') }}"
       register: install_result
       changed_when: "'Installing' in install_result.stdout or 'Configuring' in install_result.stdout"
       failed_when: false

@@ -31,7 +31,7 @@
     audit_report_dir: "./audit_reports"
     audit_timestamp: "{{ lookup('pipe', 'date +%Y-%m-%d_%H-%M-%S') }}"
     # Load package lists from group_vars (with fallback defaults)
-    required_packages: "{{ lookup('env', 'REQUIRED_PACKAGES') | default('python3,batctl,kmod-batman-adv,wpad-mesh-mbedtls,ip-full,tcpdump-mini,openssh-server,openssh-sftp-server,openssh-keygen', true) | split(',') }}"
+    required_packages: "{{ lookup('env', 'REQUIRED_PACKAGES') | default('python3,batctl-full,kmod-batman-adv,wpad-mesh-mbedtls,ip-full,tcpdump-mini,openssh-server,openssh-sftp-server,openssh-keygen', true) | split(',') }}"
     remove_packages: "{{ lookup('env', 'REMOVE_PACKAGES') | default('wpad-basic-mbedtls,wpad-basic-wolfssl,wpad-basic', true) | split(',') }}"
     optional_packages: "{{ lookup('env', 'OPTIONAL_PACKAGES') | default('iperf3,ethtool,nano,htop,rsync', true) | split(',') }}"
 
