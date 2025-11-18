@@ -313,12 +313,19 @@
       failed_when: false
       tags: ssh
 
+    - name: Disable dropbear to prevent respawn
+      raw: "/etc/init.d/dropbear disable"
+      failed_when: false
+      tags: ssh
+
     - name: Perform atomic SSH server switch (Dropbear → OpenSSH)
       shell: |
-        # Force kill all dropbear processes to free port 22
-        killall dropbear 2>/dev/null || true
+        # Stop dropbear via init script (prevents procd respawn)
+        /etc/init.d/dropbear stop 2>/dev/null || true
+        # Force kill any remaining dropbear processes
+        killall -9 dropbear 2>/dev/null || true
         # Wait for port to be released
-        sleep 2
+        sleep 3
         # Start OpenSSH
         /etc/init.d/sshd start
       failed_when: false
@@ -378,11 +385,6 @@
     - name: Check for OpenSSH startup errors
       raw: "logread | grep -i sshd | tail -10"
       register: sshd_logs
-      failed_when: false
-      tags: ssh
-
-    - name: Disable dropbear from starting on boot
-      raw: "/etc/init.d/dropbear disable"
       failed_when: false
       tags: ssh
 
