@@ -315,8 +315,12 @@
 
     - name: Perform atomic SSH server switch (Dropbear → OpenSSH)
       shell: |
-        # Stop Dropbear and start OpenSSH in one command to minimize downtime
-        /etc/init.d/dropbear stop && /etc/init.d/sshd start
+        # Force kill all dropbear processes to free port 22
+        killall dropbear 2>/dev/null || true
+        # Wait for port to be released
+        sleep 2
+        # Start OpenSSH
+        /etc/init.d/sshd start
       failed_when: false
       tags: ssh
       async: 1
@@ -324,7 +328,7 @@
 
     - name: Wait for OpenSSH to initialize
       pause:
-        seconds: 3
+        seconds: 5
       tags: ssh
 
     - name: Verify OpenSSH is running and listening
@@ -335,6 +339,18 @@
         delay: 2
         timeout: 30
       delegate_to: localhost
+      tags: ssh
+
+    - name: Verify OpenSSH process is running
+      raw: "ps | grep -v grep | grep sshd || echo 'SSHD_NOT_RUNNING'"
+      register: sshd_check
+      failed_when: "'SSHD_NOT_RUNNING' in sshd_check.stdout"
+      tags: ssh
+
+    - name: Check for OpenSSH startup errors
+      raw: "logread | grep -i sshd | tail -10"
+      register: sshd_logs
+      failed_when: false
       tags: ssh
 
     - name: Update connection parameters for SSH key authentication
