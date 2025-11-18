@@ -195,6 +195,6 @@
 
           Ready for deployment!
           Next steps:
-            - make check-initial-node1
-            - make deploy-initial-node1
+            - make check-node NODE=1
+            - make deploy-node NODE=1
           ================================================================================

@@ -360,7 +360,7 @@ Ansible still uses default values instead of .env values
 
 ```bash
 # Make sure environment is exported
-export ROOT_PASSWORD="your-password"
+export ROOT_PASSWORD="your-password"  # pragma: allowlist secret
 
 # Or use set -a before sourcing
 set -a

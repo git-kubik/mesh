@@ -11,12 +11,10 @@ INTERFACE="${1:-eth2}"
 
 # Network Profile 1
 ADDRESS1="192.168.1.100/24"
-GATEWAY1="192.168.1.1"
 NETWORK1="192.168.1.0/24"
 
 # Network Profile 2
 ADDRESS2="10.11.12.100/24"
-GATEWAY2="10.11.12.1"
 NETWORK2="10.11.12.0/24"
 
 # Check if running as root
