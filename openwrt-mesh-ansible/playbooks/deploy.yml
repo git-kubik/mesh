@@ -341,18 +341,6 @@
       delegate_to: localhost
       tags: ssh
 
-    - name: Verify OpenSSH process is running
-      raw: "ps | grep -v grep | grep sshd || echo 'SSHD_NOT_RUNNING'"
-      register: sshd_check
-      failed_when: "'SSHD_NOT_RUNNING' in sshd_check.stdout"
-      tags: ssh
-
-    - name: Check for OpenSSH startup errors
-      raw: "logread | grep -i sshd | tail -10"
-      register: sshd_logs
-      failed_when: false
-      tags: ssh
-
     - name: Update connection parameters for SSH key authentication
       set_fact:
         ansible_ssh_pass: ""
@@ -379,6 +367,18 @@
     - name: Test new OpenSSH connection with key
       raw: "echo 'OpenSSH connection successful'"
       register: openssh_test
+      tags: ssh
+
+    - name: Verify OpenSSH process is running
+      raw: "ps | grep -v grep | grep sshd || echo 'SSHD_NOT_RUNNING'"
+      register: sshd_check
+      failed_when: "'SSHD_NOT_RUNNING' in sshd_check.stdout"
+      tags: ssh
+
+    - name: Check for OpenSSH startup errors
+      raw: "logread | grep -i sshd | tail -10"
+      register: sshd_logs
+      failed_when: false
       tags: ssh
 
     - name: Disable dropbear from starting on boot
