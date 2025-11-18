@@ -10,86 +10,142 @@ TIMESTAMP := $(shell date +%Y-%m-%d_%H-%M-%S)
 ANSIBLE_LOG := logs/ansible_$(TIMESTAMP).log
 ANSIBLE_CMD := $(if $(wildcard $(ENV_FILE)),set -a && source $(ENV_FILE) && set +a &&,) ANSIBLE_LOG_PATH=$(ANSIBLE_LOG) ansible-playbook
 
-.PHONY: help validate-env check-all check-connectivity check-initial-node1 check-initial-node2 check-initial-node3 \
-        deploy-initial-node1 deploy-initial-node2 deploy-initial-node3 \
-        deploy-initial-node1-verbose deploy-initial-node2-verbose deploy-initial-node3-verbose \
+# Node-specific variables (used with NODE=1, NODE=2, NODE=3)
+ifdef NODE
+  # Validate NODE is 1, 2, or 3
+  ifeq ($(filter $(NODE),1 2 3),)
+    $(error NODE must be 1, 2, or 3. Usage: make deploy-node NODE=1)
+  endif
+
+  # Node-specific configuration
+  NODE_NAME := node$(NODE)
+  NODE_IP_PROD := 10.11.12.$(NODE)
+  NODE_IP_INITIAL := 192.168.1.1
+
+  # Inventory selection (production uses hosts.yml, initial uses hosts-initial.yml)
+  INVENTORY_PROD := inventory/hosts.yml
+  INVENTORY_INITIAL := inventory/hosts-initial.yml
+
+  # Verbose flag handling
+  VERBOSE_FLAG := $(if $(VERBOSE),-vvv)
+endif
+
+.PHONY: help validate-env \
+        deploy-node check-node audit-node \
+        check-all check-connectivity audit deploy \
         switch-to-initial-network switch-to-mesh-network \
-        check-node1 check-node2 check-node3 audit deploy verify backup update check clean \
-        show-logs tail-logs clear-logs
+        verify backup update update-check check ping clean \
+        deploy-network deploy-wireless deploy-dhcp deploy-firewall \
+        packages batman-status logs \
+        show-logs tail-logs clear-logs \
+        uptime reboot restart-network restart-wireless install
 
 help:
 	@echo "OpenWrt Mesh Network - Ansible Commands"
 	@echo ""
-	@echo "=========================================="
-	@echo "PHASE 0: Environment Setup (REQUIRED FIRST)"
-	@echo "=========================================="
-	@echo "  make validate-env            - Validate .env configuration"
+	@echo "================================================================================"
+	@echo "UNIFIED NODE OPERATIONS (Auto-detects Initial vs Production Phase)"
+	@echo "================================================================================"
+	@echo "These commands work for BOTH fresh nodes (192.168.1.1) and configured nodes"
+	@echo "(10.11.12.x). The Makefile automatically detects which phase to use."
 	@echo ""
-	@echo "=========================================="
-	@echo "PHASE 1: Initial Setup (Fresh OpenWrt - Dropbear, No Password)"
-	@echo "=========================================="
-	@echo "Configure ONE node at a time (all start at 192.168.1.1, no root password):"
+	@echo "Check node connectivity:"
+	@echo "  make check-node NODE=1          - Check Node 1 (auto-detects phase)"
+	@echo "  make check-node NODE=2          - Check Node 2 (auto-detects phase)"
+	@echo "  make check-node NODE=3          - Check Node 3 (auto-detects phase)"
+	@echo "  make check-node NODE=1 VERBOSE=1 - Check Node 1 (verbose output)"
 	@echo ""
-	@echo "Check connectivity:"
-	@echo "  make check-initial-node1     - Check fresh Node 1 (at 192.168.1.1)"
-	@echo "  make check-initial-node2     - Check fresh Node 2 (at 192.168.1.1)"
-	@echo "  make check-initial-node3     - Check fresh Node 3 (at 192.168.1.1)"
+	@echo "Deploy configuration to node:"
+	@echo "  make deploy-node NODE=1         - Deploy to Node 1 (auto-detects phase)"
+	@echo "  make deploy-node NODE=2         - Deploy to Node 2 (auto-detects phase)"
+	@echo "  make deploy-node NODE=3         - Deploy to Node 3 (auto-detects phase)"
+	@echo "  make deploy-node NODE=1 VERBOSE=1 - Deploy to Node 1 (verbose output)"
 	@echo ""
-	@echo "Deploy (includes automatic network switching):"
-	@echo "  make deploy-initial-node1            - Deploy to Node 1 (quiet)"
-	@echo "  make deploy-initial-node2            - Deploy to Node 2 (quiet)"
-	@echo "  make deploy-initial-node3            - Deploy to Node 3 (quiet)"
-	@echo "  make deploy-initial-node1 VERBOSE=1  - Deploy to Node 1 (verbose -vvv)"
-	@echo "  make deploy-initial-node2 VERBOSE=1  - Deploy to Node 2 (verbose -vvv)"
-	@echo "  make deploy-initial-node3 VERBOSE=1  - Deploy to Node 3 (verbose -vvv)"
+	@echo "Audit node configuration:"
+	@echo "  make audit-node NODE=1          - Audit Node 1 (auto-detects phase)"
+	@echo "  make audit-node NODE=2          - Audit Node 2 (auto-detects phase)"
+	@echo "  make audit-node NODE=3          - Audit Node 3 (auto-detects phase)"
+	@echo "  make audit-node NODE=1 VERBOSE=1 - Audit Node 1 (verbose output)"
 	@echo ""
-	@echo "Each deployment automatically:"
-	@echo "  1. Switches workstation to 192.168.1.100 (initial network)"
-	@echo "  2. Deploys configuration to node at 192.168.1.1"
-	@echo "  3. Switches workstation to 10.11.12.100 (mesh network)"
+	@echo "How phase auto-detection works:"
+	@echo "  - Tries SSH to 10.11.12.x first (production mode)"
+	@echo "  - If that fails, uses 192.168.1.1 (initial setup mode)"
+	@echo "  - Initial setup mode automatically handles network switching"
 	@echo ""
-	@echo "Manual network switching (if needed):"
-	@echo "  make switch-to-initial-network       - Switch to 192.168.1.100"
-	@echo "  make switch-to-mesh-network          - Switch to 10.11.12.100"
+	@echo "================================================================================"
+	@echo "ENVIRONMENT & SETUP"
+	@echo "================================================================================"
+	@echo "  make validate-env               - Validate .env configuration (run first!)"
 	@echo ""
-	@echo "=========================================="
-	@echo "PHASE 2: Production (OpenSSH with SSH Key)"
-	@echo "=========================================="
-	@echo "After all nodes are configured (10.11.12.x, passwordless SSH key):"
-	@echo "  make check-all               - Check connectivity to ALL nodes"
-	@echo "  make check-node1             - Check configured Node 1 (at 10.11.12.1)"
-	@echo "  make check-node2             - Check configured Node 2 (at 10.11.12.2)"
-	@echo "  make check-node3             - Check configured Node 3 (at 10.11.12.3)"
-	@echo "  make audit                   - Audit all nodes"
+	@echo "================================================================================"
+	@echo "MULTI-NODE OPERATIONS (All Nodes at Once)"
+	@echo "================================================================================"
+	@echo "Use these AFTER all nodes are configured at their final IPs (10.11.12.x):"
 	@echo ""
-	@echo "Available targets:"
-	@echo "  make deploy         - Deploy configuration to all nodes"
-	@echo "  make deploy-node1   - Deploy to Node 1 only"
-	@echo "  make deploy-node2   - Deploy to Node 2 only"
-	@echo "  make deploy-node3   - Deploy to Node 3 only"
-	@echo "  make verify         - Check mesh status"
-	@echo "  make backup         - Backup all node configurations"
-	@echo "  make update         - Update packages on all nodes"
-	@echo "  make update-check   - Check for available updates"
-	@echo "  make check          - Dry run deployment (no changes)"
-	@echo "  make ping           - Test connectivity to all nodes"
-	@echo "  make clean          - Clean temporary files"
+	@echo "  make check-all                  - Check connectivity to ALL nodes"
+	@echo "  make audit                      - Audit ALL nodes"
+	@echo "  make deploy                     - Deploy to ALL nodes"
+	@echo "  make verify                     - Verify mesh status (all nodes)"
+	@echo "  make backup                     - Backup all node configurations"
+	@echo "  make update                     - Update packages on all nodes"
+	@echo "  make update-check               - Check for available updates"
+	@echo "  make ping                       - Test connectivity to all nodes"
 	@echo ""
-	@echo "Network-specific targets:"
-	@echo "  make deploy-network  - Deploy network config only"
-	@echo "  make deploy-wireless - Deploy wireless config only"
-	@echo "  make deploy-dhcp     - Deploy DHCP config only"
-	@echo "  make deploy-firewall - Deploy firewall config only"
+	@echo "================================================================================"
+	@echo "MANUAL NETWORK SWITCHING"
+	@echo "================================================================================"
+	@echo "These are available for manual operations (deploy-node handles automatically):"
 	@echo ""
-	@echo "Advanced:"
-	@echo "  make packages        - Install packages only"
-	@echo "  make batman-status   - Check batman-adv status"
-	@echo "  make logs            - Fetch recent logs from nodes"
+	@echo "  make switch-to-initial-network  - Switch workstation to 192.168.1.100"
+	@echo "  make switch-to-mesh-network     - Switch workstation to 10.11.12.100"
 	@echo ""
-	@echo "Debugging:"
-	@echo "  make show-logs       - Show last 100 lines of Ansible logs"
-	@echo "  make tail-logs       - Follow Ansible logs (live)"
-	@echo "  make clear-logs      - Clear Ansible log file"
+	@echo "================================================================================"
+	@echo "TARGETED DEPLOYMENTS (Deploy Specific Components Only)"
+	@echo "================================================================================"
+	@echo "  make deploy-network             - Deploy network config only"
+	@echo "  make deploy-wireless            - Deploy wireless config only"
+	@echo "  make deploy-dhcp                - Deploy DHCP config only"
+	@echo "  make deploy-firewall            - Deploy firewall config only"
+	@echo "  make packages                   - Install packages only"
+	@echo ""
+	@echo "================================================================================"
+	@echo "MONITORING & DEBUGGING"
+	@echo "================================================================================"
+	@echo "  make batman-status              - Check batman-adv mesh status"
+	@echo "  make logs                       - Fetch recent logs from nodes"
+	@echo "  make show-logs                  - Show last 100 lines of Ansible logs"
+	@echo "  make tail-logs                  - Follow Ansible logs (live)"
+	@echo "  make clear-logs                 - Clear Ansible log files"
+	@echo ""
+	@echo "================================================================================"
+	@echo "ADVANCED OPERATIONS"
+	@echo "================================================================================"
+	@echo "  make check                      - Dry run deployment (no changes)"
+	@echo "  make uptime                     - Show uptime for all nodes"
+	@echo "  make reboot                     - Reboot all nodes"
+	@echo "  make restart-network            - Restart network service on all nodes"
+	@echo "  make restart-wireless           - Restart wireless service on all nodes"
+	@echo "  make clean                      - Clean temporary files"
+	@echo ""
+	@echo "================================================================================"
+	@echo "TYPICAL WORKFLOW"
+	@echo "================================================================================"
+	@echo "1. Validate environment:"
+	@echo "     make validate-env"
+	@echo ""
+	@echo "2. Deploy nodes one at a time (connect ONE fresh node at a time):"
+	@echo "     make deploy-node NODE=1    # Connect Node 1, deploy, disconnect"
+	@echo "     make deploy-node NODE=2    # Connect Node 2, deploy, disconnect"
+	@echo "     make deploy-node NODE=3    # Connect Node 3, deploy, disconnect"
+	@echo ""
+	@echo "3. After all nodes are deployed, verify mesh:"
+	@echo "     make check-all             # Check all nodes are reachable"
+	@echo "     make batman-status         # Verify mesh topology"
+	@echo ""
+	@echo "4. Make configuration changes and redeploy:"
+	@echo "     make deploy                # Deploy to all nodes"
+	@echo "     make verify                # Verify changes"
+	@echo "================================================================================"
 
 # ============================================================================
 # PHASE 0: Environment Validation
@@ -99,99 +155,96 @@ validate-env:
 	@bash -c "$(ANSIBLE_CMD) playbooks/validate-env.yml"
 
 # ============================================================================
-# PHASE 1: Initial Setup - Fresh OpenWrt Nodes (192.168.1.1)
+# Unified Node Management (Auto-detects Initial vs Production Phase)
 # ============================================================================
-# Use these targets when setting up a FRESH OpenWrt node at 192.168.1.1
-# IMPORTANT: Only connect to ONE node at a time (they all start at same IP)
 
-check-initial-node1:
-	@bash -c "$(ANSIBLE_CMD) -i inventory/hosts-initial.yml playbooks/check-connectivity.yml --limit node1"
+# Deploy to node (auto-detects deployment phase)
+# Usage: make deploy-node NODE=1 [VERBOSE=1]
+deploy-node:
+ifndef NODE
+	$(error NODE variable required. Usage: make deploy-node NODE=1)
+endif
+	@echo "=== Deploying to $(NODE_NAME) ==="
+	@echo "Checking node status..."
+	@bash -c "set -a && source $(ENV_FILE) && set +a && \
+	if ssh -o ConnectTimeout=2 -o StrictHostKeyChecking=no -i \$$SSH_KEY_PATH root@$(NODE_IP_PROD) 'echo Node is configured' 2>/dev/null; then \
+		echo 'Node found at $(NODE_IP_PROD) (production mode)'; \
+		echo 'Running production deployment...'; \
+		$(ANSIBLE_CMD) -i $(INVENTORY_PROD) playbooks/deploy.yml --limit $(NODE_NAME) $(VERBOSE_FLAG); \
+	else \
+		echo 'Node not found at $(NODE_IP_PROD), using initial setup mode (192.168.1.1)'; \
+		echo 'Switching workstation to initial network...'; \
+		$(ANSIBLE_CMD) playbooks/switch-to-initial-network.yml && \
+		echo 'Deploying to $(NODE_NAME) at 192.168.1.1...' && \
+		$(ANSIBLE_CMD) -i $(INVENTORY_INITIAL) playbooks/deploy.yml --limit $(NODE_NAME) $(VERBOSE_FLAG) && \
+		echo 'Switching workstation back to mesh network...' && \
+		$(ANSIBLE_CMD) playbooks/switch-to-mesh-network.yml; \
+	fi"
+	@echo "=== Deployment complete for $(NODE_NAME) ==="
 
-check-initial-node2:
-	@bash -c "$(ANSIBLE_CMD) -i inventory/hosts-initial.yml playbooks/check-connectivity.yml --limit node2"
+# Check node connectivity (auto-detects deployment phase)
+# Usage: make check-node NODE=1 [VERBOSE=1]
+check-node:
+ifndef NODE
+	$(error NODE variable required. Usage: make check-node NODE=1)
+endif
+	@echo "=== Checking connectivity to $(NODE_NAME) ==="
+	@bash -c "set -a && source $(ENV_FILE) && set +a && \
+	if ssh -o ConnectTimeout=2 -o StrictHostKeyChecking=no -i \$$SSH_KEY_PATH root@$(NODE_IP_PROD) 'echo Node is configured' 2>/dev/null; then \
+		echo 'Node found at $(NODE_IP_PROD) (production mode)'; \
+		$(ANSIBLE_CMD) -i $(INVENTORY_PROD) playbooks/check-connectivity.yml --limit $(NODE_NAME) $(VERBOSE_FLAG); \
+	else \
+		echo 'Node not configured yet, checking at 192.168.1.1 (initial mode)'; \
+		$(ANSIBLE_CMD) -i $(INVENTORY_INITIAL) playbooks/check-connectivity.yml --limit $(NODE_NAME) $(VERBOSE_FLAG); \
+	fi"
 
-check-initial-node3:
-	@bash -c "$(ANSIBLE_CMD) -i inventory/hosts-initial.yml playbooks/check-connectivity.yml --limit node3"
+# Audit node configuration (auto-detects deployment phase)
+# Usage: make audit-node NODE=1 [VERBOSE=1]
+audit-node:
+ifndef NODE
+	$(error NODE variable required. Usage: make audit-node NODE=1)
+endif
+	@echo "=== Auditing $(NODE_NAME) ==="
+	@bash -c "set -a && source $(ENV_FILE) && set +a && \
+	if ssh -o ConnectTimeout=2 -o StrictHostKeyChecking=no -i \$$SSH_KEY_PATH root@$(NODE_IP_PROD) 'echo Node is configured' 2>/dev/null; then \
+		echo 'Node found at $(NODE_IP_PROD) (production mode)'; \
+		$(ANSIBLE_CMD) -i $(INVENTORY_PROD) playbooks/audit.yml --limit $(NODE_NAME) $(VERBOSE_FLAG); \
+	else \
+		echo 'Node not configured yet, checking at 192.168.1.1 (initial mode)'; \
+		$(ANSIBLE_CMD) -i $(INVENTORY_INITIAL) playbooks/audit.yml --limit $(NODE_NAME) $(VERBOSE_FLAG); \
+	fi"
 
-deploy-initial-node1:
-	@bash -c "$(ANSIBLE_CMD) playbooks/switch-to-initial-network.yml && \
-	          $(ANSIBLE_CMD) -i inventory/hosts-initial.yml playbooks/deploy.yml --limit node1 $(if $(VERBOSE),-vvv) && \
-	          $(ANSIBLE_CMD) playbooks/switch-to-mesh-network.yml"
+# ============================================================================
+# Network Switching (Manual Operations)
+# ============================================================================
+# These targets are available for manual network switching if needed
+# (The unified deploy-node target handles this automatically)
 
-deploy-initial-node2:
-	@bash -c "$(ANSIBLE_CMD) playbooks/switch-to-initial-network.yml && \
-	          $(ANSIBLE_CMD) -i inventory/hosts-initial.yml playbooks/deploy.yml --limit node2 $(if $(VERBOSE),-vvv) && \
-	          $(ANSIBLE_CMD) playbooks/switch-to-mesh-network.yml"
-
-deploy-initial-node3:
-	@bash -c "$(ANSIBLE_CMD) playbooks/switch-to-initial-network.yml && \
-	          $(ANSIBLE_CMD) -i inventory/hosts-initial.yml playbooks/deploy.yml --limit node3 $(if $(VERBOSE),-vvv) && \
-	          $(ANSIBLE_CMD) playbooks/switch-to-mesh-network.yml"
-
-# Network switching (for workstation eth interface)
 switch-to-initial-network:
 	@bash -c "$(ANSIBLE_CMD) playbooks/switch-to-initial-network.yml"
 
 switch-to-mesh-network:
 	@bash -c "$(ANSIBLE_CMD) playbooks/switch-to-mesh-network.yml"
 
-# Backward compatibility aliases (deprecated - use VERBOSE=1 instead)
-deploy-initial-node1-verbose:
-	@$(MAKE) deploy-initial-node1 VERBOSE=1
-
-deploy-initial-node2-verbose:
-	@$(MAKE) deploy-initial-node2 VERBOSE=1
-
-deploy-initial-node3-verbose:
-	@$(MAKE) deploy-initial-node3 VERBOSE=1
-
 # ============================================================================
-# PHASE 2: Production - Configured Mesh Nodes (10.11.12.x)
+# Multi-Node Operations (All Nodes at Once)
 # ============================================================================
 # Use these targets AFTER all nodes are configured and at their final IPs
 
-# check-all: Use AFTER nodes are configured with different IPs (10.11.12.x)
+# Check connectivity to all nodes
 check-all:
 	@bash -c "$(ANSIBLE_CMD) playbooks/check-connectivity.yml"
 
 # Backwards compatibility alias
 check-connectivity: check-all
 
-# check-nodeX: Check individual configured nodes at their final IPs
-check-node1:
-	@bash -c "$(ANSIBLE_CMD) playbooks/check-connectivity.yml --limit node1"
-
-check-node2:
-	@bash -c "$(ANSIBLE_CMD) playbooks/check-connectivity.yml --limit node2"
-
-check-node3:
-	@bash -c "$(ANSIBLE_CMD) playbooks/check-connectivity.yml --limit node3"
-
-# Node Audit & Preparation
+# Audit all nodes
 audit:
 	@bash -c "$(ANSIBLE_CMD) playbooks/audit.yml"
 
-audit-node1:
-	@bash -c "$(ANSIBLE_CMD) playbooks/audit.yml --limit node1"
-
-audit-node2:
-	@bash -c "$(ANSIBLE_CMD) playbooks/audit.yml --limit node2"
-
-audit-node3:
-	@bash -c "$(ANSIBLE_CMD) playbooks/audit.yml --limit node3"
-
-# Deployment targets
+# Deploy to all nodes
 deploy:
 	@bash -c "$(ANSIBLE_CMD) playbooks/deploy.yml"
-
-deploy-node1:
-	@bash -c "$(ANSIBLE_CMD) playbooks/deploy.yml --limit node1"
-
-deploy-node2:
-	@bash -c "$(ANSIBLE_CMD) playbooks/deploy.yml --limit node2"
-
-deploy-node3:
-	@bash -c "$(ANSIBLE_CMD) playbooks/deploy.yml --limit node3"
 
 verify:
 	@bash -c "$(ANSIBLE_CMD) playbooks/verify.yml"
