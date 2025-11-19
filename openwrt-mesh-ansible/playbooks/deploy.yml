@@ -352,42 +352,36 @@
       tags: ssh
 
     - name: Perform atomic SSH server switch (Dropbear → OpenSSH)
-      shell: |
+      raw: |
+        # Create a script to handle the switch
+        cat > /tmp/switch_ssh.sh << 'SCRIPT'
+        #!/bin/sh
         # Stop dropbear via init script (prevents procd respawn)
         /etc/init.d/dropbear stop 2>/dev/null || true
         # Force kill any remaining dropbear processes
         killall -9 dropbear 2>/dev/null || true
         # Wait for port to be released
-        sleep 3
-        # Check if sshd binary exists
-        if [ ! -f /usr/sbin/sshd ]; then
-          echo "ERROR: /usr/sbin/sshd not found!"
-          exit 1
+        sleep 2
+        # Start OpenSSH
+        /etc/init.d/sshd start
+        # Log the result
+        if pidof sshd > /dev/null; then
+          echo "SSH switch successful" > /tmp/ssh_switch.log
+        else
+          echo "SSH switch failed" > /tmp/ssh_switch.log
+          /etc/init.d/dropbear start
         fi
-        # Start OpenSSH and capture result
-        /etc/init.d/sshd start 2>&1
-        # Verify sshd is running
-        sleep 1
-        if ! pidof sshd > /dev/null; then
-          echo "ERROR: sshd failed to start!"
-          # Try to restart dropbear as fallback
-          /etc/init.d/dropbear start 2>&1
-          exit 1
-        fi
-        echo "SUCCESS: sshd started successfully"
+        SCRIPT
+        chmod +x /tmp/switch_ssh.sh
+        # Execute in background and exit immediately
+        nohup /tmp/switch_ssh.sh > /dev/null 2>&1 &
       tags: ssh
-      register: ssh_switch_result
-      async: 45
-      poll: 5
+      async: 0
+      poll: 0
 
-    - name: Display SSH switch result
-      debug:
-        var: ssh_switch_result
-      tags: ssh
-
-    - name: Wait for OpenSSH to initialize
+    - name: Wait for SSH switch to complete
       pause:
-        seconds: 2
+        seconds: 5
       tags: ssh
 
     - name: Verify OpenSSH is running and listening
@@ -395,7 +389,7 @@
         host: "{{ ansible_host }}"
         port: 22
         state: started
-        delay: 2
+        delay: 0
         timeout: 30
       delegate_to: localhost
       tags: ssh
@@ -426,6 +420,29 @@
     - name: Test new OpenSSH connection with key
       raw: "echo 'OpenSSH connection successful'"
       register: openssh_test
+      tags: ssh
+
+    - name: Verify SSH switch result
+      raw: |
+        echo "=== SSH Switch Verification ==="
+        if [ -f /tmp/ssh_switch.log ]; then
+          echo "Switch log: $(cat /tmp/ssh_switch.log)"
+        fi
+        echo "Running SSH daemon:"
+        if pidof sshd > /dev/null; then
+          echo "  OpenSSH (sshd) is running ✓"
+        fi
+        if pidof dropbear > /dev/null; then
+          echo "  WARNING: Dropbear is still running!"
+        fi
+        echo "SSH service status:"
+        /etc/init.d/sshd status 2>&1 || true
+      register: ssh_verification
+      tags: ssh
+
+    - name: Display SSH switch verification
+      debug:
+        msg: "{{ ssh_verification.stdout_lines }}"
       tags: ssh
 
     - name: Verify OpenSSH process is running
