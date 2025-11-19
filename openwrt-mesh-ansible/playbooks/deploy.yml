@@ -308,25 +308,6 @@
     # This is a critical phase - we stop Dropbear and start OpenSSH atomically
     ###########################################################################
 
-    - name: Create OpenSSH init script
-      raw: |
-        cat > /etc/init.d/sshd << 'EOF'
-        #!/bin/sh /etc/rc.common
-        START=50
-        STOP=50
-        USE_PROCD=1
-        PROG=/usr/sbin/sshd
-        start_service() {
-          procd_open_instance
-          procd_set_param command $PROG -D
-          procd_set_param respawn
-          procd_close_instance
-        }
-        EOF
-        chmod +x /etc/init.d/sshd
-      failed_when: false
-      tags: ssh
-
     - name: Enable OpenSSH to start on boot
       raw: "/etc/init.d/sshd enable"
       failed_when: false
