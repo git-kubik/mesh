@@ -308,9 +308,42 @@
     # This is a critical phase - we stop Dropbear and start OpenSSH atomically
     ###########################################################################
 
+    - name: Ensure SSH configuration directory exists
+      raw: "mkdir -p /etc/ssh"
+      tags: ssh
+
+    - name: Configure OpenSSH for root login
+      raw: |
+        if [ -f /etc/ssh/sshd_config ]; then
+          # Ensure PermitRootLogin is set to yes temporarily
+          sed -i 's/^#*PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config
+          echo "Updated sshd_config for root login"
+        else
+          # Create minimal sshd_config
+          cat > /etc/ssh/sshd_config << 'EOF'
+        PermitRootLogin yes
+        PubkeyAuthentication yes
+        PasswordAuthentication yes
+        EOF
+          echo "Created minimal sshd_config"
+        fi
+      tags: ssh
+
+    - name: Generate SSH host keys if missing
+      raw: |
+        for type in rsa ed25519; do
+          key=/etc/ssh/ssh_host_${type}_key
+          if [ ! -f "$key" ]; then
+            echo "Generating $type host key..."
+            ssh-keygen -N '' -t $type -f $key 2>&1
+          else
+            echo "$type host key already exists"
+          fi
+        done
+      tags: ssh
+
     - name: Enable OpenSSH to start on boot
-      raw: "/etc/init.d/sshd enable"
-      failed_when: false
+      raw: "/etc/init.d/sshd enable 2>&1"
       tags: ssh
 
     - name: Disable dropbear to prevent respawn
@@ -326,16 +359,35 @@
         killall -9 dropbear 2>/dev/null || true
         # Wait for port to be released
         sleep 3
-        # Start OpenSSH
-        /etc/init.d/sshd start
-      failed_when: false
+        # Check if sshd binary exists
+        if [ ! -f /usr/sbin/sshd ]; then
+          echo "ERROR: /usr/sbin/sshd not found!"
+          exit 1
+        fi
+        # Start OpenSSH and capture result
+        /etc/init.d/sshd start 2>&1
+        # Verify sshd is running
+        sleep 1
+        if ! pidof sshd > /dev/null; then
+          echo "ERROR: sshd failed to start!"
+          # Try to restart dropbear as fallback
+          /etc/init.d/dropbear start 2>&1
+          exit 1
+        fi
+        echo "SUCCESS: sshd started successfully"
       tags: ssh
-      async: 1
-      poll: 0
+      register: ssh_switch_result
+      async: 45
+      poll: 5
+
+    - name: Display SSH switch result
+      debug:
+        var: ssh_switch_result
+      tags: ssh
 
     - name: Wait for OpenSSH to initialize
       pause:
-        seconds: 5
+        seconds: 2
       tags: ssh
 
     - name: Verify OpenSSH is running and listening
