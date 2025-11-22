@@ -6,8 +6,17 @@ export
 
 # Command prefix to source .env for ansible-playbook commands
 ENV_FILE := ../.env
-TIMESTAMP := $(shell date +%Y-%m-%d_%H-%M-%S)
-ANSIBLE_LOG := logs/ansible_$(TIMESTAMP).log
+TIMESTAMP := $(shell date +%Y%m%d_%H%M%S)
+
+# Dynamic log naming based on action and node
+# Format: logs/ACTION_nodeN_TIMESTAMP.log or logs/ACTION_TIMESTAMP.log
+ifdef NODE
+  LOG_PREFIX := $(MAKECMDGOALS)_node$(NODE)
+else
+  LOG_PREFIX := $(MAKECMDGOALS)
+endif
+
+ANSIBLE_LOG := logs/$(LOG_PREFIX)_$(TIMESTAMP).log
 ANSIBLE_CMD := $(if $(wildcard $(ENV_FILE)),set -a && source $(ENV_FILE) && set +a &&,) ANSIBLE_LOG_PATH=$(ANSIBLE_LOG) ansible-playbook
 
 # Node-specific variables (used with NODE=1, NODE=2, NODE=3)
@@ -38,7 +47,8 @@ endif
         deploy-network deploy-wireless deploy-dhcp deploy-firewall \
         packages batman-status logs \
         show-logs tail-logs clear-logs \
-        uptime reboot restart-network restart-wireless install
+        uptime reboot restart-network restart-wireless install \
+        usb-storage usb-status
 
 help:
 	@echo "OpenWrt Mesh Network - Ansible Commands"
@@ -109,6 +119,14 @@ help:
 	@echo "  make packages                   - Install packages only"
 	@echo ""
 	@echo "================================================================================"
+	@echo "USB STORAGE MANAGEMENT"
+	@echo "================================================================================"
+	@echo "  make usb-storage NODE=1         - Setup USB storage on Node 1 (FORMAT!)"
+	@echo "  make usb-storage                - Setup USB storage on ALL nodes (FORMAT!)"
+	@echo "  make usb-status NODE=1          - Check USB storage status on Node 1"
+	@echo "  make usb-status                 - Check USB storage status on all nodes"
+	@echo ""
+	@echo "================================================================================"
 	@echo "MONITORING & DEBUGGING"
 	@echo "================================================================================"
 	@echo "  make batman-status              - Check batman-adv mesh status"
@@ -152,6 +170,8 @@ help:
 # ============================================================================
 
 validate-env:
+	@echo "=== Validating environment configuration ==="
+	@echo "Logging to: $(ANSIBLE_LOG)"
 	@bash -c "$(ANSIBLE_CMD) playbooks/validate-env.yml"
 
 # ============================================================================
@@ -165,6 +185,7 @@ ifndef NODE
 	$(error NODE variable required. Usage: make deploy-node NODE=1)
 endif
 	@echo "=== Deploying to $(NODE_NAME) ==="
+	@echo "Logging to: $(ANSIBLE_LOG)"
 	@echo "Checking node status..."
 	@bash -c "set -a && source $(ENV_FILE) && set +a && \
 	if ssh -o ConnectTimeout=2 -o StrictHostKeyChecking=no -i \$$SSH_KEY_PATH root@$(NODE_IP_PROD) 'echo Node is configured' 2>/dev/null; then \
@@ -189,6 +210,7 @@ ifndef NODE
 	$(error NODE variable required. Usage: make check-node NODE=1)
 endif
 	@echo "=== Checking connectivity to $(NODE_NAME) ==="
+	@echo "Logging to: $(ANSIBLE_LOG)"
 	@bash -c "set -a && source $(ENV_FILE) && set +a && \
 	if ssh -o ConnectTimeout=2 -o StrictHostKeyChecking=no -i \$$SSH_KEY_PATH root@$(NODE_IP_PROD) 'echo Node is configured' 2>/dev/null; then \
 		echo 'Node found at $(NODE_IP_PROD) (production mode)'; \
@@ -205,6 +227,7 @@ ifndef NODE
 	$(error NODE variable required. Usage: make audit-node NODE=1)
 endif
 	@echo "=== Auditing $(NODE_NAME) ==="
+	@echo "Logging to: $(ANSIBLE_LOG)"
 	@bash -c "set -a && source $(ENV_FILE) && set +a && \
 	if ssh -o ConnectTimeout=2 -o StrictHostKeyChecking=no -i \$$SSH_KEY_PATH root@$(NODE_IP_PROD) 'echo Node is configured' 2>/dev/null; then \
 		echo 'Node found at $(NODE_IP_PROD) (production mode)'; \
@@ -213,6 +236,95 @@ endif
 		echo 'Node not configured yet, checking at 192.168.1.1 (initial mode)'; \
 		$(ANSIBLE_CMD) -i $(INVENTORY_INITIAL) playbooks/audit.yml --limit $(NODE_NAME) $(VERBOSE_FLAG); \
 	fi"
+
+# ============================================================================
+# USB Storage Management
+# ============================================================================
+
+# Configure USB storage on node(s) with F2FS filesystem
+# Usage: make usb-storage NODE=1 [VERBOSE=1]
+#        make usb-storage (for all nodes)
+usb-storage:
+ifdef NODE
+	@echo "=== Configuring USB storage on $(NODE_NAME) ==="
+	@echo "WARNING: This will FORMAT the USB drive on $(NODE_NAME)!"
+	@read -p "Are you sure? (yes/no): " confirm; \
+	if [ "$$confirm" = "yes" ]; then \
+		echo "Logging to: $(ANSIBLE_LOG)"; \
+		bash -c "set -a && source $(ENV_FILE) && set +a && \
+		if ssh -o ConnectTimeout=2 -o StrictHostKeyChecking=no -i \$$SSH_KEY_PATH root@$(NODE_IP_PROD) 'echo Node is configured' 2>/dev/null; then \
+			echo 'Node found at $(NODE_IP_PROD) (production mode)'; \
+			$(ANSIBLE_CMD) -i $(INVENTORY_PROD) playbooks/usb-storage.yml --limit $(NODE_NAME) $(VERBOSE_FLAG); \
+		else \
+			echo 'Node not found at $(NODE_IP_PROD), cannot configure USB storage'; \
+			echo 'Please deploy node first with: make deploy-node NODE=$(NODE)'; \
+			exit 1; \
+		fi"; \
+	else \
+		echo "Operation cancelled"; \
+	fi
+else
+	@echo "=== Configuring USB storage on ALL nodes ==="
+	@echo "WARNING: This will FORMAT USB drives on ALL nodes!"
+	@read -p "Are you sure? (yes/no): " confirm; \
+	if [ "$$confirm" = "yes" ]; then \
+		echo "Logging to: $(ANSIBLE_LOG)"; \
+		bash -c "$(ANSIBLE_CMD) -i $(INVENTORY_PROD) playbooks/usb-storage.yml"; \
+	else \
+		echo "Operation cancelled"; \
+	fi
+endif
+
+# Check USB storage status
+# Usage: make usb-status NODE=1
+#        make usb-status (for all nodes)
+usb-status:
+ifdef NODE
+	@echo "=== Checking USB storage on $(NODE_NAME) ==="
+	@bash -c "set -a && source $(ENV_FILE) && set +a && \
+	ansible $(NODE_NAME) -i $(INVENTORY_PROD) -m raw -a 'echo \"=== USB Storage Status for \$$(hostname) ===\"; \
+	echo \"\"; \
+	echo \"--- USB Devices Detected ---\"; \
+	if ls /dev/sd[a-z] 2>/dev/null | grep -q sd; then \
+		for dev in /dev/sd[a-z]; do \
+			[ -b \"\$$dev\" ] && echo \"Found: \$$dev (\$$(fdisk -l \$$dev 2>/dev/null | grep \"^Disk /dev\" | cut -d\" \" -f3-4))\"; \
+		done; \
+		echo \"\"; \
+		echo \"--- USB Bus Information ---\"; \
+		lsusb 2>/dev/null | grep -v \"root hub\" || dmesg | grep -i \"usb.*storage\" | tail -5; \
+	else \
+		echo \"No USB storage devices detected at /dev/sd*\"; \
+		echo \"\"; \
+		echo \"--- Checking USB Modules ---\"; \
+		lsmod | grep -E \"usb_storage|uas\" || echo \"USB storage modules not loaded\"; \
+	fi; \
+	echo \"\"; \
+	echo \"--- Mount Point /x00 Status ---\"; \
+	if mount | grep -q \"/x00\"; then \
+		mount | grep /x00; \
+		echo \"\"; \
+		df -h /x00; \
+		echo \"\"; \
+		echo \"Contents: \$$(ls -la /x00 2>/dev/null | wc -l) items\"; \
+	else \
+		echo \"Not mounted at /x00\"; \
+		[ -d /x00 ] && echo \"Mount point exists but not mounted\" || echo \"Mount point /x00 does not exist\"; \
+	fi; \
+	echo \"\"; \
+	echo \"--- Auto-mount Configuration ---\"; \
+	uci show fstab 2>/dev/null | grep -A3 \"target=./x00\" || echo \"No auto-mount configured for /x00\"'"
+else
+	@echo "=== Checking USB storage on all nodes ==="
+	@bash -c "set -a && source $(ENV_FILE) && set +a && \
+	ansible mesh_nodes -i $(INVENTORY_PROD) -m raw -a 'echo \"=== Node: \$$(hostname) ===\"; \
+	if ls /dev/sd[a-z] 2>/dev/null | grep -q sd; then \
+		echo \"USB device found\"; \
+		df -h /x00 2>/dev/null || echo \"Not mounted at /x00\"; \
+	else \
+		echo \"No USB storage detected\"; \
+	fi; \
+	echo \"\"'"
+endif
 
 # ============================================================================
 # Network Switching (Manual Operations)
@@ -233,6 +345,8 @@ switch-to-mesh-network:
 
 # Check connectivity to all nodes
 check-all:
+	@echo "=== Checking connectivity to all nodes ==="
+	@echo "Logging to: $(ANSIBLE_LOG)"
 	@bash -c "$(ANSIBLE_CMD) playbooks/check-connectivity.yml"
 
 # Backwards compatibility alias
@@ -240,10 +354,14 @@ check-connectivity: check-all
 
 # Audit all nodes
 audit:
+	@echo "=== Auditing all nodes ==="
+	@echo "Logging to: $(ANSIBLE_LOG)"
 	@bash -c "$(ANSIBLE_CMD) playbooks/audit.yml"
 
 # Deploy to all nodes
 deploy:
+	@echo "=== Deploying to all nodes ==="
+	@echo "Logging to: $(ANSIBLE_LOG)"
 	@bash -c "$(ANSIBLE_CMD) playbooks/deploy.yml"
 
 verify:

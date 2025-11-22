@@ -1,184 +1,516 @@
 ---
-###############################################################################
-# OpenWrt Mesh Node Audit & Preparation Playbook
-###############################################################################
-#
-# Purpose: Audit mesh nodes to identify hardware, installed software, and
-#          generate preparation scripts for automation deployment.
+# Audit playbook for OpenWrt mesh nodes
+# This playbook collects comprehensive system information for troubleshooting
 #
 # Usage:
-#   # Audit all nodes
+#   # Run audit on single node
+#   ansible-playbook -i inventory/hosts.yml playbooks/audit.yml --limit node1
+#
+#   # Run audit on all nodes
 #   ansible-playbook -i inventory/hosts.yml playbooks/audit.yml
 #
-#   # Audit specific node
-#   ansible-playbook -i inventory/hosts.yml playbooks/audit.yml -l node1
-#
-#   # Save report to custom location
+#   # Run with specific report directory
 #   ansible-playbook -i inventory/hosts.yml playbooks/audit.yml \
 #     -e "audit_report_dir=/path/to/reports"
 #
 # Output:
 #   - JSON report: ./audit_reports/<hostname>_audit_YYYY-MM-DD_HH-MM-SS.json
 #   - Preparation script: ./audit_reports/<hostname>_prepare.sh
-#   - Summary: Displayed at end of playbook run
+#   - Console summary with key findings
 #
 ###############################################################################
 
-- name: Audit OpenWrt Mesh Nodes
+- name: Comprehensive Audit of OpenWrt Mesh Nodes
   hosts: mesh_nodes
   gather_facts: false
   vars:
-    audit_report_dir: "./audit_reports"
+    audit_report_dir: "{{ playbook_dir }}/../audit_reports"
     audit_timestamp: "{{ lookup('pipe', 'date +%Y-%m-%d_%H-%M-%S') }}"
-    # Load package lists from group_vars (with fallback defaults)
-    required_packages: "{{ lookup('env', 'REQUIRED_PACKAGES') | default('python3,batctl-full,kmod-batman-adv,wpad-mesh-mbedtls,ip-full,tcpdump-mini,openssh-server,openssh-sftp-server,openssh-keygen', true) | split(',') }}"
-    remove_packages: "{{ lookup('env', 'REMOVE_PACKAGES') | default('wpad-basic-mbedtls,wpad-basic-wolfssl,wpad-basic', true) | split(',') }}"
-    optional_packages: "{{ lookup('env', 'OPTIONAL_PACKAGES') | default('iperf3,ethtool,nano,htop,rsync', true) | split(',') }}"
+    # Load package requirements from environment
+    required_packages: >-
+      {{ lookup('env', 'REQUIRED_PACKAGES') |
+         default('python3,batctl-full,kmod-batman-adv,wpad-mesh-mbedtls,ip-full,tcpdump-mini,openssh-server,openssh-sftp-server,openssh-keygen', true) |
+         split(',') | map('trim') | list }}
+    remove_packages: >-
+      {{ lookup('env', 'REMOVE_PACKAGES') |
+         default('wpad-basic-mbedtls,wpad-basic-wolfssl,wpad-basic', true) |
+         split(',') | map('trim') | list }}
+    optional_packages: >-
+      {{ lookup('env', 'OPTIONAL_PACKAGES') |
+         default('iperf3,ethtool,nano,htop,rsync', true) |
+         split(',') | map('trim') | list }}
 
   tasks:
     ###########################################################################
-    # Phase 1: Connection & Basic Info
+    # Phase 1: System Identification
     ###########################################################################
 
     - name: Wait for nodes to be reachable
-      ansible.builtin.wait_for_connection:
+      wait_for_connection:
         timeout: 60
         delay: 2
       tags: [always]
 
-    - name: Gather basic system information
-      ansible.builtin.raw: |
-        cat /etc/os-release 2>/dev/null || echo "UNKNOWN"
+    - name: Get system identification
+      raw: |
+        echo "=== Hardware Model ==="
+        cat /tmp/sysinfo/model 2>/dev/null || echo "UNKNOWN"
+        echo "=== Board Name ==="
+        cat /tmp/sysinfo/board_name 2>/dev/null || echo "UNKNOWN"
+        echo "=== OpenWrt Release ==="
+        cat /etc/openwrt_release
+        echo "=== Kernel Version ==="
         uname -a
-      register: system_info_raw
+      register: system_id
       changed_when: false
-      tags: [info]
+      tags: [system]
+
+    - name: Get CPU and memory details
+      raw: |
+        echo "=== CPU Information ==="
+        cat /proc/cpuinfo | grep -E "(model name|cpu model|Hardware|BogoMIPS|processor)" || echo "No CPU info"
+        echo "CPU Count: $(grep -c ^processor /proc/cpuinfo 2>/dev/null || echo '1')"
+        echo "=== Memory Information ==="
+        free -m
+        echo "=== Memory Details ==="
+        cat /proc/meminfo | grep -E "^(MemTotal|MemFree|MemAvailable|Buffers|Cached|SwapTotal):" | head -10
+      register: cpu_memory
+      changed_when: false
+      tags: [system]
+
+    - name: Get storage information
+      raw: |
+        echo "=== Storage Usage ==="
+        df -h
+        echo "=== Mount Points ==="
+        mount | grep -v "^overlay" | head -20
+        echo "=== MTD Partitions ==="
+        cat /proc/mtd 2>/dev/null || echo "No MTD partitions"
+      register: storage_info
+      changed_when: false
+      tags: [system]
 
     ###########################################################################
-    # Phase 2: Hardware Identification
+    # Phase 2: Network Infrastructure
     ###########################################################################
 
-    - name: Identify hardware model
-      ansible.builtin.raw: cat /tmp/sysinfo/model 2>/dev/null || echo "UNKNOWN"
-      register: hardware_model
-      changed_when: false
-      tags: [hardware]
-
-    - name: Get CPU information
-      ansible.builtin.raw: cat /proc/cpuinfo | grep -E "(model name|cpu model|Hardware)" | head -1
-      register: cpu_info
-      changed_when: false
-      tags: [hardware]
-
-    - name: Get memory information
-      ansible.builtin.raw: free -m | grep Mem | awk '{print $2}'
-      register: memory_mb
-      changed_when: false
-      tags: [hardware]
-
-    - name: Get flash/storage information
-      ansible.builtin.raw: df -h / | tail -1 | awk '{print $2}'
-      register: flash_size
-      changed_when: false
-      tags: [hardware]
-
-    - name: Get OpenWrt version
-      ansible.builtin.raw: cat /etc/openwrt_release | grep DISTRIB_RELEASE | cut -d"'" -f2
-      register: openwrt_version
-      changed_when: false
-      tags: [hardware]
-
-    - name: Get kernel version
-      ansible.builtin.raw: uname -r
-      register: kernel_version
-      changed_when: false
-      tags: [hardware]
-
-    - name: Get network interfaces
-      ansible.builtin.raw: ip -br link show | awk '{print $1}' | grep -v "^lo$"
+    - name: Get network interfaces and configuration
+      raw: |
+        echo "=== Network Interfaces ==="
+        ip -br link show
+        echo "=== IP Addresses ==="
+        ip -br addr show
+        echo "=== Routing Table ==="
+        ip route show
+        echo "=== Routing Rules ==="
+        ip rule show
+        echo "=== ARP Cache ==="
+        ip neigh show | head -20
       register: network_interfaces
       changed_when: false
-      tags: [hardware]
+      tags: [network]
 
-    ###########################################################################
-    # Phase 3: Software Inventory
-    ###########################################################################
-
-    - name: Get list of installed packages
-      ansible.builtin.raw: opkg list-installed
-      register: installed_packages_raw
+    - name: Get UCI network configuration
+      raw: |
+        echo "=== UCI Network Configuration ==="
+        uci show network 2>/dev/null | grep -E "(interface|device|bridge)" | head -100
+        echo "=== VLAN Configuration ==="
+        ip link show | grep "@" || echo "No VLANs configured"
+      register: uci_network
       changed_when: false
-      tags: [software]
-
-    - name: Parse installed packages
-      ansible.builtin.set_fact:
-        installed_packages: "{{ installed_packages_raw.stdout_lines | map('regex_replace', '^([^\\s]+)\\s+-.*$', '\\1') | list }}"
-      tags: [software]
-
-    - name: Get opkg repository status
-      ansible.builtin.raw: opkg update --verbosity=0 2>&1 && echo "SUCCESS" || echo "FAILED"
-      register: opkg_update_status
-      changed_when: false
-      tags: [software]
+      tags: [network]
 
     ###########################################################################
-    # Phase 4: Package Comparison Analysis
+    # Phase 3: Services and Processes
     ###########################################################################
 
-    - name: Compare installed packages against requirements
-      ansible.builtin.set_fact:
-        package_audit:
-          installed_required: "{{ installed_packages | intersect(required_packages) }}"
-          missing_required: "{{ required_packages | difference(installed_packages) }}"
-          conflicting: "{{ installed_packages | intersect(remove_packages) }}"
-          installed_optional: "{{ installed_packages | intersect(optional_packages) }}"
-          audit_status: "{{ 'ready' if (required_packages | difference(installed_packages) | length == 0 and installed_packages | intersect(remove_packages) | length == 0) else 'needs_preparation' }}"
-      tags: [analysis]
-
-    - name: Generate install commands
-      ansible.builtin.set_fact:
-        install_commands: "opkg install {{ package_audit.missing_required | join(' ') }}"
-      when: package_audit.missing_required | length > 0
-      tags: [analysis]
-
-    - name: Generate remove commands
-      ansible.builtin.set_fact:
-        remove_commands: "opkg remove {{ package_audit.conflicting | join(' ') }}"
-      when: package_audit.conflicting | length > 0
-      tags: [analysis]
-
-    ###########################################################################
-    # Phase 5: Service & Configuration Check
-    ###########################################################################
-
-    - name: Check if batman-adv module is loaded
-      ansible.builtin.raw: lsmod | grep batman_adv || echo "NOT_LOADED"
-      register: batman_module_status
-      changed_when: false
-      tags: [services]
-
-    - name: Check critical services status
-      ansible.builtin.raw: |
-        for svc in network firewall dnsmasq dropbear uhttpd; do
-          /etc/init.d/$svc enabled && echo "$svc: ENABLED" || echo "$svc: DISABLED"
+    - name: Check system services
+      raw: |
+        echo "=== Enabled Services ==="
+        for svc in network firewall dnsmasq dropbear sshd uhttpd odhcpd; do
+          if [ -f /etc/init.d/$svc ]; then
+            /etc/init.d/$svc enabled && echo "$svc: ENABLED" || echo "$svc: DISABLED"
+          fi
+        done
+        echo "=== Running Services ==="
+        for svc in dropbear sshd uhttpd dnsmasq odhcpd; do
+          pidof $svc >/dev/null 2>&1 && echo "$svc: RUNNING (PID: $(pidof $svc))" || echo "$svc: STOPPED"
         done
       register: services_status
       changed_when: false
       tags: [services]
 
-    - name: Check SSH configuration
-      ansible.builtin.raw: |
-        grep -E "^PermitRootLogin|^Port" /etc/config/dropbear 2>/dev/null || echo "NONE"
-      register: ssh_config
+    - name: Get process information
+      raw: |
+        echo "=== System Uptime ==="
+        uptime
+        echo "=== Top Memory Consumers ==="
+        ps | sort -r -k 3 | head -15
+        echo "=== Network Services ==="
+        netstat -tlpn 2>/dev/null | head -20 || ss -tlpn | head -20
+      register: process_info
       changed_when: false
       tags: [services]
 
     ###########################################################################
-    # Phase 6: Report Generation
+    # Phase 4: Security Configuration
     ###########################################################################
 
-    - name: Create audit report directory (local)
-      ansible.builtin.file:
+    - name: Get SSH configuration
+      raw: |
+        echo "=== SSH Service Status ==="
+        if [ -f /etc/config/dropbear ]; then
+          echo "Dropbear Configuration:"
+          uci show dropbear 2>/dev/null | head -20
+        fi
+        if [ -f /etc/ssh/sshd_config ]; then
+          echo "OpenSSH Configuration:"
+          grep -E "^(Port|PermitRootLogin|PasswordAuthentication|PubkeyAuthentication)" \
+            /etc/ssh/sshd_config || echo "Default settings"
+        fi
+        echo "=== Authorized Keys ==="
+        ls -la /root/.ssh/authorized_keys 2>/dev/null || echo "No authorized keys"
+      register: ssh_config
+      changed_when: false
+      tags: [security]
+
+    - name: Get firewall configuration
+      raw: |
+        echo "=== Firewall Zones ==="
+        uci show firewall 2>/dev/null | grep -E "(zone|name|network|input|output|forward)" | head -40
+        echo "=== Firewall Rules ==="
+        iptables -L -n | head -50
+        echo "=== NAT Rules ==="
+        iptables -t nat -L -n | head -30
+      register: firewall_config
+      changed_when: false
+      tags: [security]
+
+    - name: Get DNS and DHCP configuration
+      raw: |
+        echo "=== DNS Configuration ==="
+        cat /etc/resolv.conf
+        echo "=== DHCP Server Configuration ==="
+        uci show dhcp 2>/dev/null | grep -E "(dhcp|domain|server)" | head -30
+        echo "=== Active DHCP Leases ==="
+        cat /tmp/dhcp.leases 2>/dev/null | head -10 || echo "No active leases"
+      register: dns_dhcp_config
+      changed_when: false
+      tags: [security]
+
+    ###########################################################################
+    # Phase 5: Mesh Network Status
+    ###########################################################################
+
+    - name: Check batman-adv status
+      raw: |
+        echo "=== Batman Module Status ==="
+        lsmod | grep batman_adv || echo "Batman module NOT LOADED"
+        echo "=== Batman Interfaces ==="
+        batctl if 2>/dev/null || echo "No batman interfaces"
+        echo "=== Mesh Neighbors ==="
+        batctl n 2>/dev/null || echo "No mesh neighbors"
+        echo "=== Mesh Routing Table ==="
+        batctl o 2>/dev/null | head -20 || echo "No originators"
+        echo "=== Gateway Configuration ==="
+        batctl gw 2>/dev/null || echo "No gateway configured"
+        batctl gwl 2>/dev/null || echo "No gateways available"
+      register: batman_status
+      changed_when: false
+      tags: [mesh]
+
+    ###########################################################################
+    # Phase 6: Wireless Configuration
+    ###########################################################################
+
+    - name: Get wireless configuration and status
+      raw: |
+        echo "=== Wireless Devices ==="
+        iw dev 2>/dev/null || echo "No wireless devices"
+        echo "=== Wireless PHY Capabilities ==="
+        for phy in /sys/class/ieee80211/phy*; do
+          if [ -d "$phy" ]; then
+            echo "PHY: $(basename $phy)"
+            iw phy $(basename $phy) info 2>/dev/null | grep -E "(Band|MHz|HT|VHT)" | head -20
+          fi
+        done
+        echo "=== UCI Wireless Configuration ==="
+        uci show wireless 2>/dev/null | grep -E "(device|ssid|encryption|channel|htmode)" | head -50
+        echo "=== Wireless Stations ==="
+        for iface in $(iw dev 2>/dev/null | grep Interface | cut -d' ' -f2); do
+          echo "Interface: $iface"
+          iw $iface station dump 2>/dev/null | head -10
+        done
+      register: wireless_config
+      changed_when: false
+      tags: [wireless]
+
+    ###########################################################################
+    # Phase 7: Software Packages
+    ###########################################################################
+
+    - name: Get installed package names (simple list)
+      raw: opkg list-installed | awk '{print $1}'
+      register: installed_packages_simple
+      changed_when: false
+      tags: [packages]
+
+    - name: Get installed packages with full versions
+      raw: opkg list-installed
+      register: installed_packages_full_raw
+      changed_when: false
+      tags: [packages]
+
+    - name: Parse installed packages
+      set_fact:
+        # Use the simple list from awk, trim whitespace and filter out empty lines
+        installed_packages: >-
+          {{ installed_packages_simple.stdout_lines |
+             map('trim') |
+             select('match', '^[a-zA-Z0-9]') |
+             list }}
+        installed_packages_full: "{{ installed_packages_full_raw.stdout_lines }}"
+      tags: [packages]
+
+    - name: Debug raw package format
+      debug:
+        msg: |
+          === SIMPLE PACKAGE NAMES (first 10 lines) ===
+          {% for line in installed_packages_simple.stdout_lines[:10] | default([]) %}
+          Line {{ loop.index }}: "{{ line }}"
+          {% endfor %}
+          === FULL PACKAGE INFO (first 5 lines) ===
+          {% for line in installed_packages_full_raw.stdout_lines[:5] | default([]) %}
+          Line {{ loop.index }}: "{{ line }}"
+          {% endfor %}
+          === TOTAL PACKAGES: {{ installed_packages_simple.stdout_lines | length }} ===
+      tags: [packages, debug]
+
+    - name: Debug parsed packages
+      debug:
+        msg: |
+          === PARSED PACKAGES (first 20) ===
+          {% for pkg in installed_packages[:20] | default([]) %}
+          {{ loop.index }}: "{{ pkg }}"
+          {% endfor %}
+          === TOTAL PARSED: {{ installed_packages | length }} ===
+      tags: [packages, debug]
+
+    - name: Debug required packages
+      debug:
+        msg: |
+          === REQUIRED PACKAGES ({{ required_packages | length }} total) ===
+          {% for pkg in required_packages %}
+          {{ loop.index }}: "{{ pkg }}"
+          {% endfor %}
+      tags: [packages, debug]
+
+    - name: Check for specific packages
+      debug:
+        msg: |
+          === CHECKING SPECIFIC PACKAGES ===
+          python3 in installed: {{ 'python3' in installed_packages }}
+          batctl-full in installed: {{ 'batctl-full' in installed_packages }}
+          openssh-server in installed: {{ 'openssh-server' in installed_packages }}
+          === SAMPLE CHECK (does any installed contain 'python') ===
+          {% for pkg in installed_packages if 'python' in pkg %}
+          Found: {{ pkg }}
+          {% endfor %}
+          === SAMPLE CHECK (does any installed contain 'ssh') ===
+          {% for pkg in installed_packages if 'ssh' in pkg %}
+          Found: {{ pkg }}
+          {% endfor %}
+      tags: [packages, debug]
+
+    - name: Get package repository status
+      raw: |
+        echo "=== Repository Configuration ==="
+        cat /etc/opkg/distfeeds.conf 2>/dev/null | head -20 || echo "No repository configuration"
+        echo "=== Repository Update Status ==="
+        opkg update --verbosity=0 2>&1 && echo "SUCCESS" || echo "FAILED"
+        echo "=== Upgradable Packages ==="
+        opkg list-upgradable 2>/dev/null | head -20 || echo "No upgradable packages"
+      register: package_repos
+      changed_when: false
+      tags: [packages]
+
+    ###########################################################################
+    # Phase 8: System Health and Diagnostics
+    ###########################################################################
+
+    - name: Get system diagnostics
+      raw: |
+        echo "=== System Load ==="
+        uptime
+        cat /proc/loadavg
+        echo "=== Kernel Messages (last 20) ==="
+        dmesg | tail -20
+        echo "=== System Log Errors/Warnings (last 20) ==="
+        logread 2>/dev/null | grep -E "(err|warn|fail|crit)" | tail -20 || echo "No recent errors"
+      register: system_diagnostics
+      changed_when: false
+      tags: [health]
+
+    - name: Get hardware sensors
+      raw: |
+        echo "=== Temperature Sensors ==="
+        for zone in /sys/class/thermal/thermal_zone*; do
+          if [ -e "$zone/temp" ]; then
+            temp=$(cat $zone/temp 2>/dev/null)
+            type=$(cat $zone/type 2>/dev/null || echo "unknown")
+            [ -n "$temp" ] && echo "$type: $(expr $temp / 1000)°C"
+          fi
+        done 2>/dev/null || echo "No thermal sensors"
+        echo "=== USB Devices ==="
+        ls /sys/bus/usb/devices/*/product 2>/dev/null | \
+          while read f; do echo "USB: $(cat $f)"; done || echo "No USB devices"
+      register: sensors_info
+      changed_when: false
+      tags: [health]
+
+    ###########################################################################
+    # Phase 9: USB Storage Audit
+    ###########################################################################
+
+    - name: Check USB storage devices
+      raw: |
+        echo "=== USB Storage Devices ==="
+        if ls /dev/sd[a-z] 2>/dev/null | grep -q sd; then
+          for dev in /dev/sd[a-z]; do
+            if [ -b "$dev" ]; then
+              SIZE=$(fdisk -l "$dev" 2>/dev/null | grep "^Disk /dev" | cut -d' ' -f3-4)
+              echo "Device: $dev ($SIZE)"
+
+              # Check partitions
+              for part in ${dev}[0-9]; do
+                if [ -b "$part" ]; then
+                  FS_TYPE=$(blkid "$part" 2>/dev/null | sed 's/.*TYPE="\([^"]*\)".*/\1/')
+                  FS_LABEL=$(blkid "$part" 2>/dev/null | sed 's/.*LABEL="\([^"]*\)".*/\1/')
+                  echo "  Partition: $part - Type: ${FS_TYPE:-unknown} - Label: ${FS_LABEL:-none}"
+                fi
+              done
+            fi
+          done
+        else
+          echo "No USB storage devices detected"
+        fi
+      register: usb_devices
+      changed_when: false
+      tags: [storage, usb]
+
+    - name: Check USB mount status
+      raw: |
+        echo "=== USB Mount Point /x00 ==="
+        if [ -d /x00 ]; then
+          if mount | grep -q "/x00"; then
+            MOUNT_INFO=$(mount | grep "/x00")
+            echo "Status: MOUNTED"
+            echo "Mount: $MOUNT_INFO"
+            echo ""
+            echo "=== Storage Usage ==="
+            df -h /x00
+            echo ""
+            echo "=== Contents Summary ==="
+            if [ -r /x00 ]; then
+              FILES=$(find /x00 -type f 2>/dev/null | wc -l)
+              DIRS=$(find /x00 -type d 2>/dev/null | wc -l)
+              TOTAL_SIZE=$(du -sh /x00 2>/dev/null | cut -f1)
+              echo "Files: $FILES"
+              echo "Directories: $DIRS"
+              echo "Total Size: $TOTAL_SIZE"
+              echo ""
+              echo "=== Top Level Contents ==="
+              ls -la /x00 2>/dev/null | head -10
+            else
+              echo "Mount point not readable"
+            fi
+          else
+            echo "Status: NOT MOUNTED"
+            echo "Mount point exists but no device mounted"
+          fi
+        else
+          echo "Mount point /x00 does not exist"
+        fi
+      register: usb_mount_status
+      changed_when: false
+      tags: [storage, usb]
+
+    - name: Check USB auto-mount configuration
+      raw: |
+        echo "=== USB Auto-mount Configuration ==="
+        if [ -f /etc/config/fstab ]; then
+          if uci show fstab 2>/dev/null | grep -q "target='/x00'"; then
+            echo "UCI fstab configuration:"
+            uci show fstab 2>/dev/null | grep -A5 "target='/x00'"
+          else
+            echo "No UCI configuration for /x00"
+          fi
+        fi
+        echo ""
+        echo "=== /etc/fstab entries ==="
+        if grep -q "/x00" /etc/fstab 2>/dev/null; then
+          grep "/x00" /etc/fstab
+        else
+          echo "No /etc/fstab entry for /x00"
+        fi
+      register: usb_automount_config
+      changed_when: false
+      tags: [storage, usb]
+
+    - name: Check USB kernel modules
+      raw: |
+        echo "=== USB Storage Kernel Modules ==="
+        MODULES="usb_storage uas kmod-fs-f2fs kmod-fs-ext4 kmod-fs-exfat"
+        for mod in $MODULES; do
+          if lsmod | grep -q "^${mod//-/_}"; then
+            echo "$mod: LOADED"
+          else
+            echo "$mod: not loaded"
+          fi
+        done
+        echo ""
+        echo "=== USB Bus Information ==="
+        lsusb 2>/dev/null | grep -v "root hub" || echo "lsusb not available"
+      register: usb_modules
+      changed_when: false
+      tags: [storage, usb]
+
+    ###########################################################################
+    # Phase 10: Package Audit and Analysis
+    ###########################################################################
+
+    - name: Analyze package compliance
+      set_fact:
+        package_audit:
+          installed_required: "{{ installed_packages | intersect(required_packages) }}"
+          missing_required: "{{ required_packages | difference(installed_packages) }}"
+          conflicting: "{{ installed_packages | intersect(remove_packages) }}"
+          installed_optional: "{{ installed_packages | intersect(optional_packages) }}"
+          total_installed: "{{ installed_packages | length }}"
+          audit_status: >-
+            {{ 'ready' if (required_packages | difference(installed_packages) | length == 0 and
+               installed_packages | intersect(remove_packages) | length == 0) else 'needs_preparation' }}
+      tags: [audit]
+
+    - name: Debug package audit results
+      debug:
+        msg: |
+          Required packages ({{ required_packages | length }}): {{ required_packages }}
+          Installed packages sample (first 10): {{ installed_packages[:10] | default([]) }}
+          Total installed: {{ installed_packages | length }}
+          Found required: {{ package_audit.installed_required | length }}/{{ required_packages | length }}
+          Found packages: {{ package_audit.installed_required }}
+          Missing: {{ package_audit.missing_required }}
+          Conflicts: {{ package_audit.conflicting }}
+      when: package_audit is defined
+      tags: [audit, debug]
+
+    ###########################################################################
+    # Phase 11: Report Generation
+    ###########################################################################
+
+    - name: Create audit report directory
+      file:
         path: "{{ audit_report_dir }}"
         state: directory
         mode: "0755"
@@ -187,107 +519,166 @@
       tags: [report]
 
     - name: Build comprehensive audit report
-      ansible.builtin.set_fact:
+      set_fact:
         audit_report:
           metadata:
             hostname: "{{ inventory_hostname }}"
-            audit_timestamp: "{{ audit_timestamp }}"
+            timestamp: "{{ audit_timestamp }}"
             ansible_host: "{{ ansible_host }}"
-          hardware:
-            model: "{{ hardware_model.stdout | trim }}"
-            cpu: "{{ cpu_info.stdout | trim }}"
-            memory_mb: "{{ memory_mb.stdout | trim }}"
-            flash_size: "{{ flash_size.stdout | trim }}"
-            network_interfaces: "{{ network_interfaces.stdout_lines }}"
-          software:
-            openwrt_version: "{{ openwrt_version.stdout | trim }}"
-            kernel_version: "{{ kernel_version.stdout | trim }}"
-            batman_module: "{{ 'loaded' if 'batman_adv' in batman_module_status.stdout else 'not_loaded' }}"
-            opkg_update: "{{ 'success' if 'SUCCESS' in opkg_update_status.stdout else 'failed' }}"
+          system:
+            identification: "{{ system_id.stdout_lines }}"
+            cpu_memory: "{{ cpu_memory.stdout_lines }}"
+            storage: "{{ storage_info.stdout_lines }}"
+          network:
+            interfaces: "{{ network_interfaces.stdout_lines }}"
+            configuration: "{{ uci_network.stdout_lines }}"
+          services:
+            status: "{{ services_status.stdout_lines }}"
+            processes: "{{ process_info.stdout_lines }}"
+          security:
+            ssh: "{{ ssh_config.stdout_lines }}"
+            firewall: "{{ firewall_config.stdout_lines }}"
+            dns_dhcp: "{{ dns_dhcp_config.stdout_lines }}"
+          mesh:
+            batman_status: "{{ batman_status.stdout_lines }}"
+          wireless:
+            configuration: "{{ wireless_config.stdout_lines }}"
+          usb_storage:
+            devices: "{{ usb_devices.stdout_lines | default([]) }}"
+            mount_status: "{{ usb_mount_status.stdout_lines | default([]) }}"
+            automount_config: "{{ usb_automount_config.stdout_lines | default([]) }}"
+            kernel_modules: "{{ usb_modules.stdout_lines | default([]) }}"
           packages:
             installed_count: "{{ installed_packages | length }}"
             installed_list: "{{ installed_packages }}"
-            audit: "{{ package_audit }}"
-          services:
-            status: "{{ services_status.stdout_lines }}"
-            ssh_config: "{{ ssh_config.stdout_lines }}"
-          recommendations:
+            full_list: "{{ installed_packages_full }}"
+            repository_status: "{{ package_repos.stdout_lines }}"
+          diagnostics:
+            system_health: "{{ system_diagnostics.stdout_lines }}"
+            sensors: "{{ sensors_info.stdout_lines }}"
+          audit:
+            package_compliance: "{{ package_audit }}"
             status: "{{ package_audit.audit_status }}"
-            actions_required: "{{
-              (package_audit.conflicting | length > 0) or
-              (package_audit.missing_required | length > 0)
-            }}"
-            remove_packages: "{{ package_audit.conflicting }}"
-            install_packages: "{{ package_audit.missing_required }}"
       tags: [report]
 
     - name: Save audit report to JSON
-      ansible.builtin.copy:
+      copy:
         content: "{{ audit_report | to_nice_json }}"
         dest: "{{ audit_report_dir }}/{{ inventory_hostname }}_audit_{{ audit_timestamp }}.json"
         mode: "0644"
       delegate_to: localhost
       tags: [report]
 
-    - name: Generate preparation script from template
-      ansible.builtin.template:
+    - name: Generate preparation script
+      template:
         src: ../templates/prepare_node.sh.j2
         dest: "{{ audit_report_dir }}/{{ inventory_hostname }}_prepare.sh"
         mode: "0755"
       delegate_to: localhost
-      tags: [report, script]
+      when: package_audit.audit_status != 'ready'
+      tags: [report]
 
     ###########################################################################
-    # Phase 7: Summary Output
+    # Phase 12: Summary Display
     ###########################################################################
 
     - name: Display audit summary
-      ansible.builtin.debug:
+      debug:
         msg: |
           ================================================================================
-          AUDIT SUMMARY: {{ inventory_hostname }}
+          AUDIT REPORT: {{ inventory_hostname }} ({{ ansible_host }})
           ================================================================================
-          Hardware:
-            Model: {{ hardware_model.stdout | trim }}
-            Memory: {{ memory_mb.stdout | trim }} MB
-            Storage: {{ flash_size.stdout | trim }}
-            OpenWrt: {{ openwrt_version.stdout | trim }}
-            Kernel: {{ kernel_version.stdout | trim }}
 
-          Package Status:
-            Total Installed: {{ installed_packages | length }}
-            Required Installed: {{ package_audit.installed_required | length }}/{{ required_packages | length }}
-            Missing Required: {{ package_audit.missing_required | length }}
-            Conflicts Found: {{ package_audit.conflicting | length }}
+          SYSTEM INFORMATION
+          ------------------
+          {{ system_id.stdout_lines[1] | default('Model: Unknown') }}
+          {{ system_id.stdout_lines[5] | default('OpenWrt: Unknown') |
+             regex_search('DISTRIB_DESCRIPTION=.*') |
+             regex_replace('DISTRIB_DESCRIPTION=', 'Version: ') | regex_replace('"', '') }}
+          {{ cpu_memory.stdout_lines[1] | default('CPU: Unknown') }}
+          Memory: {{ cpu_memory.stdout_lines | select('match', '.*Mem:.*') |
+                     first | default('Unknown') | regex_replace('^Mem:\\s+', '') }}
+          Storage: {{ storage_info.stdout_lines | select('match', '^/dev/.*') | first | default('Unknown') }}
 
-          Audit Status: {{ package_audit.audit_status | upper }}
+          NETWORK STATUS
+          --------------
+          Interfaces: {{ network_interfaces.stdout_lines | select('match', '^[0-9]+:.*') | list | length }}
+          IP Addresses: {{ network_interfaces.stdout_lines | select('match', '.*inet .*') | list | length }}
+          Batman Status: {{ 'ACTIVE' if 'batman_adv' in batman_status.stdout else 'NOT LOADED' }}
+          Mesh Neighbors: {{ batman_status.stdout_lines |
+                          select('match', '^[0-9a-f]{2}:[0-9a-f]{2}:.*') | list | length }}
+
+          SERVICE STATUS
+          --------------
+          {% for line in services_status.stdout_lines %}
+          {% if 'RUNNING' in line %}
+          ✓ {{ line }}
+          {% elif 'STOPPED' in line and 'dropbear' not in line %}
+          ✗ {{ line }}
+          {% endif %}
+          {% endfor %}
+
+          USB STORAGE
+          -----------
+          {% if 'Device: /dev/sd' in usb_devices.stdout %}
+          {% for line in usb_devices.stdout_lines %}
+          {% if 'Device:' in line %}
+          {{ line }}
+          {% elif 'Partition:' in line %}
+            {{ line }}
+          {% endif %}
+          {% endfor %}
+          {% else %}
+          No USB storage devices detected
+          {% endif %}
+          Mount Point /x00: {{ 'MOUNTED' if 'Status: MOUNTED' in usb_mount_status.stdout else 'NOT MOUNTED' }}
+          {% if 'df -h' in usb_mount_status.stdout and 'Status: MOUNTED' in usb_mount_status.stdout %}
+          {% for line in usb_mount_status.stdout_lines %}
+          {% if '/dev/sd' in line and '/x00' in line %}
+          Storage Usage: {{ line.split()[2] }} used of {{ line.split()[1] }} ({{ line.split()[4] }})
+          {% endif %}
+          {% endfor %}
+          {% endif %}
+          Auto-mount: {{ 'CONFIGURED' if "target='/x00'" in usb_automount_config.stdout else 'NOT CONFIGURED' }}
+
+          PACKAGE AUDIT
+          -------------
+          Total Installed: {{ package_audit.total_installed }} packages
+          Required Packages: {{ package_audit.installed_required | length }}/{{ required_packages | length }} installed
+          Missing Required: {{ package_audit.missing_required | length }}
+          Conflicting: {{ package_audit.conflicting | length }}
+          Status: {{ 'READY FOR DEPLOYMENT' if package_audit.audit_status == 'ready' else 'PREPARATION NEEDED' }}
 
           {% if package_audit.missing_required | length > 0 %}
-          Missing Packages:
+          MISSING REQUIRED PACKAGES:
           {% for pkg in package_audit.missing_required %}
             - {{ pkg }}
           {% endfor %}
           {% endif %}
 
           {% if package_audit.conflicting | length > 0 %}
-          Conflicting Packages (must remove):
+          CONFLICTING PACKAGES (must remove):
           {% for pkg in package_audit.conflicting %}
             - {{ pkg }}
           {% endfor %}
           {% endif %}
 
-          Reports Generated:
-            - {{ audit_report_dir }}/{{ inventory_hostname }}_audit_{{ audit_timestamp }}.json
-            - {{ audit_report_dir }}/{{ inventory_hostname }}_prepare.sh
-
+          FILES GENERATED
+          ---------------
+          Report: {{ audit_report_dir }}/{{ inventory_hostname }}_audit_{{ audit_timestamp }}.json
           {% if package_audit.audit_status != 'ready' %}
-          Next Steps:
-            1. Review the preparation script
-            2. Copy to node: scp {{ audit_report_dir }}/{{ inventory_hostname }}_prepare.sh root@{{ ansible_host }}:/tmp/
-            3. Execute on node: ssh root@{{ ansible_host }} 'sh /tmp/{{ inventory_hostname }}_prepare.sh'
-            4. Re-run audit to verify
+          Script: {{ audit_report_dir }}/{{ inventory_hostname }}_prepare.sh
+
+          NEXT STEPS
+          ----------
+          1. Review the preparation script
+          2. Copy to node: scp {{ audit_report_dir }}/{{ inventory_hostname }}_prepare.sh root@{{ ansible_host }}:/tmp/
+          3. Execute: ssh root@{{ ansible_host }} 'sh /tmp/prepare.sh'
+          4. Re-run audit to verify
           {% else %}
-          Node is READY for full Ansible deployment!
+
+          ✅ Node is ready for deployment!
           {% endif %}
+
           ================================================================================
       tags: [summary]

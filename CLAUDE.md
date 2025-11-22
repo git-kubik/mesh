@@ -234,3 +234,6 @@ pytest tests/ -v --cov
 - after each commit check the github workflows
 - PRIOR to commiting run pre-commit and reslove any errors
 - always use uv to run and manage python
+- ask  me before doing any git commits
+- dont do any deployments yourself, as me to do it
+- do not perform any git actions unless specifically ask my me to do so

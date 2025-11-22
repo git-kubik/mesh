@@ -212,7 +212,53 @@
 
     # SSH Server Transition: Dropbear (password) → OpenSSH (key-based)
     ###########################################################################
-    # Phase 1: Generate SSH key on control machine (if needed)
+    # Phase 1: Move Dropbear to port 2222 to free up port 22
+    ###########################################################################
+
+    - name: Step 1 - Move dropbear to port 2222
+      raw: |
+        echo "Reconfiguring dropbear to port 2222..."
+        uci set dropbear.@dropbear[0].Port='2222'
+        uci commit dropbear
+        echo "Restarting dropbear on port 2222..."
+        /etc/init.d/dropbear restart
+        sleep 2
+        echo "Dropbear moved to port 2222"
+      tags: ssh
+
+    - name: Step 2 - Wait for dropbear to be listening on port 2222
+      wait_for:
+        host: "{{ ansible_host }}"
+        port: 2222
+        delay: 2
+        timeout: 30
+        state: started
+      delegate_to: localhost
+      tags: ssh
+
+    - name: Step 3 - Update ansible connection to port 2222
+      set_fact:
+        ansible_port: 2222
+      tags: ssh
+
+    - name: Force reconnection on port 2222
+      meta: reset_connection
+      tags: ssh
+
+    - name: Verify connection on port 2222
+      wait_for_connection:
+        connect_timeout: 10
+        delay: 2
+        timeout: 30
+      tags: ssh
+
+    - name: Test dropbear connection on port 2222
+      raw: "echo 'Connected via dropbear on port 2222 - port 22 is now free for OpenSSH'"
+      register: dropbear_2222_test
+      tags: ssh
+
+    ###########################################################################
+    # Phase 2: Generate SSH key on control machine (if needed)
     ###########################################################################
 
     - name: Check if SSH key exists on control machine
@@ -257,7 +303,7 @@
       tags: ssh
 
     ###########################################################################
-    # Phase 2: Deploy SSH key to node
+    # Phase 3: Deploy SSH key to node
     ###########################################################################
 
     - name: Create .ssh directory on node
@@ -271,17 +317,6 @@
     - name: Set authorized_keys permissions
       raw: "chmod 600 /root/.ssh/authorized_keys"
       tags: ssh
-
-    ###########################################################################
-    # Phase 3: Set root password (for console access)
-    ###########################################################################
-
-    - name: Set root password
-      raw: "echo -e '{{ lookup('env', 'ROOT_PASSWORD') | default('CHANGE_THIS_PASSWORD', true) }}\n{{ lookup('env', 'ROOT_PASSWORD') | default('CHANGE_THIS_PASSWORD', true) }}' | passwd root"
-      no_log: true
-      tags:
-        - ssh
-        - security
 
     ###########################################################################
     # Phase 4: Configure and start OpenSSH
@@ -304,29 +339,11 @@
       tags: ssh
 
     ###########################################################################
-    # Phase 5: Transition from Dropbear to OpenSSH
-    # This is a critical phase - we stop Dropbear and start OpenSSH atomically
+    # Phase 5: Start OpenSSH on port 22 and switch connection
     ###########################################################################
 
     - name: Ensure SSH configuration directory exists
       raw: "mkdir -p /etc/ssh"
-      tags: ssh
-
-    - name: Configure OpenSSH for root login
-      raw: |
-        if [ -f /etc/ssh/sshd_config ]; then
-          # Ensure PermitRootLogin is set to yes temporarily
-          sed -i 's/^#*PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config
-          echo "Updated sshd_config for root login"
-        else
-          # Create minimal sshd_config
-          cat > /etc/ssh/sshd_config << 'EOF'
-        PermitRootLogin yes
-        PubkeyAuthentication yes
-        PasswordAuthentication yes
-        EOF
-          echo "Created minimal sshd_config"
-        fi
       tags: ssh
 
     - name: Generate SSH host keys if missing
@@ -346,45 +363,21 @@
       raw: "/etc/init.d/sshd enable 2>&1"
       tags: ssh
 
-    - name: Disable dropbear to prevent respawn
-      raw: "/etc/init.d/dropbear disable"
-      failed_when: false
-      tags: ssh
-
-    - name: Perform atomic SSH server switch (Dropbear → OpenSSH)
+    - name: Start OpenSSH on port 22
       raw: |
-        # Create a script to handle the switch
-        cat > /tmp/switch_ssh.sh << 'SCRIPT'
-        #!/bin/sh
-        # Stop dropbear via init script (prevents procd respawn)
-        /etc/init.d/dropbear stop 2>/dev/null || true
-        # Force kill any remaining dropbear processes
-        killall -9 dropbear 2>/dev/null || true
-        # Wait for port to be released
+        echo "Starting OpenSSH on port 22..."
+        /etc/init.d/sshd start 2>&1
         sleep 2
-        # Start OpenSSH
-        /etc/init.d/sshd start
-        # Log the result
+        # Verify OpenSSH is running
         if pidof sshd > /dev/null; then
-          echo "SSH switch successful" > /tmp/ssh_switch.log
+          echo "OpenSSH successfully started on port 22"
         else
-          echo "SSH switch failed" > /tmp/ssh_switch.log
-          /etc/init.d/dropbear start
+          echo "Failed to start OpenSSH"
+          exit 1
         fi
-        SCRIPT
-        chmod +x /tmp/switch_ssh.sh
-        # Execute in background and exit immediately
-        nohup /tmp/switch_ssh.sh > /dev/null 2>&1 &
-      tags: ssh
-      async: 0
-      poll: 0
-
-    - name: Wait for SSH switch to complete
-      pause:
-        seconds: 5
       tags: ssh
 
-    - name: Verify OpenSSH is running and listening
+    - name: Verify OpenSSH is listening on port 22
       wait_for:
         host: "{{ ansible_host }}"
         port: 22
@@ -394,8 +387,9 @@
       delegate_to: localhost
       tags: ssh
 
-    - name: Update connection parameters for SSH key authentication
+    - name: Switch ansible connection to OpenSSH on port 22
       set_fact:
+        ansible_port: 22
         ansible_ssh_pass: ""
         ansible_ssh_common_args: "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
         ansible_ssh_private_key_file: "{{ lookup('env', 'SSH_KEY_PATH') | default(lookup('env', 'HOME') ~ '/.ssh/openwrt_mesh_rsa', true) }}"
@@ -422,25 +416,28 @@
       register: openssh_test
       tags: ssh
 
-    - name: Verify SSH switch result
+    - name: Verify SSH transition result
       raw: |
-        echo "=== SSH Switch Verification ==="
-        if [ -f /tmp/ssh_switch.log ]; then
-          echo "Switch log: $(cat /tmp/ssh_switch.log)"
-        fi
-        echo "Running SSH daemon:"
+        echo "=== SSH Transition Verification ==="
+        echo "Running SSH daemons:"
         if pidof sshd > /dev/null; then
-          echo "  OpenSSH (sshd) is running ✓"
+          echo "  OpenSSH (sshd) is running on port 22 ✓"
+        else
+          echo "  ERROR: OpenSSH is not running!"
         fi
         if pidof dropbear > /dev/null; then
-          echo "  WARNING: Dropbear is still running!"
+          echo "  Dropbear is still running on port 2222 (will be removed)"
         fi
+        echo ""
+        echo "Port status:"
+        netstat -tlpn | grep -E ':22 |:2222 ' || true
+        echo ""
         echo "SSH service status:"
         /etc/init.d/sshd status 2>&1 || true
       register: ssh_verification
       tags: ssh
 
-    - name: Display SSH switch verification
+    - name: Display SSH transition verification
       debug:
         msg: "{{ ssh_verification.stdout_lines }}"
       tags: ssh
@@ -455,6 +452,14 @@
       raw: "logread | grep -i sshd | tail -10"
       register: sshd_logs
       failed_when: false
+      tags: ssh
+
+    - name: Step 7 - Stop and disable dropbear
+      raw: |
+        echo "Stopping dropbear on port 2222..."
+        /etc/init.d/dropbear stop 2>&1
+        /etc/init.d/dropbear disable 2>&1
+        echo "Dropbear stopped and disabled"
       tags: ssh
 
     - name: Remove dropbear package
@@ -473,12 +478,43 @@
 
           - SSH Key: {{ lookup('env', 'SSH_KEY_PATH') | default('~/.ssh/openwrt_mesh_rsa', true) }}
           - Public Key Deployed: {{ ssh_public_key.split()[0:2] | join(' ') }}...
-          - Root Password: Set (console access only)
+          - Root Password: Will be set after SSH verification
           - PasswordAuthentication: Disabled
           - PubkeyAuthentication: Enabled
 
           Future connections will use SSH key from: {{ lookup('env', 'SSH_KEY_PATH') | default('~/.ssh/openwrt_mesh_rsa', true) }}
       tags: ssh
+
+    ###########################################################################
+    # Phase 6: Set root password (for console access)
+    ###########################################################################
+    # NOTE: Setting root password AFTER SSH transition to avoid authentication issues
+
+    - name: Set root password for console access
+      raw: "echo -e '{{ lookup('env', 'ROOT_PASSWORD') | default('CHANGE_THIS_PASSWORD', true) }}\n{{ lookup('env', 'ROOT_PASSWORD') | default('CHANGE_THIS_PASSWORD', true) }}' | passwd root"
+      no_log: true
+      tags:
+        - ssh
+        - security
+
+    - name: Verify root password was set
+      raw: |
+        if grep -q '^root:[^!*]' /etc/shadow; then
+          echo "Root password successfully set"
+        else
+          echo "WARNING: Root password may not be set correctly"
+        fi
+      register: root_password_check
+      tags:
+        - ssh
+        - security
+
+    - name: Display root password status
+      debug:
+        msg: "{{ root_password_check.stdout_lines }}"
+      tags:
+        - ssh
+        - security
 
     # System configuration
     - name: Set hostname
@@ -544,6 +580,182 @@
         - firewall
 
     ###########################################################################
+    # Phase 7: USB Storage Configuration
+    # Automatically setup USB storage if device is attached
+    ###########################################################################
+
+    - name: Load USB kernel modules
+      raw: |
+        modprobe usb-storage 2>/dev/null || true
+        modprobe uas 2>/dev/null || true
+        sleep 2
+      changed_when: false
+      tags:
+        - usb
+        - storage
+
+    - name: Check for USB storage devices
+      raw: |
+        if ls /dev/sd[a-z] 2>/dev/null | grep -q sd; then
+          for dev in /dev/sd[a-z]; do
+            if [ -b "$dev" ]; then
+              echo "USB_FOUND:$dev"
+              break
+            fi
+          done
+        else
+          echo "NO_USB"
+        fi
+      register: usb_check
+      changed_when: false
+      tags:
+        - usb
+        - storage
+
+    - name: Set USB device fact
+      set_fact:
+        usb_device_detected: "{{ 'USB_FOUND:' in usb_check.stdout }}"
+        usb_device_path: "{{ (usb_check.stdout | regex_search('USB_FOUND:(/dev/sd[a-z])', '\\1'))[0] if 'USB_FOUND:' in usb_check.stdout else '' }}"
+      tags:
+        - usb
+        - storage
+
+    - name: Display USB storage detection result
+      debug:
+        msg: |
+          USB Storage Detection:
+          - Device found: {{ usb_device_detected }}
+          - Device path: {{ usb_device_path | default('N/A') }}
+      tags:
+        - usb
+        - storage
+
+    - name: Partition USB storage device
+      raw: |
+        DEV="{{ usb_device_path }}"
+        if [ -b "$DEV" ]; then
+          # Unmount any existing partitions
+          for part in ${DEV}*; do
+            umount "$part" 2>/dev/null || true
+          done
+
+          # Create new partition table
+          echo "Creating partition on $DEV"
+          (echo o; echo n; echo p; echo 1; echo; echo; echo w) | fdisk "$DEV"
+          sleep 2
+
+          # Reload partition table
+          partprobe "$DEV" 2>/dev/null || true
+          echo "Partition created on $DEV"
+        fi
+      when:
+        - usb_device_detected
+        - usb_device_path != ''
+      tags:
+        - usb
+        - storage
+        - partition
+
+    - name: Format USB storage with F2FS
+      raw: |
+        PARTITION="{{ usb_device_path }}1"
+        if [ -b "$PARTITION" ]; then
+          echo "Formatting $PARTITION with F2FS..."
+          mkfs.f2fs -f -l "MESH-USB" "$PARTITION"
+          echo "Format complete"
+        fi
+      when:
+        - usb_device_detected
+        - usb_device_path != ''
+      tags:
+        - usb
+        - storage
+        - format
+
+    - name: Create USB mount point
+      raw: |
+        mkdir -p /x00
+        echo "Mount point /x00 created"
+      when: usb_device_detected
+      tags:
+        - usb
+        - storage
+
+    - name: Mount USB storage
+      raw: |
+        PARTITION="{{ usb_device_path }}1"
+        if [ -b "$PARTITION" ]; then
+          mount -t f2fs -o noatime,nodiratime,background_gc=on,discard "$PARTITION" /x00
+          echo "Mounted $PARTITION at /x00"
+        fi
+      when:
+        - usb_device_detected
+        - usb_device_path != ''
+      tags:
+        - usb
+        - storage
+        - mount
+
+    - name: Configure persistent USB mount
+      raw: |
+        PARTITION="{{ usb_device_path }}1"
+        if [ -b "$PARTITION" ]; then
+          # Get UUID
+          UUID=$(block info "$PARTITION" | sed -n 's/.*UUID="\([^"]*\)".*/\1/p')
+
+          if [ -n "$UUID" ]; then
+            # Configure using UCI
+            uci -q delete fstab.@mount[-1] 2>/dev/null || true
+            uci add fstab mount
+            uci set fstab.@mount[-1].target='/x00'
+            uci set fstab.@mount[-1].uuid="$UUID"
+            uci set fstab.@mount[-1].enabled='1'
+            uci set fstab.@mount[-1].fstype='f2fs'
+            uci set fstab.@mount[-1].options='rw,noatime,nodiratime,background_gc=on,discard'
+            uci commit fstab
+
+            # Enable block-mount
+            /etc/init.d/fstab enable
+
+            echo "Configured auto-mount for UUID $UUID"
+          fi
+
+          # Also add to /etc/fstab as fallback
+          sed -i '\|/x00|d' /etc/fstab
+          echo "$PARTITION /x00 f2fs rw,noatime,nodiratime,background_gc=on,discard 0 0" >> /etc/fstab
+        fi
+      when:
+        - usb_device_detected
+        - usb_device_path != ''
+      tags:
+        - usb
+        - storage
+        - persistent
+
+    - name: Verify USB storage setup
+      raw: |
+        if mount | grep -q "/x00"; then
+          echo "USB storage successfully mounted at /x00"
+          df -h /x00
+        else
+          echo "USB storage not mounted"
+        fi
+      when: usb_device_detected
+      register: usb_verify
+      tags:
+        - usb
+        - storage
+        - verify
+
+    - name: Display USB storage setup result
+      debug:
+        msg: "{{ usb_verify.stdout_lines | default(['USB storage not configured']) }}"
+      when: usb_device_detected
+      tags:
+        - usb
+        - storage
+
+    ###########################################################################
     # IMPORTANT: Configuration files deployed but NOT applied yet
     # Reboot will cleanly apply all configs at once
     # This prevents connection loss from network reload
@@ -557,6 +769,11 @@
           - Wireless config → /etc/config/wireless
           - DHCP config → /etc/config/dhcp
           - Firewall config → /etc/config/firewall
+          {% if usb_device_detected %}
+          - USB Storage → {{ usb_device_path }} mounted at /x00
+          {% else %}
+          - USB Storage → No device detected (skipped)
+          {% endif %}
 
           ⚠️  Reboot will apply all configurations
           ⚠️  Node IP will change: 192.168.1.1 → {{ node_ip }}
@@ -656,6 +873,11 @@
           - DHCP Pool: 10.11.12.{{ dhcp_pools[inventory_hostname].start }}-{{ dhcp_pools[inventory_hostname].start + dhcp_pools[inventory_hostname].limit - 1 }}
           - SSH: OpenSSH with key authentication
           - SSH Key: {{ lookup('env', 'SSH_KEY_PATH') | default('~/.ssh/openwrt_mesh_rsa', true) }}
+          {% if usb_device_detected %}
+          - USB Storage: {{ usb_device_path }} configured at /x00 (F2FS)
+          {% else %}
+          - USB Storage: Not configured (no device detected)
+          {% endif %}
 
           ✅ Deployment complete - node will reboot to apply changes
 

@@ -1,0 +1,409 @@
+---
+# USB Storage Setup Playbook for OpenWrt Mesh Nodes
+# This playbook configures USB storage devices on OpenWrt nodes
+#
+# Features:
+#   - Installs USB storage drivers and filesystem modules
+#   - Partitions USB drive to use full capacity
+#   - Formats with ext4 filesystem
+#   - Mounts at /x00 with persistent auto-mount on boot
+#
+# Usage:
+#   ansible-playbook -i inventory/hosts.yml playbooks/usb-storage.yml
+#   ansible-playbook -i inventory/hosts.yml playbooks/usb-storage.yml --limit node1
+#
+# Requirements:
+#   - USB storage device connected to node
+#   - Sufficient free space in /overlay for packages
+#
+###############################################################################
+
+- name: Configure USB Storage on OpenWrt Nodes
+  hosts: mesh_nodes
+  gather_facts: false
+  vars:
+    usb_mount_point: "/x00"
+    # Use F2FS for flash storage (optimal for USB flash drives/SSDs)
+    # Options: f2fs, ext4, exfat, vfat
+    usb_filesystem: "f2fs"
+    # Common USB device paths - will auto-detect
+    potential_devices:
+      - /dev/sda
+      - /dev/sdb
+      - /dev/sdc
+
+  tasks:
+    ###########################################################################
+    # Phase 1: Install USB Storage Support
+    ###########################################################################
+
+    - name: Update package lists
+      raw: opkg update
+      register: opkg_update
+      changed_when: false
+      failed_when: false
+      tags: [packages]
+
+    - name: Install USB storage kernel modules
+      raw: |
+        opkg install kmod-usb-storage || true
+        opkg install kmod-usb-storage-uas || true
+        opkg install kmod-usb2 || true
+        opkg install kmod-usb3 || true
+      register: usb_modules
+      changed_when: "'Installing' in usb_modules.stdout"
+      tags: [packages]
+
+    - name: Install filesystem support packages
+      raw: |
+        # Flash-optimized filesystem support
+        opkg install kmod-fs-f2fs || true
+        opkg install f2fs-tools || true
+        # Standard filesystem support
+        opkg install kmod-fs-ext4 || true
+        opkg install kmod-fs-exfat || true
+        opkg install kmod-fs-vfat || true
+        opkg install e2fsprogs || true
+        # Partitioning and mounting tools
+        opkg install fdisk || true
+        opkg install block-mount || true
+        # Flash storage utilities
+        opkg install kmod-mtd-rw || true
+      register: fs_packages
+      changed_when: "'Installing' in fs_packages.stdout"
+      tags: [packages]
+
+    - name: Load USB storage modules
+      raw: |
+        modprobe usb-storage 2>/dev/null || true
+        modprobe uas 2>/dev/null || true
+        sleep 3
+      changed_when: false
+      tags: [modules]
+
+    ###########################################################################
+    # Phase 2: Detect USB Storage Device
+    ###########################################################################
+
+    - name: Detect USB storage devices
+      raw: |
+        for dev in /dev/sd[a-z]; do
+          if [ -b "$dev" ]; then
+            echo "DEVICE:$dev"
+            fdisk -l "$dev" 2>/dev/null | head -10
+          fi
+        done
+      register: usb_devices
+      changed_when: false
+      tags: [detect]
+
+    - name: Parse detected USB device
+      set_fact:
+        usb_device: "{{ usb_devices.stdout | regex_search('DEVICE:(/dev/sd[a-z])', '\\1') | first | default('') }}"
+      when: "'DEVICE:' in usb_devices.stdout"
+      tags: [detect]
+
+    - name: Fail if no USB device found
+      fail:
+        msg: "No USB storage device detected. Please connect a USB drive."
+      when: usb_device is not defined or usb_device == ''
+      tags: [detect]
+
+    - name: Show detected USB device
+      debug:
+        msg: "Detected USB device: {{ usb_device }}"
+      when: usb_device is defined and usb_device != ''
+      tags: [detect]
+
+    ###########################################################################
+    # Phase 3: Partition USB Drive
+    ###########################################################################
+
+    - name: Check current partition table
+      raw: "fdisk -l {{ usb_device }}"
+      register: current_partitions
+      when: usb_device is defined
+      changed_when: false
+      tags: [partition]
+
+    - name: Backup current partition info
+      debug:
+        msg: |
+          Current partition table for {{ usb_device }}:
+          {{ current_partitions.stdout }}
+      when: usb_device is defined
+      tags: [partition, backup]
+
+    - name: Unmount any existing partitions
+      raw: |
+        for part in {{ usb_device }}*; do
+          if mount | grep -q "$part"; then
+            umount "$part" 2>/dev/null || true
+          fi
+        done
+      when: usb_device is defined
+      changed_when: false
+      tags: [partition]
+
+    - name: Create new partition table (USE WITH CAUTION)
+      raw: |
+        # WARNING: This will DELETE all data on the USB drive!
+        echo "Creating new partition table on {{ usb_device }}"
+
+        # Use fdisk to create a single partition using all space
+        (echo o; echo n; echo p; echo 1; echo; echo; echo w) | fdisk {{ usb_device }}
+
+        # Wait for device to settle
+        sleep 2
+
+        # Reload partition table
+        partprobe {{ usb_device }} 2>/dev/null || true
+        sleep 1
+      when: usb_device is defined
+      register: partition_created
+      tags: [partition, dangerous]
+
+    - name: Verify partition creation
+      raw: "fdisk -l {{ usb_device }}"
+      register: new_partitions
+      when: usb_device is defined
+      changed_when: false
+      tags: [partition]
+
+    ###########################################################################
+    # Phase 4: Format Filesystem
+    ###########################################################################
+
+    - name: Format partition with {{ usb_filesystem }}
+      raw: |
+        PARTITION="{{ usb_device }}1"
+        if [ -b "$PARTITION" ]; then
+          echo "Formatting $PARTITION with {{ usb_filesystem }}..."
+
+          case "{{ usb_filesystem }}" in
+            f2fs)
+              # F2FS format optimized for flash storage
+              mkfs.f2fs -f -l "MESH-USB" "$PARTITION"
+              ;;
+            ext4)
+              # EXT4 with flash-friendly options
+              mkfs.ext4 -F -L "MESH-USB" -O ^has_journal "$PARTITION"
+              ;;
+            exfat)
+              # ExFAT for compatibility
+              mkfs.exfat -n "MESH-USB" "$PARTITION"
+              ;;
+            vfat)
+              # FAT32 for maximum compatibility
+              mkfs.vfat -n "MESH-USB" "$PARTITION"
+              ;;
+            *)
+              echo "ERROR: Unsupported filesystem {{ usb_filesystem }}"
+              exit 1
+              ;;
+          esac
+
+          echo "Format complete"
+        else
+          echo "ERROR: Partition $PARTITION not found"
+          exit 1
+        fi
+      when: usb_device is defined
+      register: format_result
+      tags: [format]
+
+    ###########################################################################
+    # Phase 5: Mount Configuration
+    ###########################################################################
+
+    - name: Create mount point
+      raw: |
+        if [ ! -d "{{ usb_mount_point }}" ]; then
+          mkdir -p "{{ usb_mount_point }}"
+          echo "Created mount point: {{ usb_mount_point }}"
+        else
+          echo "Mount point already exists: {{ usb_mount_point }}"
+        fi
+      register: mount_point_created
+      tags: [mount]
+
+    - name: Mount USB storage
+      raw: |
+        PARTITION="{{ usb_device }}1"
+        if [ -b "$PARTITION" ]; then
+          if ! mount | grep -q "{{ usb_mount_point }}"; then
+            case "{{ usb_filesystem }}" in
+              f2fs)
+                # F2FS with optimizations for flash storage
+                mount -t f2fs -o noatime,nodiratime,background_gc=on,discard "$PARTITION" "{{ usb_mount_point }}"
+                ;;
+              ext4)
+                # EXT4 with flash-friendly options
+                mount -t ext4 -o noatime,nodiratime,nobarrier "$PARTITION" "{{ usb_mount_point }}"
+                ;;
+              *)
+                # Default mount for other filesystems
+                mount -t {{ usb_filesystem }} -o noatime "$PARTITION" "{{ usb_mount_point }}"
+                ;;
+            esac
+            echo "Mounted $PARTITION at {{ usb_mount_point }}"
+          else
+            echo "Already mounted at {{ usb_mount_point }}"
+          fi
+        fi
+      when: usb_device is defined
+      register: mount_result
+      tags: [mount]
+
+    ###########################################################################
+    # Phase 6: Persistent Mount Configuration
+    ###########################################################################
+
+    - name: Get partition UUID
+      raw: |
+        PARTITION="{{ usb_device }}1"
+        if [ -b "$PARTITION" ]; then
+          block info "$PARTITION" | sed -n 's/.*UUID="\([^"]*\)".*/\1/p'
+        fi
+      when: usb_device is defined
+      register: partition_uuid
+      changed_when: false
+      tags: [persistent]
+
+    - name: Configure block-mount for auto-mounting
+      raw: |
+        # Enable block-mount service
+        /etc/init.d/fstab enable
+        /etc/init.d/fstab start
+
+        # Generate fstab configuration
+        block detect > /etc/config/fstab.new
+
+        # Check if our device is in the config
+        PARTITION="{{ usb_device }}1"
+        UUID="{{ partition_uuid.stdout | trim }}"
+
+        if [ -n "$UUID" ]; then
+          # Set filesystem-specific mount options
+          case "{{ usb_filesystem }}" in
+            f2fs)
+              MOUNT_OPTIONS='rw,noatime,nodiratime,background_gc=on,discard'
+              ;;
+            ext4)
+              MOUNT_OPTIONS='rw,noatime,nodiratime,nobarrier'
+              ;;
+            *)
+              MOUNT_OPTIONS='rw,noatime'
+              ;;
+          esac
+
+          # Configure the mount using UCI
+          uci -q delete fstab.@mount[-1]
+          uci add fstab mount
+          uci set fstab.@mount[-1].target='{{ usb_mount_point }}'
+          uci set fstab.@mount[-1].uuid="$UUID"
+          uci set fstab.@mount[-1].enabled='1'
+          uci set fstab.@mount[-1].fstype='{{ usb_filesystem }}'
+          uci set fstab.@mount[-1].options="$MOUNT_OPTIONS"
+          uci commit fstab
+          echo "Configured auto-mount for UUID $UUID with options: $MOUNT_OPTIONS"
+        else
+          echo "WARNING: Could not get UUID for partition"
+        fi
+      when: usb_device is defined and partition_uuid.stdout | trim != ''
+      register: automount_config
+      tags: [persistent]
+
+    - name: Alternative fstab configuration (fallback)
+      raw: |
+        # Add to /etc/fstab as fallback
+        PARTITION="{{ usb_device }}1"
+        if [ -b "$PARTITION" ]; then
+          # Set filesystem-specific mount options
+          case "{{ usb_filesystem }}" in
+            f2fs)
+              MOUNT_OPTIONS='rw,noatime,nodiratime,background_gc=on,discard'
+              ;;
+            ext4)
+              MOUNT_OPTIONS='rw,noatime,nodiratime,nobarrier'
+              ;;
+            *)
+              MOUNT_OPTIONS='rw,noatime'
+              ;;
+          esac
+
+          # Remove any existing entry for this mount point
+          sed -i '\|{{ usb_mount_point }}|d' /etc/fstab
+
+          # Add new entry
+          echo "$PARTITION {{ usb_mount_point }} {{ usb_filesystem }} $MOUNT_OPTIONS 0 0" >> /etc/fstab
+          echo "Added fstab entry for $PARTITION with options: $MOUNT_OPTIONS"
+        fi
+      when: usb_device is defined
+      tags: [persistent, fallback]
+
+    ###########################################################################
+    # Phase 7: Verification
+    ###########################################################################
+
+    - name: Verify mount status
+      raw: |
+        echo "=== Mount Status ==="
+        mount | grep "{{ usb_mount_point }}" || echo "Not mounted"
+        echo ""
+        echo "=== Disk Usage ==="
+        df -h "{{ usb_mount_point }}" 2>/dev/null || echo "Mount point not available"
+        echo ""
+        echo "=== Mount Point Contents ==="
+        ls -la "{{ usb_mount_point }}/" 2>/dev/null | head -5 || echo "Cannot list directory"
+      register: mount_verification
+      changed_when: false
+      tags: [verify]
+
+    - name: Display verification results
+      debug:
+        msg: "{{ mount_verification.stdout_lines }}"
+      tags: [verify]
+
+    - name: Test write access
+      raw: |
+        TEST_FILE="{{ usb_mount_point }}/test-write-$(date +%s).txt"
+        echo "OpenWrt Mesh USB Storage Test" > "$TEST_FILE" 2>/dev/null
+        if [ -f "$TEST_FILE" ]; then
+          echo "Write test: SUCCESS"
+          rm "$TEST_FILE"
+        else
+          echo "Write test: FAILED - Check permissions"
+        fi
+      register: write_test
+      changed_when: false
+      tags: [verify]
+
+    - name: Show write test result
+      debug:
+        msg: "{{ write_test.stdout }}"
+      tags: [verify]
+
+    ###########################################################################
+    # Phase 8: Summary
+    ###########################################################################
+
+    - name: Configuration summary
+      debug:
+        msg: |
+          ========================================
+          USB Storage Configuration Complete
+          ========================================
+          Device: {{ usb_device | default('Not detected') }}
+          Partition: {{ usb_device | default('') }}1
+          Filesystem: {{ usb_filesystem }}
+          Mount Point: {{ usb_mount_point }}
+          UUID: {{ partition_uuid.stdout | trim | default('Not available') }}
+          Status: {{ 'Mounted' if usb_mount_point in mount_verification.stdout else 'Not mounted' }}
+
+          Next Steps:
+          1. Verify mount persists after reboot
+          2. Test with: df -h {{ usb_mount_point }}
+          3. Create directories as needed
+          ========================================
+      tags: [summary]

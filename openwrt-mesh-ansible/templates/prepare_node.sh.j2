@@ -6,8 +6,8 @@
 #
 # Node: {{ inventory_hostname }}
 # Generated: {{ audit_timestamp }}
-# Hardware: {{ hardware_model.stdout | trim }}
-# OpenWrt: {{ openwrt_version.stdout | trim }}
+# Hardware: {{ system_id.stdout_lines[1] | default('Unknown Model') }}
+# OpenWrt: {{ system_id.stdout_lines[6] | default('Unknown Version') | regex_replace('.*DISTRIB_RELEASE=', '') | regex_replace("'", '') }}
 #
 # Purpose: Prepare this node for automated mesh network deployment
 #
@@ -50,8 +50,8 @@ echo "==========================================================================
 echo "OpenWrt Mesh Node Preparation Script"
 echo "================================================================================"
 echo "Node: {{ inventory_hostname }}"
-echo "Hardware: {{ hardware_model.stdout | trim }}"
-echo "OpenWrt: {{ openwrt_version.stdout | trim }}"
+echo "Hardware: {{ system_id.stdout_lines[1] | default('Unknown Model') }}"
+echo "OpenWrt: {{ system_id.stdout_lines[6] | default('Unknown Version') | regex_replace('.*DISTRIB_RELEASE=', '') | regex_replace("'", '') }}"
 echo "Generated: {{ audit_timestamp }}"
 echo "================================================================================"
 echo ""
