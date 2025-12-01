@@ -1,0 +1,560 @@
+---
+# Monitoring role - deploys collectd, vnStat, and mesh health monitoring
+# Prerequisites: USB storage must be mounted at /x00
+
+###########################################################################
+# Phase 1: Prerequisites Check
+###########################################################################
+
+- name: Check if USB storage is mounted at /x00
+  raw: mount | grep -q "/x00" && echo "USB_MOUNTED" || echo "USB_NOT_MOUNTED"
+  register: usb_mount_check
+  changed_when: false
+  failed_when: "'USB_NOT_MOUNTED' in usb_mount_check.stdout"
+  tags: [prereq, check]
+
+- name: Display USB storage status
+  debug:
+    msg: "USB storage mounted at /x00 - proceeding with monitoring deployment"
+  tags: [prereq]
+
+###########################################################################
+# Phase 2: Install Monitoring Packages
+###########################################################################
+
+- name: Update package lists
+  raw: opkg update
+  register: opkg_update
+  changed_when: false
+  tags: [packages]
+
+- name: Install collectd core and essential plugins
+  raw: >-
+    opkg install collectd
+    collectd-mod-cpu
+    collectd-mod-memory
+    collectd-mod-load
+    collectd-mod-interface
+    collectd-mod-ping
+    collectd-mod-rrdtool
+    collectd-mod-disk
+    collectd-mod-df
+    collectd-mod-uptime
+    collectd-mod-processes
+    collectd-mod-thermal
+    collectd-mod-iwinfo
+    collectd-mod-conntrack
+    collectd-mod-tcpconns
+    collectd-mod-contextswitch
+    collectd-mod-entropy
+    collectd-mod-irq
+    collectd-mod-wireless
+    collectd-mod-netlink
+    collectd-mod-ethstat
+    collectd-mod-protocols
+    collectd-mod-dhcpleases || true
+  register: collectd_install
+  changed_when: "'Installing' in collectd_install.stdout"
+  tags: [packages, collectd]
+
+- name: Install LuCI statistics web interface
+  raw: opkg install luci-app-statistics || true
+  register: luci_stats_install
+  changed_when: "'Installing' in luci_stats_install.stdout"
+  tags: [packages, luci]
+
+- name: Install vnStat for bandwidth monitoring
+  raw: opkg install vnstat vnstati || true
+  register: vnstat_install
+  changed_when: "'Installing' in vnstat_install.stdout"
+  tags: [packages, vnstat]
+
+- name: Install additional LuCI monitoring apps
+  raw: opkg install luci-app-vnstat2 luci-app-commands || true
+  register: luci_monitoring_apps
+  changed_when: "'Installing' in luci_monitoring_apps.stdout"
+  tags: [packages, luci]
+
+###########################################################################
+# Phase 3: Configure Data Storage on /x00
+###########################################################################
+
+- name: Create monitoring data directories on USB
+  raw: >-
+    mkdir -p {{ monitoring_data_dir }}/collectd &&
+    mkdir -p {{ monitoring_data_dir }}/vnstat &&
+    mkdir -p {{ monitoring_data_dir }}/logs &&
+    chmod -R 755 {{ monitoring_data_dir }}
+  tags: [config, storage]
+
+###########################################################################
+# Phase 4: Configure Collectd
+###########################################################################
+
+- name: Configure collectd via UCI
+  raw: >-
+    uci set luci_statistics.collectd=statistics &&
+    uci set luci_statistics.collectd.BaseDir='{{ monitoring_data_dir }}/collectd' &&
+    uci set luci_statistics.collectd.Include='/etc/collectd/conf.d' &&
+    uci set luci_statistics.collectd.PIDFile='/var/run/collectd.pid' &&
+    uci set luci_statistics.collectd.PluginDir='/usr/lib/collectd' &&
+    uci set luci_statistics.collectd.TypesDB='/usr/share/collectd/types.db' &&
+    uci set luci_statistics.collectd.Interval='{{ collectd_interval }}' &&
+    uci set luci_statistics.collectd.ReadThreads='2' &&
+    uci set luci_statistics.collectd.Hostname='{{ inventory_hostname }}' &&
+    uci set luci_statistics.collectd_cpu=statistics &&
+    uci set luci_statistics.collectd_cpu.enable='1' &&
+    uci set luci_statistics.collectd_cpu.ReportByCpu='1' &&
+    uci set luci_statistics.collectd_cpu.ReportByState='1' &&
+    uci set luci_statistics.collectd_memory=statistics &&
+    uci set luci_statistics.collectd_memory.enable='1' &&
+    uci set luci_statistics.collectd_load=statistics &&
+    uci set luci_statistics.collectd_load.enable='1' &&
+    uci set luci_statistics.collectd_interface=statistics &&
+    uci set luci_statistics.collectd_interface.enable='1' &&
+    uci set luci_statistics.collectd_interface.Interfaces='bat0 br-lan wlan0 wlan1 eth0 eth1' &&
+    uci set luci_statistics.collectd_interface.IgnoreSelected='0' &&
+    uci set luci_statistics.collectd_df=statistics &&
+    uci set luci_statistics.collectd_df.enable='1' &&
+    uci set luci_statistics.collectd_df.Devices='/dev/sda1' &&
+    uci set luci_statistics.collectd_df.MountPoints='/x00 /overlay' &&
+    uci set luci_statistics.collectd_df.FSTypes='f2fs ext4 overlay' &&
+    uci set luci_statistics.collectd_df.IgnoreSelected='0' &&
+    uci set luci_statistics.collectd_disk=statistics &&
+    uci set luci_statistics.collectd_disk.enable='1' &&
+    uci set luci_statistics.collectd_disk.Disks='sda' &&
+    uci set luci_statistics.collectd_uptime=statistics &&
+    uci set luci_statistics.collectd_uptime.enable='1' &&
+    uci set luci_statistics.collectd_processes=statistics &&
+    uci set luci_statistics.collectd_processes.enable='1' &&
+    uci set luci_statistics.collectd_thermal=statistics &&
+    uci set luci_statistics.collectd_thermal.enable='1' &&
+    uci set luci_statistics.collectd_thermal.IgnoreSelected='0' &&
+    uci set luci_statistics.collectd_iwinfo=statistics &&
+    uci set luci_statistics.collectd_iwinfo.enable='1' &&
+    uci set luci_statistics.collectd_rrdtool=statistics &&
+    uci set luci_statistics.collectd_rrdtool.enable='1' &&
+    uci set luci_statistics.collectd_rrdtool.DataDir='{{ monitoring_data_dir }}/collectd/rrd' &&
+    uci set luci_statistics.collectd_rrdtool.RRARows='1200' &&
+    uci set luci_statistics.collectd_rrdtool.RRASingle='1' &&
+    uci set luci_statistics.collectd_rrdtool.CacheTimeout='{{ collectd_cache_flush }}' &&
+    uci set luci_statistics.collectd_rrdtool.CacheFlush='{{ collectd_cache_flush }}' &&
+    uci set luci_statistics.collectd_ping=statistics &&
+    uci set luci_statistics.collectd_ping.enable='1' &&
+    uci set luci_statistics.collectd_ping.Hosts='10.11.12.1 10.11.12.2 10.11.12.3' &&
+    uci set luci_statistics.collectd_ping.Interval='30' &&
+    uci set luci_statistics.collectd_conntrack=statistics &&
+    uci set luci_statistics.collectd_conntrack.enable='1' &&
+    uci set luci_statistics.collectd_tcpconns=statistics &&
+    uci set luci_statistics.collectd_tcpconns.enable='1' &&
+    uci set luci_statistics.collectd_tcpconns.ListeningPorts='1' &&
+    uci set luci_statistics.collectd_tcpconns.LocalPorts='22 80 443' &&
+    uci set luci_statistics.collectd_contextswitch=statistics &&
+    uci set luci_statistics.collectd_contextswitch.enable='1' &&
+    uci set luci_statistics.collectd_entropy=statistics &&
+    uci set luci_statistics.collectd_entropy.enable='1' &&
+    uci set luci_statistics.collectd_irq=statistics &&
+    uci set luci_statistics.collectd_irq.enable='1' &&
+    uci set luci_statistics.collectd_irq.IgnoreSelected='1' &&
+    uci set luci_statistics.collectd_wireless=statistics &&
+    uci set luci_statistics.collectd_wireless.enable='1' &&
+    uci set luci_statistics.collectd_netlink=statistics &&
+    uci set luci_statistics.collectd_netlink.enable='1' &&
+    uci set luci_statistics.collectd_netlink.Interfaces='bat0 br-lan wlan0 wlan1 eth0' &&
+    uci set luci_statistics.collectd_netlink.VerboseInterfaces='bat0 br-lan' &&
+    uci set luci_statistics.collectd_netlink.QDiscs='bat0 br-lan' &&
+    uci set luci_statistics.collectd_ethstat=statistics &&
+    uci set luci_statistics.collectd_ethstat.enable='1' &&
+    uci set luci_statistics.collectd_ethstat.Interfaces='eth0 eth1' &&
+    uci set luci_statistics.collectd_protocols=statistics &&
+    uci set luci_statistics.collectd_protocols.enable='1' &&
+    uci set luci_statistics.collectd_protocols.Values='Icmp Tcp Udp' &&
+    uci set luci_statistics.collectd_dhcpleases=statistics &&
+    uci set luci_statistics.collectd_dhcpleases.enable='1' &&
+    uci commit luci_statistics
+  register: collectd_config
+  tags: [config, collectd]
+
+###########################################################################
+# Phase 5: Configure vnStat
+###########################################################################
+
+- name: Configure vnStat to use USB storage
+  raw: >-
+    /etc/init.d/vnstat stop 2>/dev/null || true;
+    mkdir -p {{ monitoring_data_dir }}/vnstat;
+    chmod 755 {{ monitoring_data_dir }}/vnstat;
+    sed -i 's|DatabaseDir.*|DatabaseDir "{{ monitoring_data_dir }}/vnstat"|g' /etc/vnstat.conf;
+    sed -i 's|Interface.*|Interface "bat0"|g' /etc/vnstat.conf;
+    sleep 2;
+    for iface in bat0 br-lan wlan0 wlan1; do
+      ip link show "$iface" >/dev/null 2>&1 && vnstat --create -i "$iface" 2>/dev/null || true;
+    done;
+    echo "vnStat configured"
+  tags: [config, vnstat]
+
+###########################################################################
+# Phase 6: Create Monitoring Scripts
+###########################################################################
+
+- name: Create mesh health monitoring script
+  raw: |
+    cat > /usr/bin/mesh-monitor.sh << 'MESHSCRIPT'
+    #!/bin/sh
+    LOG_FILE="{{ monitoring_data_dir }}/logs/mesh-health.log"
+    log_msg() { echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" >> "$LOG_FILE"; }
+    lsmod | grep -q batman_adv || log_msg "ERROR: batman-adv module not loaded"
+    ip link show bat0 >/dev/null 2>&1 || log_msg "ERROR: bat0 interface not found"
+    NEIGHBORS=$(batctl o 2>/dev/null | grep -c "^[0-9a-f][0-9a-f]:")
+    [ "$NEIGHBORS" -lt 1 ] && log_msg "WARNING: No mesh neighbors" || log_msg "INFO: $NEIGHBORS mesh neighbors"
+    mount | grep -q "/x00" || log_msg "ERROR: USB not mounted"
+    USAGE=$(df /x00 | tail -1 | awk '{print $5}' | sed 's/%//')
+    [ "$USAGE" -gt 90 ] && log_msg "WARNING: USB usage at ${USAGE}%"
+    log_msg "INFO: Gateway mode: $(batctl gw 2>/dev/null)"
+    MESHSCRIPT
+    chmod +x /usr/bin/mesh-monitor.sh
+  tags: [scripts]
+
+- name: Create monitoring report script
+  raw: |
+    cat > /usr/bin/monitoring-report.sh << 'REPORTSCRIPT'
+    #!/bin/sh
+    HOSTNAME=$(uci -q get system.@system[0].hostname || cat /proc/sys/kernel/hostname)
+    echo "=== Monitoring Status - $HOSTNAME ==="
+    echo "Collectd: $(/etc/init.d/collectd status 2>&1)"
+    echo "vnStat: $(/etc/init.d/vnstat status 2>&1)"
+    df -h /x00 | grep -v Filesystem
+    du -sh {{ monitoring_data_dir }}/* 2>/dev/null || echo "No data"
+    echo "=== Recent Health ==="
+    tail -5 {{ monitoring_data_dir }}/logs/mesh-health.log 2>/dev/null || echo "No logs"
+    echo "=== Mesh Neighbors ==="
+    batctl o 2>/dev/null | head -5 || echo "N/A"
+    REPORTSCRIPT
+    chmod +x /usr/bin/monitoring-report.sh
+  tags: [scripts]
+
+###########################################################################
+# Phase 6b: Create Telegram Alerting Scripts (if configured)
+###########################################################################
+
+- name: Create Telegram alert script
+  raw: |
+    cat > /usr/bin/mesh-alert.sh << 'ALERTSCRIPT'
+    #!/bin/sh
+    # Telegram Alert Script for OpenWrt Mesh Network
+    # Sends alerts for critical issues with cooldown to prevent spam
+
+    TELEGRAM_BOT_TOKEN="{{ telegram_bot_token }}"
+    TELEGRAM_CHAT_ID="{{ telegram_chat_id }}"
+    HOSTNAME=$(uci -q get system.@system[0].hostname || cat /proc/sys/kernel/hostname)
+    ALERT_LOG="{{ monitoring_data_dir }}/logs/alerts-sent.log"
+    COOLDOWN={{ alert_cooldown }}
+
+    # Exit if Telegram not configured
+    [ -z "$TELEGRAM_BOT_TOKEN" ] || [ -z "$TELEGRAM_CHAT_ID" ] && exit 0
+
+    # Check if alert was sent recently (debounce)
+    check_cooldown() {
+        local alert_key="$1"
+        [ ! -f "$ALERT_LOG" ] && return 1
+        last_alert=$(grep "$alert_key" "$ALERT_LOG" 2>/dev/null | tail -1 | cut -d' ' -f1)
+        [ -z "$last_alert" ] && return 1
+        current_time=$(date +%s)
+        time_diff=$((current_time - last_alert))
+        [ $time_diff -lt $COOLDOWN ] && return 0
+        return 1
+    }
+
+    # Send Telegram message
+    send_telegram() {
+        local message="$1"
+        local alert_key="$2"
+
+        # Check cooldown
+        check_cooldown "$alert_key" && return
+
+        # Send message
+        curl -s -X POST \
+            "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            -d "chat_id=${TELEGRAM_CHAT_ID}" \
+            -d "text=${message}" \
+            -d "parse_mode=Markdown" \
+            >/dev/null 2>&1
+
+        # Log alert sent
+        echo "$(date +%s) $alert_key" >> "$ALERT_LOG"
+    }
+
+    # Check disk space
+    check_disk() {
+        usage=$(df /x00 2>/dev/null | tail -1 | awk '{print $5}' | sed 's/%//')
+        [ -z "$usage" ] && return
+        if [ "$usage" -gt {{ alert_disk_threshold }} ]; then
+            send_telegram "🚨 *${HOSTNAME}*: Disk Full - ${usage}% used on /x00" "disk-full"
+        fi
+    }
+
+    # Check mesh neighbors
+    check_neighbors() {
+        neighbor_count=$(batctl o 2>/dev/null | grep -v "No batman" | grep -c "^[0-9a-f]" || echo "0")
+        if [ "$neighbor_count" -eq 0 ]; then
+            send_telegram "🚨 *${HOSTNAME}*: No mesh neighbors detected!" "no-neighbors"
+        fi
+    }
+
+    # Check memory
+    check_memory() {
+        free_kb=$(free 2>/dev/null | grep Mem | awk '{print $4}')
+        [ -z "$free_kb" ] && return
+        free_mb=$((free_kb / 1024))
+        if [ "$free_mb" -lt {{ alert_memory_threshold }} ]; then
+            send_telegram "🚨 *${HOSTNAME}*: Low Memory - only ${free_mb}MB free" "low-memory"
+        fi
+    }
+
+    # Check CPU
+    check_cpu() {
+        cpu_idle=$(top -bn1 2>/dev/null | grep "CPU:" | awk '{print $8}' | sed 's/%//')
+        [ -z "$cpu_idle" ] && return
+        cpu_usage=$((100 - cpu_idle))
+        if [ "$cpu_usage" -gt {{ alert_cpu_threshold }} ]; then
+            send_telegram "🚨 *${HOSTNAME}*: High CPU - ${cpu_usage}% usage" "high-cpu"
+        fi
+    }
+
+    # Check WAN connectivity (gateway nodes only)
+    check_wan() {
+        if batctl gw 2>/dev/null | grep -q "server"; then
+            if ! ping -c 3 -W 5 1.1.1.1 >/dev/null 2>&1; then
+                send_telegram "🚨 *${HOSTNAME}*: WAN connectivity lost!" "wan-down"
+            fi
+        fi
+    }
+
+    # Check USB mount
+    check_usb() {
+        if ! mount | grep -q "/x00"; then
+            send_telegram "🚨 *${HOSTNAME}*: USB storage not mounted!" "usb-unmounted"
+        fi
+    }
+
+    # Run all checks
+    check_disk
+    check_neighbors
+    check_memory
+    check_cpu
+    check_wan
+    check_usb
+    ALERTSCRIPT
+    chmod +x /usr/bin/mesh-alert.sh
+  when: telegram_enabled | bool
+  tags: [scripts, telegram]
+
+- name: Create Telegram daily report script
+  raw: |
+    cat > /usr/bin/daily-report.sh << 'DAILYSCRIPT'
+    #!/bin/sh
+    # Daily Status Report via Telegram
+    # Sends summary of node health every morning
+
+    TELEGRAM_BOT_TOKEN="{{ telegram_bot_token }}"
+    TELEGRAM_CHAT_ID="{{ telegram_chat_id }}"
+    HOSTNAME=$(uci -q get system.@system[0].hostname || cat /proc/sys/kernel/hostname)
+
+    # Exit if Telegram not configured
+    [ -z "$TELEGRAM_BOT_TOKEN" ] || [ -z "$TELEGRAM_CHAT_ID" ] && exit 0
+
+    # Gather stats
+    UPTIME=$(uptime | awk -F'up ' '{print $2}' | cut -d',' -f1)
+    LOAD=$(uptime | awk -F'load average:' '{print $2}' | xargs)
+    MEM_FREE=$(free 2>/dev/null | awk '/Mem:/ {printf "%.1f", $4/$2*100}')
+    DISK_USAGE=$(df /x00 2>/dev/null | tail -1 | awk '{print $5}')
+    NEIGHBOR_COUNT=$(batctl o 2>/dev/null | grep -v "No batman" | grep -c "^[0-9a-f]" || echo "0")
+
+    # Gateway status
+    if batctl gw 2>/dev/null | grep -q "server"; then
+        if ping -c 3 -W 5 1.1.1.1 >/dev/null 2>&1; then
+            WAN_STATUS="Online"
+        else
+            WAN_STATUS="Offline"
+        fi
+    else
+        WAN_STATUS="N/A (client)"
+    fi
+
+    # Bandwidth stats (today)
+    BW_TODAY=$(vnstat -i bat0 -d 2>/dev/null | grep "today" | awk '{print $2" "$3" / "$5" "$6}' || echo "N/A")
+
+    # Build report line by line to avoid YAML parsing issues
+    REPORT=$(printf '%s\n' \
+        "📊 *Daily Report - ${HOSTNAME}*" \
+        "" \
+        "⏱ Uptime - ${UPTIME}" \
+        "📈 Load - ${LOAD}" \
+        "💾 Memory Free - ${MEM_FREE}%" \
+        "💿 Disk Usage - ${DISK_USAGE}" \
+        "🔗 Mesh Neighbors - ${NEIGHBOR_COUNT}" \
+        "🌐 WAN - ${WAN_STATUS}" \
+        "📡 Bandwidth - ${BW_TODAY}" \
+        "" \
+        "_$(date '+%Y-%m-%d %H:%M')_")
+
+    # Send report
+    curl -s -X POST \
+        "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+        -d "chat_id=${TELEGRAM_CHAT_ID}" \
+        -d "text=${REPORT}" \
+        -d "parse_mode=Markdown" \
+        >/dev/null 2>&1
+    DAILYSCRIPT
+    chmod +x /usr/bin/daily-report.sh
+  when: telegram_enabled | bool
+  tags: [scripts, telegram]
+
+- name: Display Telegram alerting status (enabled)
+  debug:
+    msg: "Telegram alerting ENABLED - alerts will be sent to chat {{ telegram_chat_id }}"
+  when: telegram_enabled | bool
+  tags: [scripts, telegram]
+
+- name: Display Telegram alerting status (disabled)
+  debug:
+    msg: "Telegram alerting DISABLED - set TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID in .env to enable"
+  when: not (telegram_enabled | bool)
+  tags: [scripts, telegram]
+
+###########################################################################
+# Phase 7: Configure LuCI Custom Commands
+###########################################################################
+
+- name: Configure LuCI custom commands
+  raw: >-
+    uci -q delete luci.command 2>/dev/null || true;
+    uci add luci command;
+    uci set luci.@command[-1].name='Mesh Neighbors';
+    uci set luci.@command[-1].command='batctl o';
+    uci set luci.@command[-1].public='1';
+    uci add luci command;
+    uci set luci.@command[-1].name='Gateway List';
+    uci set luci.@command[-1].command='batctl gwl';
+    uci set luci.@command[-1].public='1';
+    uci add luci command;
+    uci set luci.@command[-1].name='Monitoring Report';
+    uci set luci.@command[-1].command='/usr/bin/monitoring-report.sh';
+    uci set luci.@command[-1].public='1';
+    uci commit luci
+  tags: [config, luci]
+
+###########################################################################
+# Phase 8: Configure Cron Jobs
+###########################################################################
+
+- name: Set up cron jobs for monitoring
+  raw: >-
+    crontab -l 2>/dev/null | grep -q mesh-monitor.sh ||
+    (crontab -l 2>/dev/null; echo "*/5 * * * * /usr/bin/mesh-monitor.sh") | crontab -;
+    crontab -l 2>/dev/null | grep -q "mesh-health.log" ||
+    (crontab -l 2>/dev/null; echo "0 2 * * * find {{ monitoring_data_dir }}/logs -name '*.log' -mtime +30 -delete") | crontab -
+  tags: [cron]
+
+- name: Set up cron jobs for Telegram alerting
+  raw: >-
+    crontab -l 2>/dev/null | grep -q mesh-alert.sh ||
+    (crontab -l 2>/dev/null; echo "*/15 * * * * /usr/bin/mesh-alert.sh") | crontab -;
+    crontab -l 2>/dev/null | grep -q daily-report.sh ||
+    (crontab -l 2>/dev/null; echo "0 8 * * * /usr/bin/daily-report.sh") | crontab -
+  when: telegram_enabled | bool
+  tags: [cron, telegram]
+
+###########################################################################
+# Phase 9: Enable and Start Services
+###########################################################################
+
+- name: Enable and start collectd
+  raw: >-
+    /etc/init.d/collectd enable;
+    /etc/init.d/collectd restart;
+    sleep 2
+  register: collectd_service
+  tags: [services]
+
+- name: Enable and start vnstat
+  raw: >-
+    /etc/init.d/vnstat enable;
+    /etc/init.d/vnstat restart
+  register: vnstat_service
+  tags: [services]
+
+- name: Run initial mesh health check
+  raw: /usr/bin/mesh-monitor.sh
+  tags: [services]
+
+###########################################################################
+# Phase 10: Distributed Syslog Configuration
+###########################################################################
+
+- name: Create syslog directory on USB storage
+  raw: mkdir -p /x00/logs
+  changed_when: true
+  tags: [syslog]
+
+- name: Configure syslog to write directly to USB storage
+  raw: >-
+    uci set system.@system[0].log_file='/x00/logs/syslog';
+    uci set system.@system[0].log_size='2048';
+    uci commit system;
+    /etc/init.d/log restart
+  changed_when: true
+  tags: [syslog]
+
+- name: Add syslog rotation cron job
+  raw: >-
+    (crontab -l 2>/dev/null | grep -v "syslog-rotate";
+    echo "0 3 * * * find /x00/logs -name 'syslog.*' -mtime +30 -delete") | crontab -
+  changed_when: true
+  tags: [syslog, cron]
+
+- name: Verify syslog configuration
+  raw: |
+    echo "=== Syslog Configuration ==="
+    uci get system.@system[0].log_file
+    uci get system.@system[0].log_size
+    ls -la /x00/logs/ 2>/dev/null | head -5 || echo "Log directory empty (normal on first deploy)"
+  register: syslog_verify
+  changed_when: false
+  tags: [syslog]
+
+###########################################################################
+# Phase 11: Summary
+###########################################################################
+
+- name: Display monitoring setup summary
+  debug:
+    msg: |
+      ✅ MONITORING DEPLOYED
+
+      Collectd Plugins ({{ collectd_interval }}s interval):
+        Core: cpu, memory, load, uptime, processes, thermal
+        Network: interface, ping, tcpconns, conntrack, netlink, protocols
+        Wireless: iwinfo, wireless
+        Storage: disk, df
+        System: contextswitch, entropy, irq, ethstat, dhcpleases
+
+      Additional Tools:
+        - vnStat: Bandwidth tracking (bat0, br-lan, wlan0, wlan1)
+        - Health checks: Every 5 minutes via cron
+        - Syslog: Persistent logs at /x00/logs/syslog (2MB rotation, 30 day retention)
+      {% if telegram_enabled | bool %}
+
+      Telegram Alerting: ENABLED
+        - Critical alerts: Every 15 minutes (disk, memory, CPU, mesh, WAN)
+        - Daily report: 8:00 AM
+        - Cooldown: {{ alert_cooldown }}s between duplicate alerts
+      {% else %}
+
+      Telegram Alerting: DISABLED (set TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID in .env)
+      {% endif %}
+
+      Data Location: {{ monitoring_data_dir }}
+      Web UI: http://{{ ansible_host }}/cgi-bin/luci/admin/statistics/graph
+  tags: [summary]

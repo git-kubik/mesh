@@ -1,0 +1,19 @@
+---
+# Default variables for network_config role
+# These are fallbacks - prefer setting in group_vars/all.yml
+
+# Network configuration defaults are sourced from group_vars/all.yml
+# This file provides documentation of required variables:
+#
+# Required variables:
+#   - node_ip: Node's IP address on the mesh network
+#   - mesh_netmask: Network mask for mesh network
+#   - dns_servers: List of DNS servers
+#   - batman_routing_algo: BATMAN_IV or BATMAN_V
+#   - batman_gw_bandwidth: Gateway bandwidth
+#   - batman_hop_penalty: Hop penalty value
+#   - batman_orig_interval: Originator interval
+#   - mtu_wired_mesh: MTU for wired mesh interfaces
+#   - mtu_wireless_mesh: MTU for wireless mesh interfaces
+#   - enable_vlans: Whether VLANs are enabled
+#   - vlans: VLAN configuration dictionary (if enable_vlans is true)

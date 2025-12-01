@@ -1,0 +1,8 @@
+b80811d64c874b3b54ad5cce72fc4b8c53a9d507e7fb512690d30b9bc03e95d0 *.gitkeep
+25d43319429271f2c92e27475e025534c1cc3614b7ac8d49dcabf820818089ff *mesh-node3-sysupgrade.bin
+df0c13d7f1eb5c0557b353ebc644500d08542c3bdd30e50ca0e43110d4f655c6 *mesh-node3-sysupgrade.bin.sha256
+e9dc536954afcd4b15fa2c6b18fa0bf09e89a0d07d21d0e4ee0e3c2c201ebb7e *openwrt-24.10.4-ramips-mt7621-dlink_dir-1960-a1-squashfs-recovery.bin
+33e05411a7213860ea95d7c4ef76cdd5759a86c99a4899fcd13d7e1936ae3a9b *openwrt-24.10.4-ramips-mt7621-dlink_dir-1960-a1-squashfs-sysupgrade.bin
+8bcae3d9f06b40d40a3646344377d4b21cf1dcacad5a8f8b92693b1d086a29c1 *openwrt-24.10.4-ramips-mt7621-dlink_dir-1960-a1.bom.cdx.json
+1cf35736f3c5e2819c31d81c2fce818205b137045572ef5248a3168121808556 *openwrt-24.10.4-ramips-mt7621-dlink_dir-1960-a1.manifest
+44ea18e5b14d67626bd880087d23a33971ccfd353fd9645663e03cf99a265b81 *profiles.json

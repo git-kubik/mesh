@@ -1,0 +1,31 @@
+---
+# Phase 6: Cleanup Dropbear
+
+- name: Stop and disable dropbear
+  ansible.builtin.raw: |
+    echo "Stopping dropbear on port 2222..."
+    /etc/init.d/dropbear stop 2>&1
+    /etc/init.d/dropbear disable 2>&1
+    echo "Dropbear stopped and disabled"
+  changed_when: true
+
+- name: Remove dropbear package
+  ansible.builtin.raw: "opkg remove dropbear --force-removal-of-dependent-packages"
+  register: dropbear_remove
+  changed_when: "'Removing package' in dropbear_remove.stdout"
+  failed_when: false
+
+- name: Display SSH transition summary
+  ansible.builtin.debug:
+    msg: |  # pragma: allowlist secret
+      ✅ SSH Server Transition Complete
+
+      Dropbear (password) → OpenSSH (key-based)
+
+      - SSH Key: {{ ssh_key_path }}
+      - Public Key Deployed: {{ ssh_public_key.split()[0:2] | join(' ') }}...
+      - Root Password: Will be set after SSH verification
+      - PasswordAuthentication: Disabled
+      - PubkeyAuthentication: Enabled
+
+      Future connections will use SSH key from: {{ ssh_key_path }}

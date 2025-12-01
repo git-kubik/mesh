@@ -1,0 +1,14 @@
+---
+# Default variables for dhcp_config role
+# These are fallbacks - prefer setting in group_vars/all.yml
+
+# DHCP configuration defaults are sourced from group_vars/all.yml
+# This file provides documentation of required variables:
+#
+# Required variables:
+#   - dhcp_pools: Dictionary of per-node DHCP pools
+#   - dhcp_leasetime: DHCP lease duration
+#   - static_hosts: List of static host reservations
+#   - enable_vlans: Whether VLANs are enabled
+#   - vlans: VLAN configuration dictionary
+#   - node_ip: This node's IP address

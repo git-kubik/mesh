@@ -7,6 +7,7 @@
 #  - Network configuration (batman-adv mesh)
 #  - Wireless configuration (mesh + AP)
 #  - DHCP and firewall setup
+#  - USB storage setup (optional)
 #
 # Initial Setup Usage (fresh nodes at 192.168.1.1 with dropbear):
 #   ansible-playbook -i inventory/hosts-initial.yml playbooks/deploy.yml --limit node1
@@ -23,85 +24,37 @@
 - name: Deploy OpenWrt Mesh Network Configuration
   hosts: mesh_nodes
   gather_facts: false
-  collections:
-    - ansible.netcommon
-    - ansible.utils
 
-  vars:
-    config_backup_dir: /tmp/openwrt-config-backup
+  pre_tasks:
+    - name: Debug OPKG_REPO_URL environment variable
+      ansible.builtin.debug:
+        msg: "OPKG_REPO_URL = '{{ lookup('env', 'OPKG_REPO_URL') }}'"
+      delegate_to: localhost
+      run_once: true
+      tags: always
 
-  tasks:
-    - name: Load environment variables as facts
-      set_fact:
-        dns_servers:
-          - "{{ lookup('env', 'DNS_PRIMARY') | default('1.1.1.1', true) }}"
-          - "{{ lookup('env', 'DNS_SECONDARY') | default('8.8.8.8', true) }}"
-        batman_routing_algo: "{{ lookup('env', 'BATMAN_ROUTING_ALGO') | default('BATMAN_V', true) }}"
-        batman_gw_bandwidth: "{{ lookup('env', 'BATMAN_GW_BANDWIDTH') | default('100000/100000', true) }}"
-        batman_hop_penalty: "{{ lookup('env', 'BATMAN_HOP_PENALTY') | default('15', true) | int }}"
-        batman_orig_interval: "{{ lookup('env', 'BATMAN_ORIG_INTERVAL') | default('1000', true) | int }}"
-        mtu_wired_mesh: "{{ lookup('env', 'MTU_WIRED_MESH') | default('1560', true) | int }}"
-        mtu_wireless_mesh: "{{ lookup('env', 'MTU_WIRELESS_MESH') | default('1532', true) | int }}"
-        mesh_network: "{{ lookup('env', 'MESH_NETWORK') | default('10.11.12.0', true) }}"
-        mesh_netmask: "{{ lookup('env', 'MESH_NETMASK') | default('255.255.255.0', true) }}"
-        mesh_cidr: "{{ lookup('env', 'MESH_CIDR') | default('24', true) | int }}"
-        mesh_gateway: "{{ lookup('env', 'MESH_GATEWAY') | default('10.11.12.1', true) }}"
-        mesh_id: "{{ lookup('env', 'MESH_ID') | default('ha-mesh-net', true) }}"
-        mesh_encryption: "{{ lookup('env', 'MESH_ENCRYPTION') | default('sae', true) }}"
-        mesh_password: "{{ lookup('env', 'MESH_PASSWORD') | default('CHANGE_THIS_PASSWORD', true) }}"
-        mesh_channel: "{{ lookup('env', 'MESH_CHANNEL') | default('6', true) | int }}"
-        mesh_htmode: "{{ lookup('env', 'MESH_HTMODE') | default('HT40', true) }}"
-        mesh_mcast_rate: "{{ lookup('env', 'MESH_MCAST_RATE') | default('24000', true) | int }}"
-        client_ssid: "{{ lookup('env', 'CLIENT_SSID') | default('HA-Network-5G', true) }}"
-        client_encryption: "{{ lookup('env', 'CLIENT_ENCRYPTION') | default('psk2+ccmp', true) }}"
-        client_password: "{{ lookup('env', 'CLIENT_PASSWORD') | default('CHANGE_THIS_PASSWORD', true) }}"
-        client_channel: "{{ lookup('env', 'CLIENT_CHANNEL') | default('36', true) | int }}"
-        client_htmode: "{{ lookup('env', 'CLIENT_HTMODE') | default('VHT80', true) }}"
-        client_country: "{{ lookup('env', 'CLIENT_COUNTRY') | default('AU', true) }}"
-        enable_80211r: "{{ lookup('env', 'ENABLE_80211R') | default('true', true) | bool }}"
-        mobility_domain: "{{ lookup('env', 'MOBILITY_DOMAIN') | default('a1b2', true) }}"
-        enable_vlans: "{{ lookup('env', 'ENABLE_VLANS') | default('false', true) | bool }}"
-        enable_services: "{{ lookup('env', 'ENABLE_SERVICES') | default('network,firewall,dnsmasq,sshd', true) | split(',') }}"
-        dhcp_leasetime: "{{ lookup('env', 'DHCP_LEASETIME') | default('12h', true) }}"
-        static_hosts: []
-        dhcp_pools:
-          node1:
-            start: "{{ lookup('env', 'DHCP_NODE1_START') | default('100', true) | int }}"
-            limit: "{{ lookup('env', 'DHCP_NODE1_LIMIT') | default('50', true) | int }}"
-          node2:
-            start: "{{ lookup('env', 'DHCP_NODE2_START') | default('150', true) | int }}"
-            limit: "{{ lookup('env', 'DHCP_NODE2_LIMIT') | default('50', true) | int }}"
-          node3:
-            start: "{{ lookup('env', 'DHCP_NODE3_START') | default('200', true) | int }}"
-            limit: "{{ lookup('env', 'DHCP_NODE3_LIMIT') | default('50', true) | int }}"
-        vlans:
-          management:
-            vid: "{{ lookup('env', 'MGMT_VLAN_VID') | default('10', true) | int }}"
-            network: "{{ lookup('env', 'MGMT_VLAN_NETWORK') | default('10.11.10.0/24', true) }}"
-            gateway_ip: "10.11.10.1"
-            netmask: "255.255.255.0"
-            dhcp_start: "{{ lookup('env', 'MGMT_VLAN_DHCP_START') | default('100', true) | int }}"
-            dhcp_limit: "{{ lookup('env', 'MGMT_VLAN_DHCP_LIMIT') | default('50', true) | int }}"
-            description: "Management network - 2.4GHz AP for admin access"
-            ssid: "{{ lookup('env', 'MGMT_VLAN_SSID') | default('HA-Management', true) }}"
-            password: "{{ lookup('env', 'MGMT_PASSWORD') | default('CHANGE_THIS_PASSWORD', true) }}"
-            encryption: "{{ lookup('env', 'MGMT_VLAN_ENCRYPTION') | default('psk2+ccmp', true) }}"
-          guest:
-            vid: "{{ lookup('env', 'GUEST_VLAN_VID') | default('30', true) | int }}"
-            network: "{{ lookup('env', 'GUEST_VLAN_NETWORK') | default('10.11.30.0/24', true) }}"
-            gateway_ip: "10.11.30.1"
-            netmask: "255.255.255.0"
-            dhcp_start: "{{ lookup('env', 'GUEST_VLAN_DHCP_START') | default('100', true) | int }}"
-            dhcp_limit: "{{ lookup('env', 'GUEST_VLAN_DHCP_LIMIT') | default('50', true) | int }}"
-            isolation: "{{ lookup('env', 'GUEST_VLAN_ISOLATION') | default('true', true) | bool }}"
-            description: "Guest network - 5GHz AP with LAN isolation"
-            ssid: "{{ lookup('env', 'GUEST_VLAN_SSID') | default('HA-Guest', true) }}"
-            password: "{{ lookup('env', 'GUEST_PASSWORD') | default('CHANGE_THIS_PASSWORD', true) }}"
-            encryption: "{{ lookup('env', 'GUEST_VLAN_ENCRYPTION') | default('psk2+ccmp', true) }}"
+    - name: Start local repository web server
+      ansible.builtin.shell:
+        cmd: |
+          set -o pipefail
+          # Stop any existing server on port 8080
+          lsof -ti:8080 | xargs -r kill 2>/dev/null || true
+          sleep 1
+
+          # Start new server
+          cd {{ playbook_dir }}/..
+          nohup python3 -m http.server 8080 --directory openwrt-repo > /tmp/repo-server.log 2>&1 &
+          echo $! > /tmp/repo-server.pid
+          sleep 2
+        executable: /bin/bash
+      delegate_to: localhost
+      run_once: true
+      when: lookup('env', 'OPKG_REPO_URL') != ''
+      changed_when: true
       tags: always
 
     - name: Wait for SSH to be available (no Python required)
-      raw: echo "SSH connection successful"
+      ansible.builtin.raw: echo "SSH connection successful"
       register: ssh_test
       retries: 30
       delay: 10
@@ -110,651 +63,54 @@
       tags: always
 
     - name: Test connection and gather facts
-      raw: uname -a
+      ansible.builtin.raw: uname -a
       register: uname_output
       changed_when: false
       tags: always
 
     - name: Display node information
-      debug:
+      ansible.builtin.debug:
         msg: "Configuring {{ inventory_hostname }} at {{ ansible_host }}"
       tags: always
 
-    # Backup existing configuration
-    - name: Create backup directory
-      file:
-        path: "{{ config_backup_dir }}"
-        state: directory
-        mode: '0755'
-      delegate_to: localhost
-      run_once: false
-      tags: backup
+    - name: Load all environment variables as facts
+      ansible.builtin.include_tasks: ../roles/common/tasks/load_env_vars.yml
+      tags: always
 
-    - name: Backup current configuration (Python-free)
-      raw: |
-        if [ ! -f /tmp/backup-{{ inventory_hostname }}-*.tar.gz ]; then
-          sysupgrade -b /tmp/backup-{{ inventory_hostname }}-$(date +%Y%m%d-%H%M%S).tar.gz 2>&1 || echo "Backup skipped or failed"
-        fi
-      register: backup_result
-      changed_when: "'Backup skipped' not in backup_result.stdout"
-      failed_when: false
-      tags: backup
+  roles:
+    - role: backup
+      tags: [backup]
 
-    - name: Fetch backup to control machine (Python-free)
-      raw: |
-        ls /tmp/backup-{{ inventory_hostname }}-*.tar.gz 2>/dev/null || echo "No backup found"
-      register: backup_file_check
-      changed_when: false
-      failed_when: false
-      tags: backup
+    - role: package_management
+      tags: [packages]
 
-    - name: Copy backup to control machine using scp
-      local_action: >
-        shell sshpass -p '{{ ansible_ssh_pass | default("") }}' scp -o StrictHostKeyChecking=no
-        -o UserKnownHostsFile=/dev/null -o PubkeyAuthentication=no
-        -o PreferredAuthentications=password
-        root@{{ ansible_host }}:/tmp/backup-{{ inventory_hostname }}-*.tar.gz
-        {{ config_backup_dir }}/ 2>/dev/null || echo "No backup to fetch"
-      when: "'backup-' in backup_file_check.stdout"
-      changed_when: false
-      failed_when: false
-      tags: backup
+    - role: ssh_transition
+      tags: [ssh]
 
-    # Package management
-    - name: Update package lists
-      raw: opkg update
-      register: opkg_update
-      changed_when: "'Updated list of available packages' in opkg_update.stdout"
-      tags: packages
+    - role: system_config
+      tags: [system, security]
 
-    - name: Remove conflicting packages
-      raw: "opkg remove {{ item }} --force-removal-of-dependent-packages"
-      loop: "{{ lookup('env', 'REMOVE_PACKAGES') | default('wpad-basic-mbedtls,wpad-basic-wolfssl,wpad-basic', true) | split(',') }}"
-      register: remove_result
-      changed_when: "'Removing package' in remove_result.stdout"
-      failed_when: false
-      tags: packages
+    - role: network_config
+      tags: [config, network]
 
-    - name: Install required packages (with verbose output)
-      raw: "echo '=== Installing {{ item }} ===' && opkg install {{ item }} 2>&1 && echo '=== Installed {{ item }} ===' && opkg list-installed | grep -E '^({{ item }}|batctl)' || true"
-      loop: "{{ lookup('env', 'REQUIRED_PACKAGES') | default('python3,batctl-full,kmod-batman-adv,wpad-mesh-mbedtls,ip-full,tcpdump-mini,openssh-server,openssh-sftp-server,openssh-keygen', true) | split(',') }}"
-      register: install_result
-      changed_when: "'Installing' in install_result.stdout or 'Configuring' in install_result.stdout"
-      failed_when: false
-      tags: packages
+    - role: wireless_config
+      tags: [config, wireless]
 
-    - name: Display package installation results
-      debug:
-        msg: "{{ install_result.results | map(attribute='stdout_lines') | list }}"
-      tags: packages
+    - role: dhcp_config
+      tags: [config, dhcp]
 
-    - name: Verify batctl and kmod-batman-adv installation
-      raw: "opkg list-installed | grep -E '^(batctl|kmod-batman-adv)'"
-      register: batctl_check
-      changed_when: false
-      failed_when: false
-      tags: packages
+    - role: firewall_config
+      tags: [config, firewall]
 
-    - name: Show batctl verification
-      debug:
-        msg: "{{ batctl_check.stdout_lines }}"
-      tags: packages
+    - role: usb_storage
+      tags: [usb, storage]
+      when: lookup('env', 'ENABLE_USB_STORAGE') | default('true', true) | bool
 
-    - name: Install optional packages
-      raw: "opkg install {{ item }}"
-      loop: "{{ lookup('env', 'OPTIONAL_PACKAGES') | default('iperf3,ethtool,nano,htop,rsync', true) | split(',') }}"
-      register: optional_install_result
-      changed_when: "'Installing' in optional_install_result.stdout"
-      failed_when: false
-      tags:
-        - packages
-        - optional
+    - role: monitoring
+      tags: [monitoring]
+      when: lookup('env', 'ENABLE_MONITORING') | default('true', true) | bool
 
-    # SSH Server Transition: Dropbear (password) → OpenSSH (key-based)
-    ###########################################################################
-    # Phase 1: Move Dropbear to port 2222 to free up port 22
-    ###########################################################################
-
-    - name: Step 1 - Move dropbear to port 2222
-      raw: |
-        echo "Reconfiguring dropbear to port 2222..."
-        uci set dropbear.@dropbear[0].Port='2222'
-        uci commit dropbear
-        echo "Restarting dropbear on port 2222..."
-        /etc/init.d/dropbear restart
-        sleep 2
-        echo "Dropbear moved to port 2222"
-      tags: ssh
-
-    - name: Step 2 - Wait for dropbear to be listening on port 2222
-      wait_for:
-        host: "{{ ansible_host }}"
-        port: 2222
-        delay: 2
-        timeout: 30
-        state: started
-      delegate_to: localhost
-      tags: ssh
-
-    - name: Step 3 - Update ansible connection to port 2222
-      set_fact:
-        ansible_port: 2222
-      tags: ssh
-
-    - name: Force reconnection on port 2222
-      meta: reset_connection
-      tags: ssh
-
-    - name: Verify connection on port 2222
-      wait_for_connection:
-        connect_timeout: 10
-        delay: 2
-        timeout: 30
-      tags: ssh
-
-    - name: Test dropbear connection on port 2222
-      raw: "echo 'Connected via dropbear on port 2222 - port 22 is now free for OpenSSH'"
-      register: dropbear_2222_test
-      tags: ssh
-
-    ###########################################################################
-    # Phase 2: Generate SSH key on control machine (if needed)
-    ###########################################################################
-
-    - name: Check if SSH key exists on control machine
-      stat:
-        path: "{{ lookup('env', 'SSH_KEY_PATH') | default('~/.ssh/openwrt_mesh_rsa', true) }}"
-      delegate_to: localhost
-      register: ssh_key_stat
-      run_once: true
-      tags: ssh
-
-    - name: Generate SSH key pair if it doesn't exist
-      command: >
-        ssh-keygen -t {{ lookup('env', 'SSH_KEY_TYPE') | default('rsa', true) }}
-        -b {{ lookup('env', 'SSH_KEY_BITS') | default('4096', true) }}
-        -f {{ lookup('env', 'SSH_KEY_PATH') | default('~/.ssh/openwrt_mesh_rsa', true) }}
-        -C "{{ lookup('env', 'SSH_KEY_COMMENT') | default('ansible@openwrt-mesh', true) }}"
-        -N ""
-      delegate_to: localhost
-      when: not ssh_key_stat.stat.exists
-      run_once: true
-      tags: ssh
-
-    - name: Set SSH key permissions
-      file:
-        path: "{{ lookup('env', 'SSH_KEY_PATH') | default('~/.ssh/openwrt_mesh_rsa', true) }}"
-        mode: '0600'
-      delegate_to: localhost
-      run_once: true
-      tags: ssh
-
-    - name: Read SSH public key
-      slurp:
-        src: "{{ lookup('env', 'SSH_KEY_PATH') | default('~/.ssh/openwrt_mesh_rsa', true) }}.pub"
-      delegate_to: localhost
-      register: ssh_public_key_content
-      run_once: true
-      tags: ssh
-
-    - name: Set SSH public key fact
-      set_fact:
-        ssh_public_key: "{{ ssh_public_key_content.content | b64decode | trim }}"
-      tags: ssh
-
-    ###########################################################################
-    # Phase 3: Deploy SSH key to node
-    ###########################################################################
-
-    - name: Create .ssh directory on node
-      raw: "mkdir -p /root/.ssh && chmod 700 /root/.ssh"
-      tags: ssh
-
-    - name: Deploy SSH public key to node
-      raw: "echo '{{ ssh_public_key }}' > /root/.ssh/authorized_keys"
-      tags: ssh
-
-    - name: Set authorized_keys permissions
-      raw: "chmod 600 /root/.ssh/authorized_keys"
-      tags: ssh
-
-    ###########################################################################
-    # Phase 4: Configure and start OpenSSH
-    ###########################################################################
-
-    - name: Configure OpenSSH for key-based authentication
-      raw: |
-        cat > /etc/ssh/sshd_config << 'EOF'
-        # OpenSSH Configuration for OpenWrt Mesh
-        Port 22
-        PermitRootLogin prohibit-password
-        PubkeyAuthentication yes
-        AuthorizedKeysFile /root/.ssh/authorized_keys
-        PasswordAuthentication no
-        ChallengeResponseAuthentication no
-        UsePAM no
-        X11Forwarding no
-        Subsystem sftp /usr/libexec/sftp-server
-        EOF
-      tags: ssh
-
-    ###########################################################################
-    # Phase 5: Start OpenSSH on port 22 and switch connection
-    ###########################################################################
-
-    - name: Ensure SSH configuration directory exists
-      raw: "mkdir -p /etc/ssh"
-      tags: ssh
-
-    - name: Generate SSH host keys if missing
-      raw: |
-        for type in rsa ed25519; do
-          key=/etc/ssh/ssh_host_${type}_key
-          if [ ! -f "$key" ]; then
-            echo "Generating $type host key..."
-            ssh-keygen -N '' -t $type -f $key 2>&1
-          else
-            echo "$type host key already exists"
-          fi
-        done
-      tags: ssh
-
-    - name: Enable OpenSSH to start on boot
-      raw: "/etc/init.d/sshd enable 2>&1"
-      tags: ssh
-
-    - name: Start OpenSSH on port 22
-      raw: |
-        echo "Starting OpenSSH on port 22..."
-        /etc/init.d/sshd start 2>&1
-        sleep 2
-        # Verify OpenSSH is running
-        if pidof sshd > /dev/null; then
-          echo "OpenSSH successfully started on port 22"
-        else
-          echo "Failed to start OpenSSH"
-          exit 1
-        fi
-      tags: ssh
-
-    - name: Verify OpenSSH is listening on port 22
-      wait_for:
-        host: "{{ ansible_host }}"
-        port: 22
-        state: started
-        delay: 0
-        timeout: 30
-      delegate_to: localhost
-      tags: ssh
-
-    - name: Switch ansible connection to OpenSSH on port 22
-      set_fact:
-        ansible_port: 22
-        ansible_ssh_pass: ""
-        ansible_ssh_common_args: "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
-        ansible_ssh_private_key_file: "{{ lookup('env', 'SSH_KEY_PATH') | default(lookup('env', 'HOME') ~ '/.ssh/openwrt_mesh_rsa', true) }}"
-      tags: ssh
-
-    - name: Force reconnection via OpenSSH with key authentication
-      meta: reset_connection
-      tags: ssh
-
-    - name: Wait for new SSH connection to be ready
-      pause:
-        seconds: 2
-      tags: ssh
-
-    - name: Establish connection with OpenSSH key authentication
-      wait_for_connection:
-        connect_timeout: 10
-        delay: 2
-        timeout: 30
-      tags: ssh
-
-    - name: Test new OpenSSH connection with key
-      raw: "echo 'OpenSSH connection successful'"
-      register: openssh_test
-      tags: ssh
-
-    - name: Verify SSH transition result
-      raw: |
-        echo "=== SSH Transition Verification ==="
-        echo "Running SSH daemons:"
-        if pidof sshd > /dev/null; then
-          echo "  OpenSSH (sshd) is running on port 22 ✓"
-        else
-          echo "  ERROR: OpenSSH is not running!"
-        fi
-        if pidof dropbear > /dev/null; then
-          echo "  Dropbear is still running on port 2222 (will be removed)"
-        fi
-        echo ""
-        echo "Port status:"
-        netstat -tlpn | grep -E ':22 |:2222 ' || true
-        echo ""
-        echo "SSH service status:"
-        /etc/init.d/sshd status 2>&1 || true
-      register: ssh_verification
-      tags: ssh
-
-    - name: Display SSH transition verification
-      debug:
-        msg: "{{ ssh_verification.stdout_lines }}"
-      tags: ssh
-
-    - name: Verify OpenSSH process is running
-      raw: "ps | grep -v grep | grep sshd || echo 'SSHD_NOT_RUNNING'"
-      register: sshd_check
-      failed_when: "'SSHD_NOT_RUNNING' in sshd_check.stdout"
-      tags: ssh
-
-    - name: Check for OpenSSH startup errors
-      raw: "logread | grep -i sshd | tail -10"
-      register: sshd_logs
-      failed_when: false
-      tags: ssh
-
-    - name: Step 7 - Stop and disable dropbear
-      raw: |
-        echo "Stopping dropbear on port 2222..."
-        /etc/init.d/dropbear stop 2>&1
-        /etc/init.d/dropbear disable 2>&1
-        echo "Dropbear stopped and disabled"
-      tags: ssh
-
-    - name: Remove dropbear package
-      raw: "opkg remove dropbear --force-removal-of-dependent-packages"
-      register: dropbear_remove
-      changed_when: "'Removing package' in dropbear_remove.stdout"
-      failed_when: false
-      tags: ssh
-
-    - name: Display SSH transition summary
-      debug:
-        msg: |  # pragma: allowlist secret
-          ✅ SSH Server Transition Complete
-
-          Dropbear (password) → OpenSSH (key-based)
-
-          - SSH Key: {{ lookup('env', 'SSH_KEY_PATH') | default('~/.ssh/openwrt_mesh_rsa', true) }}
-          - Public Key Deployed: {{ ssh_public_key.split()[0:2] | join(' ') }}...
-          - Root Password: Will be set after SSH verification
-          - PasswordAuthentication: Disabled
-          - PubkeyAuthentication: Enabled
-
-          Future connections will use SSH key from: {{ lookup('env', 'SSH_KEY_PATH') | default('~/.ssh/openwrt_mesh_rsa', true) }}
-      tags: ssh
-
-    ###########################################################################
-    # Phase 6: Set root password (for console access)
-    ###########################################################################
-    # NOTE: Setting root password AFTER SSH transition to avoid authentication issues
-
-    - name: Set root password for console access
-      raw: "echo -e '{{ lookup('env', 'ROOT_PASSWORD') | default('CHANGE_THIS_PASSWORD', true) }}\n{{ lookup('env', 'ROOT_PASSWORD') | default('CHANGE_THIS_PASSWORD', true) }}' | passwd root"
-      no_log: true
-      tags:
-        - ssh
-        - security
-
-    - name: Verify root password was set
-      raw: |
-        if grep -q '^root:[^!*]' /etc/shadow; then
-          echo "Root password successfully set"
-        else
-          echo "WARNING: Root password may not be set correctly"
-        fi
-      register: root_password_check
-      tags:
-        - ssh
-        - security
-
-    - name: Display root password status
-      debug:
-        msg: "{{ root_password_check.stdout_lines }}"
-      tags:
-        - ssh
-        - security
-
-    # System configuration
-    - name: Set hostname
-      raw: "uci set system.@system[0].hostname='{{ lookup('env', 'HOSTNAME_PREFIX') | default('mesh-node', true) }}{{ node_id }}'"
-      tags: system
-
-    - name: Set timezone
-      raw: |
-        uci set system.@system[0].timezone='{{ lookup('env', 'TIMEZONE') | default('AEST-10', true) }}'
-        uci set system.@system[0].zonename='{{ lookup('env', 'ZONENAME') | default('Australia/Adelaide', true) }}'
-      tags: system
-
-    - name: Commit system changes
-      raw: uci commit system
-      tags: system
-
-    # NOTE: System changes (hostname/timezone) are committed but NOT applied yet
-    # They will take effect after reboot (if REBOOT_AFTER_DEPLOY=true) or on next boot
-    # Applying system changes here with /etc/init.d/system reload could break connection
-
-    # Deploy network configuration
-    - name: Deploy network configuration
-      template:
-        src: ../templates/network.j2
-        dest: /etc/config/network
-        mode: '0644'
-        backup: yes
-      tags:
-        - config
-        - network
-
-    # Deploy wireless configuration
-    - name: Deploy wireless configuration
-      template:
-        src: ../templates/wireless.j2
-        dest: /etc/config/wireless
-        mode: '0644'
-        backup: yes
-      tags:
-        - config
-        - wireless
-
-    # Deploy DHCP configuration
-    - name: Deploy DHCP configuration
-      template:
-        src: ../templates/dhcp.j2
-        dest: /etc/config/dhcp
-        mode: '0644'
-        backup: yes
-      tags:
-        - config
-        - dhcp
-
-    # Deploy firewall configuration
-    - name: Deploy firewall configuration
-      template:
-        src: ../templates/firewall.j2
-        dest: /etc/config/firewall
-        mode: '0644'
-        backup: yes
-      tags:
-        - config
-        - firewall
-
-    ###########################################################################
-    # Phase 7: USB Storage Configuration
-    # Automatically setup USB storage if device is attached
-    ###########################################################################
-
-    - name: Load USB kernel modules
-      raw: |
-        modprobe usb-storage 2>/dev/null || true
-        modprobe uas 2>/dev/null || true
-        sleep 2
-      changed_when: false
-      tags:
-        - usb
-        - storage
-
-    - name: Check for USB storage devices
-      raw: |
-        if ls /dev/sd[a-z] 2>/dev/null | grep -q sd; then
-          for dev in /dev/sd[a-z]; do
-            if [ -b "$dev" ]; then
-              echo "USB_FOUND:$dev"
-              break
-            fi
-          done
-        else
-          echo "NO_USB"
-        fi
-      register: usb_check
-      changed_when: false
-      tags:
-        - usb
-        - storage
-
-    - name: Set USB device fact
-      set_fact:
-        usb_device_detected: "{{ 'USB_FOUND:' in usb_check.stdout }}"
-        usb_device_path: "{{ (usb_check.stdout | regex_search('USB_FOUND:(/dev/sd[a-z])', '\\1'))[0] if 'USB_FOUND:' in usb_check.stdout else '' }}"
-      tags:
-        - usb
-        - storage
-
-    - name: Display USB storage detection result
-      debug:
-        msg: |
-          USB Storage Detection:
-          - Device found: {{ usb_device_detected }}
-          - Device path: {{ usb_device_path | default('N/A') }}
-      tags:
-        - usb
-        - storage
-
-    - name: Partition USB storage device
-      raw: |
-        DEV="{{ usb_device_path }}"
-        if [ -b "$DEV" ]; then
-          # Unmount any existing partitions
-          for part in ${DEV}*; do
-            umount "$part" 2>/dev/null || true
-          done
-
-          # Create new partition table
-          echo "Creating partition on $DEV"
-          (echo o; echo n; echo p; echo 1; echo; echo; echo w) | fdisk "$DEV"
-          sleep 2
-
-          # Reload partition table
-          partprobe "$DEV" 2>/dev/null || true
-          echo "Partition created on $DEV"
-        fi
-      when:
-        - usb_device_detected
-        - usb_device_path != ''
-      tags:
-        - usb
-        - storage
-        - partition
-
-    - name: Format USB storage with F2FS
-      raw: |
-        PARTITION="{{ usb_device_path }}1"
-        if [ -b "$PARTITION" ]; then
-          echo "Formatting $PARTITION with F2FS..."
-          mkfs.f2fs -f -l "MESH-USB" "$PARTITION"
-          echo "Format complete"
-        fi
-      when:
-        - usb_device_detected
-        - usb_device_path != ''
-      tags:
-        - usb
-        - storage
-        - format
-
-    - name: Create USB mount point
-      raw: |
-        mkdir -p /x00
-        echo "Mount point /x00 created"
-      when: usb_device_detected
-      tags:
-        - usb
-        - storage
-
-    - name: Mount USB storage
-      raw: |
-        PARTITION="{{ usb_device_path }}1"
-        if [ -b "$PARTITION" ]; then
-          mount -t f2fs -o noatime,nodiratime,background_gc=on,discard "$PARTITION" /x00
-          echo "Mounted $PARTITION at /x00"
-        fi
-      when:
-        - usb_device_detected
-        - usb_device_path != ''
-      tags:
-        - usb
-        - storage
-        - mount
-
-    - name: Configure persistent USB mount
-      raw: |
-        PARTITION="{{ usb_device_path }}1"
-        if [ -b "$PARTITION" ]; then
-          # Get UUID
-          UUID=$(block info "$PARTITION" | sed -n 's/.*UUID="\([^"]*\)".*/\1/p')
-
-          if [ -n "$UUID" ]; then
-            # Configure using UCI
-            uci -q delete fstab.@mount[-1] 2>/dev/null || true
-            uci add fstab mount
-            uci set fstab.@mount[-1].target='/x00'
-            uci set fstab.@mount[-1].uuid="$UUID"
-            uci set fstab.@mount[-1].enabled='1'
-            uci set fstab.@mount[-1].fstype='f2fs'
-            uci set fstab.@mount[-1].options='rw,noatime,nodiratime,background_gc=on,discard'
-            uci commit fstab
-
-            # Enable block-mount
-            /etc/init.d/fstab enable
-
-            echo "Configured auto-mount for UUID $UUID"
-          fi
-
-          # Also add to /etc/fstab as fallback
-          sed -i '\|/x00|d' /etc/fstab
-          echo "$PARTITION /x00 f2fs rw,noatime,nodiratime,background_gc=on,discard 0 0" >> /etc/fstab
-        fi
-      when:
-        - usb_device_detected
-        - usb_device_path != ''
-      tags:
-        - usb
-        - storage
-        - persistent
-
-    - name: Verify USB storage setup
-      raw: |
-        if mount | grep -q "/x00"; then
-          echo "USB storage successfully mounted at /x00"
-          df -h /x00
-        else
-          echo "USB storage not mounted"
-        fi
-      when: usb_device_detected
-      register: usb_verify
-      tags:
-        - usb
-        - storage
-        - verify
-
-    - name: Display USB storage setup result
-      debug:
-        msg: "{{ usb_verify.stdout_lines | default(['USB storage not configured']) }}"
-      when: usb_device_detected
-      tags:
-        - usb
-        - storage
-
+  tasks:
     ###########################################################################
     # IMPORTANT: Configuration files deployed but NOT applied yet
     # Reboot will cleanly apply all configs at once
@@ -762,22 +118,41 @@
     ###########################################################################
 
     - name: Display configuration deployment status
-      debug:
+      ansible.builtin.debug:
         msg: |
           ✅ All configurations deployed (but not yet applied):
           - Network config → /etc/config/network
           - Wireless config → /etc/config/wireless
           - DHCP config → /etc/config/dhcp
           - Firewall config → /etc/config/firewall
-          {% if usb_device_detected %}
-          - USB Storage → {{ usb_device_path }} mounted at /x00
+          {% if usb_device_detected | default(false) %}
+          - USB Storage → {{ usb_device_path | default('N/A') }} mounted at /x00
+          - Monitoring → collectd, vnStat, health checks on /x00
           {% else %}
           - USB Storage → No device detected (skipped)
+          - Monitoring → Skipped (requires USB storage)
           {% endif %}
 
           ⚠️  Reboot will apply all configurations
           ⚠️  Node IP will change: 192.168.1.1 → {{ node_ip }}
       tags: config
+
+    ###########################################################################
+    # Restore original opkg repository configuration
+    # This ensures the node uses official OpenWrt repos after deployment
+    ###########################################################################
+
+    - name: Restore original opkg repository configuration
+      ansible.builtin.raw: |
+        if [ -f /etc/opkg/distfeeds.conf.orig ]; then
+          cp /etc/opkg/distfeeds.conf.orig /etc/opkg/distfeeds.conf
+          rm -f /etc/opkg/distfeeds.conf.orig
+          echo "Restored original opkg repository configuration"
+        else
+          echo "No backup found - opkg configuration unchanged"
+        fi
+      changed_when: true
+      tags: [packages, config]
 
     ###########################################################################
     # FINAL STEP: Reboot to apply all configurations
@@ -786,7 +161,7 @@
     ###########################################################################
 
     - name: Display pre-reboot warning
-      debug:
+      ansible.builtin.debug:
         msg: |
           ⚠️  FINAL STEP: Rebooting node to apply all configurations
           ⚠️  Node IP will change: 192.168.1.1 → {{ node_ip }}
@@ -799,54 +174,20 @@
     # Can be skipped for production redeployments with SKIP_REBOOT=true
     ###########################################################################
 
-    - name: DEBUG - Check reboot command availability
-      raw: "which reboot && echo 'REBOOT_FOUND' || echo 'REBOOT_NOT_FOUND'"
-      register: reboot_check
-      changed_when: false
-      when:
-        - not (lookup('env', 'SKIP_REBOOT') | default('false', true) | bool)
-        - not ansible_check_mode
-      tags:
-        - reboot
-
-    - name: DEBUG - Display reboot command check
-      debug:
-        msg: "Reboot command check: {{ reboot_check.stdout_lines | default(['not checked']) }}"
-      when:
-        - not (lookup('env', 'SKIP_REBOOT') | default('false', true) | bool)
-        - not ansible_check_mode
-      tags:
-        - reboot
-
     - name: Reboot node to apply all configurations
-      shell: "(sleep 2 && reboot) & sleep 1"
+      ansible.builtin.shell: "(sleep 2 && reboot) & sleep 1"
       register: reboot_result
       ignore_errors: true
-      ignore_unreachable: yes
+      ignore_unreachable: true
       when:
-        - not (lookup('env', 'SKIP_REBOOT') | default('false', true) | bool)
+        - not skip_reboot
         - not ansible_check_mode
-      tags:
-        - reboot
-
-    - name: DEBUG - Display reboot task result
-      debug:
-        msg: |
-          Reboot task executed:
-          - Return code: {{ reboot_result.rc | default('N/A') }}
-          - Changed: {{ reboot_result.changed | default('N/A') }}
-          - Failed: {{ reboot_result.failed | default('N/A') }}
-          - Stdout: {{ reboot_result.stdout | default('empty') }}
-          - Stderr: {{ reboot_result.stderr | default('empty') }}
-      when:
-        - not (lookup('env', 'SKIP_REBOOT') | default('false', true) | bool)
-        - not ansible_check_mode
-        - reboot_result is defined
+      changed_when: true
       tags:
         - reboot
 
     - name: Display post-reboot instructions
-      debug:
+      ansible.builtin.debug:
         msg: |
           ⚠️  NODE REBOOTING NOW
 
@@ -855,16 +196,16 @@
           2. Change your workstation network to: 10.11.12.0/24
           3. Set static IP: 10.11.12.50 (or use DHCP from node)
           4. Verify connectivity: ping {{ node_ip }}
-          5. Connect via SSH: ssh -i ~/.ssh/openwrt_mesh_rsa root@{{ node_ip }}
+          5. Connect via SSH: ssh -i {{ ssh_key_path }} root@{{ node_ip }}
           6. Check mesh status: batctl o
       when:
-        - not (lookup('env', 'SKIP_REBOOT') | default('false', true) | bool)
+        - not skip_reboot
         - not ansible_check_mode
       tags:
         - reboot
 
     - name: Configuration deployment complete
-      debug:
+      ansible.builtin.debug:
         msg: |
           ✅ Configuration deployed to {{ inventory_hostname }}
 
@@ -872,9 +213,9 @@
           - IP Address: {{ node_ip }}
           - DHCP Pool: 10.11.12.{{ dhcp_pools[inventory_hostname].start }}-{{ dhcp_pools[inventory_hostname].start + dhcp_pools[inventory_hostname].limit - 1 }}
           - SSH: OpenSSH with key authentication
-          - SSH Key: {{ lookup('env', 'SSH_KEY_PATH') | default('~/.ssh/openwrt_mesh_rsa', true) }}
-          {% if usb_device_detected %}
-          - USB Storage: {{ usb_device_path }} configured at /x00 (F2FS)
+          - SSH Key: {{ ssh_key_path }}
+          {% if usb_device_detected | default(false) %}
+          - USB Storage: {{ usb_device_path | default('N/A') }} configured at /x00 (F2FS)
           {% else %}
           - USB Storage: Not configured (no device detected)
           {% endif %}
@@ -885,3 +226,24 @@
           - Run: make check-node1 (or check-node2, check-node3)
           - Or run: ansible-playbook -i inventory/hosts.yml playbooks/check-connectivity.yml --limit node1
       tags: always
+
+  post_tasks:
+    - name: Stop local repository web server
+      ansible.builtin.shell:
+        cmd: |
+          set -o pipefail
+          if [ -f /tmp/repo-server.pid ]; then
+            kill $(cat /tmp/repo-server.pid) 2>/dev/null || true
+            rm -f /tmp/repo-server.pid
+          fi
+          lsof -ti:8080 | xargs -r kill 2>/dev/null || true
+        executable: /bin/bash
+      delegate_to: localhost
+      run_once: true
+      when: lookup('env', 'OPKG_REPO_URL') != ''
+      changed_when: true
+      tags: always
+
+  handlers:
+    - name: Import centralized handlers
+      ansible.builtin.import_tasks: ../handlers/main.yml

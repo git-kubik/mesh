@@ -1,0 +1,30 @@
+---
+# Docker Compose configuration for OpenWrt Image Builder
+#
+# Usage:
+#   docker-compose build                    # Build the container
+#   docker-compose run --rm imagebuilder /scripts/build-image.sh node3
+#   docker-compose run --rm imagebuilder make info  # Show available profiles
+#   docker-compose run --rm imagebuilder /bin/bash  # Interactive shell
+
+services:
+  imagebuilder:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      # Local package repository (read-only)
+      - ../../openwrt-repo:/repo:ro
+      # Node configuration snapshots (read-only)
+      - ../../snapshots:/snapshots:ro
+      # Built images output directory
+      - ../../images:/output
+      # Build scripts (read-only)
+      - ../../scripts:/scripts:ro
+      # Custom repository configuration
+      - ./repositories.conf:/builder/repositories.conf:ro
+    working_dir: /builder
+    # Run as current user to avoid permission issues with output files
+    user: "${UID:-1000}:${GID:-1000}"
+    environment:
+      - HOME=/tmp

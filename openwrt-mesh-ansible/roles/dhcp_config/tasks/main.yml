@@ -1,0 +1,10 @@
+---
+# DHCP configuration role for OpenWrt mesh nodes
+# Deploys dnsmasq DHCP server configuration
+
+- name: Deploy DHCP configuration
+  ansible.builtin.template:
+    src: dhcp.j2
+    dest: /etc/config/dhcp
+    mode: '0644'
+    backup: true

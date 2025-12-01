@@ -1,0 +1,125 @@
+---
+# Common task to load all environment variables into Ansible facts
+# This is needed because group_vars may not be loaded during playbook execution
+# in some Ansible configurations.
+#
+# Include this at the start of any role that needs access to environment variables:
+#   - name: Load environment variables
+#     ansible.builtin.include_tasks: ../../common/tasks/load_env_vars.yml
+
+- name: Load all environment variables as facts
+  ansible.builtin.set_fact:
+    # OpenWrt Target Configuration
+    openwrt_version: "{{ lookup('env', 'OPENWRT_VERSION') | default('24.10.4', true) }}"
+    openwrt_target: "{{ lookup('env', 'OPENWRT_TARGET') | default('ramips/mt7621', true) }}"
+    openwrt_arch: "{{ lookup('env', 'OPENWRT_ARCH') | default('mipsel_24kc', true) }}"
+
+    # Local Package Repository
+    opkg_repo_url: "{{ lookup('env', 'OPKG_REPO_URL') | default('', true) }}"
+
+    # Deployment Options
+    skip_reboot: "{{ lookup('env', 'SKIP_REBOOT') | default('false', true) | bool }}"
+
+    # SSH Configuration
+    ssh_key_path: "{{ lookup('env', 'SSH_KEY_PATH') | default('~/.ssh/openwrt_mesh_rsa', true) }}"
+    ssh_key_type: "{{ lookup('env', 'SSH_KEY_TYPE') | default('rsa', true) }}"
+    ssh_key_bits: "{{ lookup('env', 'SSH_KEY_BITS') | default('4096', true) | int }}"
+    ssh_key_comment: "{{ lookup('env', 'SSH_KEY_COMMENT') | default('ansible@openwrt-mesh', true) }}"
+
+    # Root Password
+    root_password: "{{ lookup('env', 'ROOT_PASSWORD') | default('CHANGE_THIS_PASSWORD', true) }}"
+
+    # Network Configuration
+    mesh_network: "{{ lookup('env', 'MESH_NETWORK') | default('10.11.12.0', true) }}"
+    mesh_netmask: "{{ lookup('env', 'MESH_NETMASK') | default('255.255.255.0', true) }}"
+    mesh_cidr: "{{ lookup('env', 'MESH_CIDR') | default('24', true) | int }}"
+    mesh_gateway: "{{ lookup('env', 'MESH_GATEWAY') | default('10.11.12.1', true) }}"
+
+    # DNS Servers
+    dns_servers:
+      - "{{ lookup('env', 'DNS_PRIMARY') | default('1.1.1.1', true) }}"
+      - "{{ lookup('env', 'DNS_SECONDARY') | default('8.8.8.8', true) }}"
+
+    # DHCP Configuration
+    dhcp_leasetime: "{{ lookup('env', 'DHCP_LEASETIME') | default('12h', true) }}"
+    dhcp_pools:
+      node1:
+        start: "{{ lookup('env', 'DHCP_NODE1_START') | default('100', true) | int }}"
+        limit: "{{ lookup('env', 'DHCP_NODE1_LIMIT') | default('50', true) | int }}"
+      node2:
+        start: "{{ lookup('env', 'DHCP_NODE2_START') | default('150', true) | int }}"
+        limit: "{{ lookup('env', 'DHCP_NODE2_LIMIT') | default('50', true) | int }}"
+      node3:
+        start: "{{ lookup('env', 'DHCP_NODE3_START') | default('200', true) | int }}"
+        limit: "{{ lookup('env', 'DHCP_NODE3_LIMIT') | default('50', true) | int }}"
+
+    # Static host reservations (empty by default, configure in .env or group_vars)
+    static_hosts: []
+
+    # Batman-adv Configuration
+    batman_routing_algo: "{{ lookup('env', 'BATMAN_ROUTING_ALGO') | default('BATMAN_V', true) }}"
+    batman_gw_bandwidth: "{{ lookup('env', 'BATMAN_GW_BANDWIDTH') | default('100000/100000', true) }}"
+    batman_orig_interval: "{{ lookup('env', 'BATMAN_ORIG_INTERVAL') | default('1000', true) | int }}"
+    batman_hop_penalty: "{{ lookup('env', 'BATMAN_HOP_PENALTY') | default('15', true) | int }}"
+
+    # Wireless Mesh Configuration (2.4GHz - Backbone)
+    mesh_id: "{{ lookup('env', 'MESH_ID') | default('ha-mesh-net', true) }}"
+    mesh_encryption: "{{ lookup('env', 'MESH_ENCRYPTION') | default('sae', true) }}"
+    mesh_password: "{{ lookup('env', 'MESH_PASSWORD') | default('CHANGE_THIS_PASSWORD', true) }}"
+    mesh_channel: "{{ lookup('env', 'MESH_CHANNEL') | default('6', true) | int }}"
+    mesh_htmode: "{{ lookup('env', 'MESH_HTMODE') | default('HT40', true) }}"
+    mesh_mcast_rate: "{{ lookup('env', 'MESH_MCAST_RATE') | default('24000', true) | int }}"
+
+    # Client WiFi Configuration (5GHz - Access Point)
+    client_ssid: "{{ lookup('env', 'CLIENT_SSID') | default('HA-Network-5G', true) }}"
+    client_encryption: "{{ lookup('env', 'CLIENT_ENCRYPTION') | default('psk2+ccmp', true) }}"
+    client_password: "{{ lookup('env', 'CLIENT_PASSWORD') | default('CHANGE_THIS_PASSWORD', true) }}"
+    client_channel: "{{ lookup('env', 'CLIENT_CHANNEL') | default('36', true) | int }}"
+    client_htmode: "{{ lookup('env', 'CLIENT_HTMODE') | default('VHT80', true) }}"
+    client_country: "{{ lookup('env', 'CLIENT_COUNTRY') | default('AU', true) }}"
+
+    # 802.11r Fast Roaming
+    enable_80211r: "{{ lookup('env', 'ENABLE_80211R') | default('true', true) | bool }}"
+    mobility_domain: "{{ lookup('env', 'MOBILITY_DOMAIN') | default('a1b2', true) }}"
+
+    # MTU Configuration
+    mtu_wired_mesh: "{{ lookup('env', 'MTU_WIRED_MESH') | default('1560', true) | int }}"
+    mtu_wireless_mesh: "{{ lookup('env', 'MTU_WIRELESS_MESH') | default('1532', true) | int }}"
+
+    # Package Configuration
+    required_packages: "{{ lookup('env', 'REQUIRED_PACKAGES') | default('python3-light,batctl-full,kmod-batman-adv,wpad-mesh-mbedtls,ip-full,tcpdump-mini,openssh-server,openssh-sftp-server,openssh-keygen,curl', true) | split(',') }}"
+    remove_packages: "{{ lookup('env', 'REMOVE_PACKAGES') | default('wpad-basic-mbedtls,wpad-basic-wolfssl,wpad-basic', true) | split(',') }}"
+    optional_packages: "{{ lookup('env', 'OPTIONAL_PACKAGES') | default('iperf3,ethtool,nano,htop,rsync', true) | split(',') }}"
+
+    # System Configuration
+    timezone: "{{ lookup('env', 'TIMEZONE') | default('ACST-9:30ACDT,M10.1.0,M4.1.0/3', true) }}"
+    zonename: "{{ lookup('env', 'ZONENAME') | default('Australia/Adelaide', true) }}"
+    hostname_prefix: "{{ lookup('env', 'HOSTNAME_PREFIX') | default('mesh-node', true) }}"
+    ntp_servers: "{{ lookup('env', 'NTP_SERVERS') | default('0.au.pool.ntp.org,1.au.pool.ntp.org,2.au.pool.ntp.org,3.au.pool.ntp.org', true) | split(',') }}"
+
+    # VLAN Configuration
+    enable_vlans: "{{ lookup('env', 'ENABLE_VLANS') | default('true', true) | bool }}"
+    vlans:
+      management:
+        vid: "{{ lookup('env', 'MGMT_VLAN_VID') | default('10', true) | int }}"
+        network: "{{ lookup('env', 'MGMT_VLAN_NETWORK') | default('10.11.10.0/24', true) }}"
+        gateway_ip: "{{ lookup('env', 'MGMT_VLAN_GATEWAY') | default('10.11.10.1', true) }}"
+        netmask: "{{ lookup('env', 'MGMT_VLAN_NETMASK') | default('255.255.255.0', true) }}"
+        dhcp_start: "{{ lookup('env', 'MGMT_VLAN_DHCP_START') | default('100', true) | int }}"
+        dhcp_limit: "{{ lookup('env', 'MGMT_VLAN_DHCP_LIMIT') | default('50', true) | int }}"
+        description: "Management network - 2.4GHz AP for admin access"
+        ssid: "{{ lookup('env', 'MGMT_VLAN_SSID') | default('HA-Management', true) }}"
+        password: "{{ lookup('env', 'MGMT_PASSWORD') | default('CHANGE_THIS_PASSWORD', true) }}"
+        encryption: "{{ lookup('env', 'MGMT_VLAN_ENCRYPTION') | default('psk2+ccmp', true) }}"
+      guest:
+        vid: "{{ lookup('env', 'GUEST_VLAN_VID') | default('30', true) | int }}"
+        network: "{{ lookup('env', 'GUEST_VLAN_NETWORK') | default('10.11.30.0/24', true) }}"
+        gateway_ip: "{{ lookup('env', 'GUEST_VLAN_GATEWAY') | default('10.11.30.1', true) }}"
+        netmask: "{{ lookup('env', 'GUEST_VLAN_NETMASK') | default('255.255.255.0', true) }}"
+        dhcp_start: "{{ lookup('env', 'GUEST_VLAN_DHCP_START') | default('100', true) | int }}"
+        dhcp_limit: "{{ lookup('env', 'GUEST_VLAN_DHCP_LIMIT') | default('50', true) | int }}"
+        isolation: "{{ lookup('env', 'GUEST_VLAN_ISOLATION') | default('true', true) | bool }}"
+        description: "Guest network - 5GHz AP with LAN isolation"
+        ssid: "{{ lookup('env', 'GUEST_VLAN_SSID') | default('HA-Guest', true) }}"
+        password: "{{ lookup('env', 'GUEST_PASSWORD') | default('CHANGE_THIS_PASSWORD', true) }}"
+        encryption: "{{ lookup('env', 'GUEST_VLAN_ENCRYPTION') | default('psk2+ccmp', true) }}"

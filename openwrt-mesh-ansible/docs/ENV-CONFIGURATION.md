@@ -56,6 +56,10 @@ These have defaults but can be overridden:
 | `SSH_KEY_PATH` | SSH private key location | `~/.ssh/openwrt_mesh_rsa` | `~/.ssh/custom_key` |
 | `MESH_NETWORK` | Mesh subnet | `10.11.12.0` | `192.168.100.0` |
 | `BATMAN_GW_BANDWIDTH` | WAN bandwidth (kbit/s) | `100000/100000` | `500000/50000` |
+| `TIMEZONE` | System timezone | `AEST-10` | `UTC` |
+| `ZONENAME` | Timezone name | `Australia/Adelaide` | `America/New_York` |
+| `NTP_SERVERS` | NTP time servers (comma-separated) | `0.au.pool.ntp.org,1.au.pool.ntp.org,2.au.pool.ntp.org,3.au.pool.ntp.org` | `time.google.com,time.cloudflare.com` |
+| `NTP_ENABLE_SERVER` | Enable NTP server mode | `0` (disabled) | `1` (enable) |
 
 ## Setup Instructions
 

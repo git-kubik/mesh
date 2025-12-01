@@ -1,0 +1,936 @@
+---
+# Snapshot playbook for OpenWrt mesh nodes
+# Creates a complete configuration snapshot that documents everything
+# changed from factory default - sufficient to recreate the node.
+#
+# Usage:
+#   # Snapshot single node
+#   make snapshot NODE=1
+#
+#   # Snapshot all nodes
+#   make snapshot-all
+#
+# Output Directory Structure:
+#   snapshots/
+#   └── <hostname>/
+#       ├── metadata.json           # Node identification and timestamp
+#       ├── system/
+#       │   ├── openwrt_release     # OpenWrt version info
+#       │   ├── board_info          # Hardware model
+#       │   └── kernel_version      # Kernel info
+#       ├── config/
+#       │   ├── uci_export.txt      # Complete UCI configuration (machine-readable)
+#       │   ├── network             # Individual UCI config files
+#       │   ├── wireless
+#       │   ├── firewall
+#       │   ├── dhcp
+#       │   ├── system
+#       │   ├── dropbear
+#       │   └── ...
+#       ├── etc/
+#       │   ├── passwd              # User accounts
+#       │   ├── group               # Groups
+#       │   ├── shadow.hash         # Password hash (for documentation)
+#       │   ├── hosts               # Host entries
+#       │   ├── resolv.conf         # DNS config
+#       │   ├── fstab               # Mount points
+#       │   ├── crontabs/           # Cron jobs
+#       │   ├── ssh/                # SSH config (no private keys)
+#       │   └── opkg/               # Package repository config
+#       ├── packages/
+#       │   ├── installed.txt       # List of installed packages
+#       │   ├── installed_full.txt  # Packages with versions
+#       │   └── user_installed.txt  # Non-default packages (estimated)
+#       ├── scripts/
+#       │   └── *.sh                # Custom scripts from /usr/bin/
+#       ├── network/
+#       │   ├── interfaces.txt      # Interface list
+#       │   ├── ip_addresses.txt    # IP configuration
+#       │   ├── routes.txt          # Routing table
+#       │   └── arp.txt             # ARP cache
+#       ├── wireless/
+#       │   ├── devices.txt         # Wireless device info
+#       │   └── stations.txt        # Connected stations
+#       ├── mesh/
+#       │   ├── batman_if.txt       # Batman interfaces
+#       │   ├── neighbors.txt       # Mesh neighbors
+#       │   ├── originators.txt     # Routing table
+#       │   └── gateways.txt        # Gateway list
+#       ├── services/
+#       │   ├── enabled.txt         # Enabled services
+#       │   ├── running.txt         # Running processes
+#       │   └── ports.txt           # Listening ports
+#       └── restore/
+#           ├── README.md           # Restoration instructions
+#           └── restore.sh          # Script to restore configuration
+#
+###############################################################################
+
+- name: Create Configuration Snapshot of OpenWrt Mesh Nodes
+  hosts: mesh_nodes
+  gather_facts: false
+  vars:
+    snapshot_base_dir: "{{ playbook_dir }}/../snapshots"
+    snapshot_timestamp: "{{ lookup('pipe', 'date +%Y-%m-%d_%H-%M-%S') }}"
+    snapshot_date: "{{ lookup('pipe', 'date +%Y-%m-%d') }}"
+
+  tasks:
+    ###########################################################################
+    # Phase 1: Initialize and Get Node Identity
+    ###########################################################################
+
+    - name: Wait for node to be reachable
+      wait_for_connection:
+        timeout: 60
+        delay: 2
+
+    - name: Get hostname
+      raw: uci -q get system.@system[0].hostname || cat /proc/sys/kernel/hostname
+      register: node_hostname_raw
+      changed_when: false
+
+    - name: Set hostname fact
+      set_fact:
+        node_hostname: "{{ node_hostname_raw.stdout | trim }}"
+
+    - name: Create snapshot directory structure on control machine
+      file:
+        path: "{{ snapshot_base_dir }}/{{ node_hostname }}/{{ item }}"
+        state: directory
+        mode: "0755"
+      delegate_to: localhost
+      loop:
+        - system
+        - config
+        - etc/crontabs
+        - etc/ssh
+        - etc/opkg
+        - packages
+        - scripts
+        - network
+        - wireless
+        - mesh
+        - services
+        - storage
+        - monitoring
+        - restore
+
+    ###########################################################################
+    # Phase 2: System Information
+    ###########################################################################
+
+    - name: Get OpenWrt release info
+      raw: cat /etc/openwrt_release
+      register: openwrt_release
+      changed_when: false
+
+    - name: Save OpenWrt release
+      copy:
+        content: "{{ openwrt_release.stdout }}"
+        dest: "{{ snapshot_base_dir }}/{{ node_hostname }}/system/openwrt_release"
+      delegate_to: localhost
+
+    - name: Get board info
+      raw: |
+        echo "Model: $(cat /tmp/sysinfo/model 2>/dev/null || echo 'Unknown')"
+        echo "Board: $(cat /tmp/sysinfo/board_name 2>/dev/null || echo 'Unknown')"
+        echo "Hostname: $(uci -q get system.@system[0].hostname)"
+        echo "Timezone: $(uci -q get system.@system[0].timezone)"
+        echo "Zonename: $(uci -q get system.@system[0].zonename)"
+      register: board_info
+      changed_when: false
+
+    - name: Save board info
+      copy:
+        content: "{{ board_info.stdout }}"
+        dest: "{{ snapshot_base_dir }}/{{ node_hostname }}/system/board_info"
+      delegate_to: localhost
+
+    - name: Get kernel version
+      raw: uname -a
+      register: kernel_version
+      changed_when: false
+
+    - name: Save kernel version
+      copy:
+        content: "{{ kernel_version.stdout }}"
+        dest: "{{ snapshot_base_dir }}/{{ node_hostname }}/system/kernel_version"
+      delegate_to: localhost
+
+    - name: Get memory and storage info
+      raw: |
+        echo "=== Memory ==="
+        free -m
+        echo ""
+        echo "=== Storage ==="
+        df -h
+        echo ""
+        echo "=== MTD Partitions ==="
+        cat /proc/mtd 2>/dev/null || echo "No MTD"
+      register: hw_info
+      changed_when: false
+
+    - name: Save hardware info
+      copy:
+        content: "{{ hw_info.stdout }}"
+        dest: "{{ snapshot_base_dir }}/{{ node_hostname }}/system/hardware_info"
+      delegate_to: localhost
+
+    ###########################################################################
+    # Phase 3: UCI Configuration (Complete Export)
+    ###########################################################################
+
+    - name: Export complete UCI configuration
+      raw: uci export
+      register: uci_export
+      changed_when: false
+
+    - name: Save UCI export
+      copy:
+        content: "{{ uci_export.stdout }}"
+        dest: "{{ snapshot_base_dir }}/{{ node_hostname }}/config/uci_export.txt"
+      delegate_to: localhost
+
+    - name: Get list of UCI config files
+      raw: ls /etc/config/
+      register: config_files
+      changed_when: false
+
+    - name: Export individual UCI configs
+      raw: "uci show {{ item }} 2>/dev/null || echo '# {{ item }} not configured'"
+      register: uci_configs
+      changed_when: false
+      loop: "{{ config_files.stdout_lines | map('trim') | select() | list }}"
+
+    - name: Save individual UCI configs
+      copy:
+        content: "{{ item.stdout }}"
+        dest: "{{ snapshot_base_dir }}/{{ node_hostname }}/config/{{ item.item }}"
+      delegate_to: localhost
+      loop: "{{ uci_configs.results }}"
+      when: item.stdout is defined
+
+    ###########################################################################
+    # Phase 4: /etc Files
+    ###########################################################################
+
+    - name: Get passwd (users)
+      raw: cat /etc/passwd
+      register: etc_passwd
+      changed_when: false
+
+    - name: Save passwd
+      copy:
+        content: "{{ etc_passwd.stdout }}"
+        dest: "{{ snapshot_base_dir }}/{{ node_hostname }}/etc/passwd"
+      delegate_to: localhost
+
+    - name: Get group
+      raw: cat /etc/group
+      register: etc_group
+      changed_when: false
+
+    - name: Save group
+      copy:
+        content: "{{ etc_group.stdout }}"
+        dest: "{{ snapshot_base_dir }}/{{ node_hostname }}/etc/group"
+      delegate_to: localhost
+
+    - name: Get shadow file (for password preservation in image builds)
+      raw: cat /etc/shadow 2>/dev/null || echo "# No shadow file"
+      register: etc_shadow
+      changed_when: false
+
+    - name: Save shadow file
+      copy:
+        content: "{{ etc_shadow.stdout }}"
+        dest: "{{ snapshot_base_dir }}/{{ node_hostname }}/etc/shadow"
+        mode: '0600'
+      delegate_to: localhost
+
+    - name: Get shadow hash indicator (for documentation)
+      raw: |
+        # Only show if password is set (not empty or disabled)
+        if grep -q '^root:[^!*:]' /etc/shadow 2>/dev/null; then
+          echo "root:PASSWORD_SET"
+        else
+          echo "root:NO_PASSWORD"
+        fi
+      register: etc_shadow_hash
+      changed_when: false
+
+    - name: Save shadow indicator
+      copy:
+        content: "{{ etc_shadow_hash.stdout }}"
+        dest: "{{ snapshot_base_dir }}/{{ node_hostname }}/etc/shadow.hash"
+      delegate_to: localhost
+
+    - name: Get hosts file
+      raw: cat /etc/hosts 2>/dev/null || echo "# No hosts file"
+      register: etc_hosts
+      changed_when: false
+
+    - name: Save hosts
+      copy:
+        content: "{{ etc_hosts.stdout }}"
+        dest: "{{ snapshot_base_dir }}/{{ node_hostname }}/etc/hosts"
+      delegate_to: localhost
+
+    - name: Get resolv.conf
+      raw: cat /etc/resolv.conf 2>/dev/null || echo "# No resolv.conf"
+      register: etc_resolv
+      changed_when: false
+
+    - name: Save resolv.conf
+      copy:
+        content: "{{ etc_resolv.stdout }}"
+        dest: "{{ snapshot_base_dir }}/{{ node_hostname }}/etc/resolv.conf"
+      delegate_to: localhost
+
+    - name: Get fstab
+      raw: cat /etc/fstab 2>/dev/null || echo "# No fstab"
+      register: etc_fstab
+      changed_when: false
+
+    - name: Save fstab
+      copy:
+        content: "{{ etc_fstab.stdout }}"
+        dest: "{{ snapshot_base_dir }}/{{ node_hostname }}/etc/fstab"
+      delegate_to: localhost
+
+    - name: Get crontab
+      raw: crontab -l 2>/dev/null || echo "# No crontab"
+      register: crontab_root
+      changed_when: false
+
+    - name: Save crontab
+      copy:
+        content: "{{ crontab_root.stdout }}"
+        dest: "{{ snapshot_base_dir }}/{{ node_hostname }}/etc/crontabs/root"
+      delegate_to: localhost
+
+    - name: Get SSH authorized_keys
+      raw: cat /root/.ssh/authorized_keys 2>/dev/null || echo "# No authorized keys"
+      register: ssh_authorized_keys
+      changed_when: false
+
+    - name: Save authorized_keys
+      copy:
+        content: "{{ ssh_authorized_keys.stdout }}"
+        dest: "{{ snapshot_base_dir }}/{{ node_hostname }}/etc/ssh/authorized_keys"
+      delegate_to: localhost
+
+    - name: Get OpenSSH config (if exists)
+      raw: cat /etc/ssh/sshd_config 2>/dev/null || echo "# OpenSSH not configured"
+      register: sshd_config
+      changed_when: false
+
+    - name: Save sshd_config
+      copy:
+        content: "{{ sshd_config.stdout }}"
+        dest: "{{ snapshot_base_dir }}/{{ node_hostname }}/etc/ssh/sshd_config"
+      delegate_to: localhost
+
+    # SSH host keys - preserves host identity across reflash
+    - name: Get SSH host keys list
+      raw: ls -1 /etc/ssh/ssh_host_*_key 2>/dev/null || echo ""
+      register: ssh_host_keys_list
+      changed_when: false
+
+    - name: Get SSH ED25519 host key
+      raw: cat /etc/ssh/ssh_host_ed25519_key 2>/dev/null || echo ""
+      register: ssh_host_ed25519_key
+      changed_when: false
+      when: "'/etc/ssh/ssh_host_ed25519_key' in ssh_host_keys_list.stdout"
+
+    - name: Save SSH ED25519 host key
+      copy:
+        content: "{{ ssh_host_ed25519_key.stdout }}"
+        dest: "{{ snapshot_base_dir }}/{{ node_hostname }}/etc/ssh/ssh_host_ed25519_key"
+        mode: '0600'
+      delegate_to: localhost
+      when: ssh_host_ed25519_key is defined and ssh_host_ed25519_key.stdout | length > 0
+
+    - name: Get SSH ED25519 host key (public)
+      raw: cat /etc/ssh/ssh_host_ed25519_key.pub 2>/dev/null || echo ""
+      register: ssh_host_ed25519_key_pub
+      changed_when: false
+      when: "'/etc/ssh/ssh_host_ed25519_key' in ssh_host_keys_list.stdout"
+
+    - name: Save SSH ED25519 host key (public)
+      copy:
+        content: "{{ ssh_host_ed25519_key_pub.stdout }}"
+        dest: "{{ snapshot_base_dir }}/{{ node_hostname }}/etc/ssh/ssh_host_ed25519_key.pub"
+        mode: '0644'
+      delegate_to: localhost
+      when: ssh_host_ed25519_key_pub is defined and ssh_host_ed25519_key_pub.stdout | length > 0
+
+    - name: Get SSH RSA host key
+      raw: cat /etc/ssh/ssh_host_rsa_key 2>/dev/null || echo ""
+      register: ssh_host_rsa_key
+      changed_when: false
+      when: "'/etc/ssh/ssh_host_rsa_key' in ssh_host_keys_list.stdout"
+
+    - name: Save SSH RSA host key
+      copy:
+        content: "{{ ssh_host_rsa_key.stdout }}"
+        dest: "{{ snapshot_base_dir }}/{{ node_hostname }}/etc/ssh/ssh_host_rsa_key"
+        mode: '0600'
+      delegate_to: localhost
+      when: ssh_host_rsa_key is defined and ssh_host_rsa_key.stdout | length > 0
+
+    - name: Get opkg distfeeds
+      raw: cat /etc/opkg/distfeeds.conf 2>/dev/null || echo "# No distfeeds"
+      register: opkg_distfeeds
+      changed_when: false
+
+    - name: Save distfeeds
+      copy:
+        content: "{{ opkg_distfeeds.stdout }}"
+        dest: "{{ snapshot_base_dir }}/{{ node_hostname }}/etc/opkg/distfeeds.conf"
+      delegate_to: localhost
+
+    ###########################################################################
+    # Phase 5: Packages
+    ###########################################################################
+
+    - name: Get installed packages (names only)
+      raw: opkg list-installed | awk '{print $1}'
+      register: packages_names
+      changed_when: false
+
+    - name: Save package names
+      copy:
+        content: "{{ packages_names.stdout }}"
+        dest: "{{ snapshot_base_dir }}/{{ node_hostname }}/packages/installed.txt"
+      delegate_to: localhost
+
+    - name: Get installed packages (with versions)
+      raw: opkg list-installed
+      register: packages_full
+      changed_when: false
+
+    - name: Save packages with versions
+      copy:
+        content: "{{ packages_full.stdout }}"
+        dest: "{{ snapshot_base_dir }}/{{ node_hostname }}/packages/installed_full.txt"
+      delegate_to: localhost
+
+    - name: Get user-installed packages (estimate)
+      raw: |
+        # Packages that are likely user-installed (not base system)
+        # This is an approximation - compare against a fresh install for accuracy
+        opkg list-installed | awk '{print $1}' | grep -E \
+          '(batctl|batman|wpad-mesh|openssh|iperf|htop|nano|vnstat|collectd|luci-app)' \
+          || echo "# No obvious user packages detected"
+      register: packages_user
+      changed_when: false
+
+    - name: Save user packages
+      copy:
+        content: "{{ packages_user.stdout }}"
+        dest: "{{ snapshot_base_dir }}/{{ node_hostname }}/packages/user_installed.txt"
+      delegate_to: localhost
+
+    ###########################################################################
+    # Phase 6: Custom Scripts
+    ###########################################################################
+
+    - name: Find custom scripts in /usr/bin
+      raw: find /usr/bin -maxdepth 1 -name '*.sh' -type f 2>/dev/null || true
+      register: custom_scripts_list
+      changed_when: false
+
+    - name: Get custom script contents
+      raw: "cat {{ item }} 2>/dev/null"
+      register: custom_script_contents
+      changed_when: false
+      loop: "{{ custom_scripts_list.stdout_lines | select() | list }}"
+      when: custom_scripts_list.stdout_lines | length > 0
+
+    - name: Save custom scripts
+      copy:
+        content: "{{ item.stdout }}"
+        dest: "{{ snapshot_base_dir }}/{{ node_hostname }}/scripts/{{ item.item | basename }}"
+        mode: "0755"
+      delegate_to: localhost
+      loop: "{{ custom_script_contents.results | default([]) }}"
+      when:
+        - custom_script_contents is defined
+        - custom_script_contents.results is defined
+        - item.stdout is defined
+
+    ###########################################################################
+    # Phase 7: Network State
+    ###########################################################################
+
+    - name: Get network interfaces
+      raw: ip -br link show
+      register: net_interfaces
+      changed_when: false
+
+    - name: Save interfaces
+      copy:
+        content: "{{ net_interfaces.stdout }}"
+        dest: "{{ snapshot_base_dir }}/{{ node_hostname }}/network/interfaces.txt"
+      delegate_to: localhost
+
+    - name: Get IP addresses
+      raw: ip -br addr show
+      register: net_addresses
+      changed_when: false
+
+    - name: Save IP addresses
+      copy:
+        content: "{{ net_addresses.stdout }}"
+        dest: "{{ snapshot_base_dir }}/{{ node_hostname }}/network/ip_addresses.txt"
+      delegate_to: localhost
+
+    - name: Get routes
+      raw: ip route show
+      register: net_routes
+      changed_when: false
+
+    - name: Save routes
+      copy:
+        content: "{{ net_routes.stdout }}"
+        dest: "{{ snapshot_base_dir }}/{{ node_hostname }}/network/routes.txt"
+      delegate_to: localhost
+
+    - name: Get ARP table
+      raw: ip neigh show
+      register: net_arp
+      changed_when: false
+
+    - name: Save ARP
+      copy:
+        content: "{{ net_arp.stdout }}"
+        dest: "{{ snapshot_base_dir }}/{{ node_hostname }}/network/arp.txt"
+      delegate_to: localhost
+
+    ###########################################################################
+    # Phase 8: Wireless State
+    ###########################################################################
+
+    - name: Get wireless devices
+      raw: iw dev 2>/dev/null || echo "# No wireless devices"
+      register: wireless_devices
+      changed_when: false
+
+    - name: Save wireless devices
+      copy:
+        content: "{{ wireless_devices.stdout }}"
+        dest: "{{ snapshot_base_dir }}/{{ node_hostname }}/wireless/devices.txt"
+      delegate_to: localhost
+
+    - name: Get wireless stations
+      raw: |
+        for iface in $(iw dev 2>/dev/null | grep Interface | cut -d' ' -f2); do
+          echo "=== $iface ==="
+          iw $iface station dump 2>/dev/null || echo "No stations"
+        done
+      register: wireless_stations
+      changed_when: false
+
+    - name: Save wireless stations
+      copy:
+        content: "{{ wireless_stations.stdout }}"
+        dest: "{{ snapshot_base_dir }}/{{ node_hostname }}/wireless/stations.txt"
+      delegate_to: localhost
+
+    ###########################################################################
+    # Phase 9: Mesh State
+    ###########################################################################
+
+    - name: Get batman interfaces
+      raw: batctl if 2>/dev/null || echo "# Batman not configured"
+      register: mesh_interfaces
+      changed_when: false
+
+    - name: Save batman interfaces
+      copy:
+        content: "{{ mesh_interfaces.stdout }}"
+        dest: "{{ snapshot_base_dir }}/{{ node_hostname }}/mesh/batman_if.txt"
+      delegate_to: localhost
+
+    - name: Get mesh neighbors
+      raw: batctl n 2>/dev/null || echo "# No neighbors"
+      register: mesh_neighbors
+      changed_when: false
+
+    - name: Save mesh neighbors
+      copy:
+        content: "{{ mesh_neighbors.stdout }}"
+        dest: "{{ snapshot_base_dir }}/{{ node_hostname }}/mesh/neighbors.txt"
+      delegate_to: localhost
+
+    - name: Get mesh originators
+      raw: batctl o 2>/dev/null || echo "# No originators"
+      register: mesh_originators
+      changed_when: false
+
+    - name: Save originators
+      copy:
+        content: "{{ mesh_originators.stdout }}"
+        dest: "{{ snapshot_base_dir }}/{{ node_hostname }}/mesh/originators.txt"
+      delegate_to: localhost
+
+    - name: Get mesh gateways
+      raw: |
+        echo "=== Gateway Mode ==="
+        batctl gw 2>/dev/null || echo "Not set"
+        echo ""
+        echo "=== Gateway List ==="
+        batctl gwl 2>/dev/null || echo "No gateways"
+      register: mesh_gateways
+      changed_when: false
+
+    - name: Save gateways
+      copy:
+        content: "{{ mesh_gateways.stdout }}"
+        dest: "{{ snapshot_base_dir }}/{{ node_hostname }}/mesh/gateways.txt"
+      delegate_to: localhost
+
+    ###########################################################################
+    # Phase 10: Services State
+    ###########################################################################
+
+    - name: Get enabled services
+      raw: |
+        for svc in /etc/init.d/*; do
+          if [ -x "$svc" ]; then
+            name=$(basename $svc)
+            if $svc enabled 2>/dev/null; then
+              echo "$name: enabled"
+            else
+              echo "$name: disabled"
+            fi
+          fi
+        done
+      register: services_enabled
+      changed_when: false
+
+    - name: Save enabled services
+      copy:
+        content: "{{ services_enabled.stdout }}"
+        dest: "{{ snapshot_base_dir }}/{{ node_hostname }}/services/enabled.txt"
+      delegate_to: localhost
+
+    - name: Get running processes
+      raw: ps w
+      register: services_running
+      changed_when: false
+
+    - name: Save running processes
+      copy:
+        content: "{{ services_running.stdout }}"
+        dest: "{{ snapshot_base_dir }}/{{ node_hostname }}/services/running.txt"
+      delegate_to: localhost
+
+    - name: Get listening ports
+      raw: netstat -tlpn 2>/dev/null || ss -tlpn 2>/dev/null || echo "# Cannot get ports"
+      register: services_ports
+      changed_when: false
+
+    - name: Save listening ports
+      copy:
+        content: "{{ services_ports.stdout }}"
+        dest: "{{ snapshot_base_dir }}/{{ node_hostname }}/services/ports.txt"
+      delegate_to: localhost
+
+    ###########################################################################
+    # Phase 11: USB Storage State
+    ###########################################################################
+
+    - name: Get USB storage info
+      raw: |
+        echo "=== Block Devices ==="
+        ls -la /dev/sd* 2>/dev/null || echo "No USB storage"
+        echo ""
+        echo "=== Mount Status ==="
+        mount | grep -E "(sd[a-z]|/x00)" || echo "No USB mounts"
+        echo ""
+        echo "=== /x00 Contents ==="
+        if [ -d /x00 ]; then
+          ls -la /x00
+          echo ""
+          du -sh /x00/* 2>/dev/null || echo "Empty"
+        else
+          echo "Not mounted"
+        fi
+      register: storage_usb
+      changed_when: false
+
+    - name: Save USB storage info
+      copy:
+        content: "{{ storage_usb.stdout }}"
+        dest: "{{ snapshot_base_dir }}/{{ node_hostname }}/storage/usb_storage.txt"
+      delegate_to: localhost
+
+    ###########################################################################
+    # Phase 12: Monitoring State
+    ###########################################################################
+
+    - name: Get monitoring status
+      raw: |
+        echo "=== Monitoring Packages ==="
+        opkg list-installed | grep -E "(collectd|vnstat|luci-app-statistics)" || echo "None"
+        echo ""
+        echo "=== Monitoring Data ==="
+        if [ -d /x00/monitoring ]; then
+          du -sh /x00/monitoring/* 2>/dev/null || echo "No data"
+        else
+          echo "Not configured"
+        fi
+        echo ""
+        echo "=== Collectd Config ==="
+        uci show luci_statistics 2>/dev/null | head -20 || echo "Not configured"
+      register: monitoring_status
+      changed_when: false
+
+    - name: Save monitoring status
+      copy:
+        content: "{{ monitoring_status.stdout }}"
+        dest: "{{ snapshot_base_dir }}/{{ node_hostname }}/monitoring/status.txt"
+      delegate_to: localhost
+
+    ###########################################################################
+    # Phase 13: Generate Metadata and Restore Script
+    ###########################################################################
+
+    - name: Create metadata JSON
+      copy:
+        content: |
+          {
+            "hostname": "{{ node_hostname }}",
+            "snapshot_timestamp": "{{ snapshot_timestamp }}",
+            "snapshot_date": "{{ snapshot_date }}",
+            "ansible_host": "{{ ansible_host }}",
+            "inventory_hostname": "{{ inventory_hostname }}",
+            "openwrt_version": "{{ openwrt_release.stdout_lines | select('match', 'DISTRIB_RELEASE.*') | first | default('unknown') | regex_replace('DISTRIB_RELEASE=.(.*).$', '\\1') }}",
+            "board": "{{ board_info.stdout_lines | select('match', 'Board:.*') | first | default('unknown') | regex_replace('Board: ', '') }}",
+            "model": "{{ board_info.stdout_lines | select('match', 'Model:.*') | first | default('unknown') | regex_replace('Model: ', '') }}",
+            "packages_installed": {{ packages_names.stdout_lines | length }},
+            "snapshot_contents": [
+              "system/",
+              "config/",
+              "etc/",
+              "packages/",
+              "scripts/",
+              "network/",
+              "wireless/",
+              "mesh/",
+              "services/",
+              "storage/",
+              "monitoring/",
+              "restore/"
+            ]
+          }
+        dest: "{{ snapshot_base_dir }}/{{ node_hostname }}/metadata.json"
+      delegate_to: localhost
+
+    - name: Create restore README
+      copy:
+        content: |
+          # Configuration Restore Guide for {{ node_hostname }}
+
+          Snapshot taken: {{ snapshot_timestamp }}
+          OpenWrt Version: Check system/openwrt_release
+
+          ## Directory Contents
+
+          - `system/` - Hardware and OS information
+          - `config/` - Complete UCI configuration
+            - `uci_export.txt` - Full UCI export (can be imported)
+            - Individual config files for each subsystem
+          - `etc/` - System files
+            - `passwd`, `group` - User accounts
+            - `fstab` - Mount points
+            - `crontabs/root` - Scheduled tasks
+            - `ssh/` - SSH configuration and keys
+            - `opkg/` - Package repository config
+          - `packages/` - Package information
+            - `installed.txt` - All package names
+            - `installed_full.txt` - Packages with versions
+            - `user_installed.txt` - Likely user-added packages
+          - `scripts/` - Custom scripts from /usr/bin/
+          - `network/` - Network state at snapshot time
+          - `wireless/` - Wireless state at snapshot time
+          - `mesh/` - Batman-adv mesh state
+          - `services/` - Service status
+          - `storage/` - USB storage info
+          - `monitoring/` - Monitoring configuration
+
+          ## Restoration Steps
+
+          ### 1. Flash OpenWrt
+
+          Flash the same OpenWrt version to the device.
+          Check `system/openwrt_release` for the exact version.
+
+          ### 2. Basic Connectivity
+
+          Connect to the device via SSH (default: 192.168.1.1)
+
+          ### 3. Restore UCI Configuration
+
+          Option A - Full restore (recommended):
+          ```bash
+          # Copy uci_export.txt to the device
+          scp config/uci_export.txt root@<device_ip>:/tmp/
+
+          # On the device, import configuration
+          ssh root@<device_ip>
+          uci import < /tmp/uci_export.txt
+          uci commit
+          ```
+
+          Option B - Selective restore:
+          ```bash
+          # Restore individual configs
+          uci import network < config/network
+          uci import wireless < config/wireless
+          uci import firewall < config/firewall
+          # ... etc
+          uci commit
+          ```
+
+          ### 4. Install Packages
+
+          ```bash
+          # Update package list
+          opkg update
+
+          # Install packages (see packages/user_installed.txt for key packages)
+          opkg install batctl-full kmod-batman-adv wpad-mesh-mbedtls ...
+          ```
+
+          ### 5. Restore SSH Keys
+
+          ```bash
+          mkdir -p /root/.ssh
+          scp etc/ssh/authorized_keys root@<device_ip>:/root/.ssh/
+          chmod 600 /root/.ssh/authorized_keys
+          ```
+
+          ### 6. Restore Custom Scripts
+
+          ```bash
+          scp scripts/*.sh root@<device_ip>:/usr/bin/
+          ssh root@<device_ip> 'chmod +x /usr/bin/*.sh'
+          ```
+
+          ### 7. Restore Crontab
+
+          ```bash
+          scp etc/crontabs/root root@<device_ip>:/etc/crontabs/
+          ssh root@<device_ip> '/etc/init.d/cron restart'
+          ```
+
+          ### 8. Reboot
+
+          ```bash
+          ssh root@<device_ip> 'reboot'
+          ```
+
+          ## Notes
+
+          - Passwords are NOT stored in this snapshot for security
+          - Wireless passwords are in the UCI config (may want to change)
+          - USB storage will need to be reformatted/remounted
+          - Monitoring data is not backed up (only configuration)
+
+        dest: "{{ snapshot_base_dir }}/{{ node_hostname }}/restore/README.md"
+      delegate_to: localhost
+
+    - name: Create restore script
+      copy:
+        content: |
+          #!/bin/bash
+          # Restore script for {{ node_hostname }}
+          # Generated: {{ snapshot_timestamp }}
+          #
+          # Usage: ./restore.sh <device_ip>
+          #
+
+          set -e
+
+          DEVICE_IP="${1:-192.168.1.1}"
+          SNAPSHOT_DIR="$(dirname "$0")/.."
+
+          echo "=== OpenWrt Configuration Restore ==="
+          echo "Hostname: {{ node_hostname }}"
+          echo "Target: $DEVICE_IP"
+          echo ""
+
+          # Check connectivity
+          echo "Checking connectivity..."
+          if ! ping -c 1 -W 2 "$DEVICE_IP" >/dev/null 2>&1; then
+              echo "ERROR: Cannot reach $DEVICE_IP"
+              exit 1
+          fi
+
+          echo "Step 1: Copying UCI configuration..."
+          scp "$SNAPSHOT_DIR/config/uci_export.txt" "root@${DEVICE_IP}:/tmp/"
+
+          echo "Step 2: Importing UCI configuration..."
+          ssh "root@${DEVICE_IP}" 'uci import < /tmp/uci_export.txt && uci commit'
+
+          echo "Step 3: Restoring SSH keys..."
+          ssh "root@${DEVICE_IP}" 'mkdir -p /root/.ssh'
+          scp "$SNAPSHOT_DIR/etc/ssh/authorized_keys" "root@${DEVICE_IP}:/root/.ssh/"
+          ssh "root@${DEVICE_IP}" 'chmod 600 /root/.ssh/authorized_keys'
+
+          echo "Step 4: Restoring crontab..."
+          scp "$SNAPSHOT_DIR/etc/crontabs/root" "root@${DEVICE_IP}:/etc/crontabs/"
+
+          echo "Step 5: Restoring custom scripts..."
+          if ls "$SNAPSHOT_DIR/scripts/"*.sh >/dev/null 2>&1; then
+              scp "$SNAPSHOT_DIR/scripts/"*.sh "root@${DEVICE_IP}:/usr/bin/"
+              ssh "root@${DEVICE_IP}" 'chmod +x /usr/bin/*.sh'
+          fi
+
+          echo ""
+          echo "=== Restore Complete ==="
+          echo ""
+          echo "Next steps:"
+          echo "1. Install required packages on the device"
+          echo "2. Set root password: ssh root@${DEVICE_IP} 'passwd'"
+          echo "3. Reboot: ssh root@${DEVICE_IP} 'reboot'"
+          echo ""
+          echo "Required packages (see packages/user_installed.txt):"
+          cat "$SNAPSHOT_DIR/packages/user_installed.txt" | head -10
+
+        dest: "{{ snapshot_base_dir }}/{{ node_hostname }}/restore/restore.sh"
+        mode: "0755"
+      delegate_to: localhost
+
+    ###########################################################################
+    # Phase 14: Summary
+    ###########################################################################
+
+    - name: Display snapshot summary
+      debug:
+        msg: |
+          ================================================================================
+          SNAPSHOT COMPLETE: {{ node_hostname }}
+          ================================================================================
+
+          Location: {{ snapshot_base_dir }}/{{ node_hostname }}/
+          Timestamp: {{ snapshot_timestamp }}
+
+          Contents:
+            - System info (model, version, hardware)
+            - Complete UCI configuration ({{ config_files.stdout_lines | length }} config files)
+            - System files (passwd, fstab, crontab, ssh keys)
+            - Package list ({{ packages_names.stdout_lines | length }} packages)
+            - Custom scripts
+            - Network, wireless, mesh state
+            - Service status
+            - Restore instructions and script
+
+          To restore this configuration:
+            1. Review: {{ snapshot_base_dir }}/{{ node_hostname }}/restore/README.md
+            2. Run: {{ snapshot_base_dir }}/{{ node_hostname }}/restore/restore.sh <device_ip>
+
+          ================================================================================

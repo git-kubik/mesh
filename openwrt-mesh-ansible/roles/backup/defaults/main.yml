@@ -1,0 +1,5 @@
+---
+# Default variables for backup role
+
+# Directory on control machine to store backups
+backup_config_backup_dir: /tmp/openwrt-config-backup

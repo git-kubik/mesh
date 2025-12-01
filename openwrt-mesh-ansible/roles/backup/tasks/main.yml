@@ -1,0 +1,39 @@
+---
+# Backup role for OpenWrt mesh nodes
+# Creates configuration backup before deployment
+
+- name: Create backup directory on control machine
+  ansible.builtin.file:
+    path: "{{ backup_config_backup_dir }}"
+    state: directory
+    mode: '0755'
+  delegate_to: localhost
+  run_once: false
+
+- name: Backup current configuration (Python-free)
+  ansible.builtin.raw: |
+    if [ ! -f /tmp/backup-{{ inventory_hostname }}-*.tar.gz ]; then
+      sysupgrade -b /tmp/backup-{{ inventory_hostname }}-$(date +%Y%m%d-%H%M%S).tar.gz 2>&1 || echo "Backup skipped or failed"
+    fi
+  register: backup_result
+  changed_when: "'Backup skipped' not in backup_result.stdout"
+  failed_when: false
+
+- name: Check for backup file (Python-free)
+  ansible.builtin.raw: |
+    ls /tmp/backup-{{ inventory_hostname }}-*.tar.gz 2>/dev/null || echo "No backup found"
+  register: backup_file_check
+  changed_when: false
+  failed_when: false
+
+- name: Copy backup to control machine using scp
+  ansible.builtin.shell: >
+    sshpass -p '{{ ansible_ssh_pass | default("") }}' scp -o StrictHostKeyChecking=no
+    -o UserKnownHostsFile=/dev/null -o PubkeyAuthentication=no
+    -o PreferredAuthentications=password
+    root@{{ ansible_host }}:/tmp/backup-{{ inventory_hostname }}-*.tar.gz
+    {{ backup_config_backup_dir }}/ 2>/dev/null || echo "No backup to fetch"
+  delegate_to: localhost
+  when: "'backup-' in backup_file_check.stdout"
+  changed_when: false
+  failed_when: false

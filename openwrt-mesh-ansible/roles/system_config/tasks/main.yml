@@ -1,0 +1,57 @@
+---
+# System configuration role for OpenWrt mesh nodes
+# Configures hostname, timezone, and root password
+#
+# Note: Variables are loaded from environment by the deploy.yml playbook
+# via roles/common/tasks/load_env_vars.yml before this role runs.
+
+- name: Set root password for console access
+  ansible.builtin.raw: "echo -e '{{ root_password }}\n{{ root_password }}' | passwd root"
+  no_log: true
+  changed_when: true
+
+- name: Verify root password was set
+  ansible.builtin.raw: |
+    if grep -q '^root:[^!*]' /etc/shadow; then
+      echo "Root password successfully set"
+    else
+      echo "WARNING: Root password may not be set correctly"
+    fi
+  register: root_password_check
+  changed_when: false
+
+- name: Display root password status
+  ansible.builtin.debug:
+    msg: "{{ root_password_check.stdout_lines }}"
+
+- name: Set hostname
+  ansible.builtin.raw: "uci set system.@system[0].hostname='{{ hostname_prefix }}{{ node_id }}'"
+  changed_when: true
+
+- name: Set timezone
+  ansible.builtin.raw: |
+    uci set system.@system[0].timezone='{{ timezone }}'
+    uci set system.@system[0].zonename='{{ zonename }}'
+  changed_when: true
+
+- name: Configure NTP servers
+  ansible.builtin.raw: |
+    uci set system.ntp.enabled='1'
+    uci set system.ntp.enable_server='0'
+    uci -q delete system.ntp.server
+    {% for server in ntp_servers %}
+    uci add_list system.ntp.server='{{ server }}'
+    {% endfor %}
+  changed_when: true
+
+- name: Commit system changes
+  ansible.builtin.raw: uci commit system
+  changed_when: true
+
+- name: Restart NTP service
+  ansible.builtin.raw: /etc/init.d/sysntpd restart
+  changed_when: true
+
+# NOTE: System changes (hostname/timezone) are committed but NOT applied yet
+# They will take effect after reboot (if REBOOT_AFTER_DEPLOY=true) or on next boot
+# Applying system changes here with /etc/init.d/system reload could break connection

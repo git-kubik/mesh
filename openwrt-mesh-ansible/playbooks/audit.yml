@@ -47,8 +47,7 @@
 
     - name: Wait for nodes to be reachable
       wait_for_connection:
-        timeout: 60
-        delay: 2
+        timeout: 30
       tags: [always]
 
     - name: Get system identification
@@ -89,6 +88,21 @@
       register: storage_info
       changed_when: false
       tags: [system]
+
+    - name: Get system time and NTP configuration
+      raw: |
+        echo "=== System Time ==="
+        date
+        echo "=== Timezone ==="
+        uci -q get system.@system[0].timezone || echo "Not set"
+        uci -q get system.@system[0].zonename || echo "Not set"
+        echo "=== NTP Configuration ==="
+        uci show system.ntp 2>/dev/null || echo "NTP not configured"
+        echo "=== NTP Status ==="
+        ntpq -p 2>/dev/null || echo "ntpq not available (run: opkg install ntpd)"
+      register: time_ntp_config
+      changed_when: false
+      tags: [system, time]
 
     ###########################################################################
     # Phase 2: Network Infrastructure
@@ -460,13 +474,26 @@
     - name: Check USB kernel modules
       raw: |
         echo "=== USB Storage Kernel Modules ==="
-        MODULES="usb_storage uas kmod-fs-f2fs kmod-fs-ext4 kmod-fs-exfat"
-        for mod in $MODULES; do
-          if lsmod | grep -q "^${mod//-/_}"; then
-            echo "$mod: LOADED"
-          else
-            echo "$mod: not loaded"
+        # Check actual kernel module status (loaded or available as .ko)
+        check_kmod() {
+          local mod_name="$1"
+          local kernel_name=$(echo "$mod_name" | sed 's/kmod-//' | tr '-' '_')
+          # Check if loaded
+          if lsmod | grep -q "^${kernel_name}"; then
+            echo "$mod_name: LOADED"
+            return 0
           fi
+          # Check if .ko file exists (built into firmware but not loaded)
+          if find /lib/modules/ -name "${kernel_name}.ko" 2>/dev/null | grep -q .; then
+            echo "$mod_name: AVAILABLE (not loaded)"
+            return 0
+          fi
+          echo "$mod_name: NOT AVAILABLE"
+          return 1
+        }
+
+        for mod in kmod-usb-storage kmod-usb2 kmod-fs-f2fs kmod-fs-ext4; do
+          check_kmod "$mod"
         done
         echo ""
         echo "=== USB Bus Information ==="
@@ -476,37 +503,319 @@
       tags: [storage, usb]
 
     ###########################################################################
-    # Phase 10: Package Audit and Analysis
+    # Phase 10: Monitoring Audit
+    # Checks for collectd, vnStat, health monitoring scripts
     ###########################################################################
+
+    - name: Check if monitoring packages are installed
+      raw: |
+        echo "=== Monitoring Packages ==="
+        for pkg in collectd vnstat luci-app-statistics luci-app-vnstat2 luci-app-commands; do
+          if opkg list-installed | grep -q "^$pkg "; then
+            echo "✓ $pkg - installed"
+          else
+            echo "✗ $pkg - not installed"
+          fi
+        done
+      register: monitoring_packages
+      changed_when: false
+      tags: [monitoring, packages]
+
+    - name: Check if monitoring services are running
+      raw: |
+        echo "=== Monitoring Services ==="
+        for svc in collectd vnstat; do
+          if /etc/init.d/$svc enabled 2>/dev/null; then
+            STATUS=$(/etc/init.d/$svc status 2>&1)
+            echo "$svc: enabled - $STATUS"
+          else
+            echo "$svc: not enabled"
+          fi
+        done
+      register: monitoring_services
+      changed_when: false
+      tags: [monitoring, services]
+
+    - name: Check monitoring data directories
+      raw: |
+        echo "=== Monitoring Data Directories ==="
+        if [ -d "/x00/monitoring" ]; then
+          echo "✓ /x00/monitoring exists"
+          echo ""
+          echo "--- Directory Structure ---"
+          ls -lh /x00/monitoring/ 2>/dev/null || echo "Cannot list directory"
+          echo ""
+          echo "--- Disk Usage ---"
+          du -sh /x00/monitoring/* 2>/dev/null || echo "No data yet"
+          echo ""
+          echo "--- Collectd RRD Files ---"
+          if [ -d "/x00/monitoring/collectd/rrd" ]; then
+            RRD_COUNT=$(find /x00/monitoring/collectd/rrd -name "*.rrd" 2>/dev/null | wc -l)
+            echo "RRD files: $RRD_COUNT"
+            find /x00/monitoring/collectd/rrd -name "*.rrd" 2>/dev/null | head -5 || true
+          else
+            echo "RRD directory not found"
+          fi
+          echo ""
+          echo "--- vnStat Database ---"
+          if [ -d "/x00/monitoring/vnstat" ]; then
+            ls -lh /x00/monitoring/vnstat/ 2>/dev/null || echo "No vnStat data"
+          else
+            echo "vnStat directory not found"
+          fi
+          echo ""
+          echo "--- Health Logs ---"
+          if [ -f "/x00/monitoring/logs/mesh-health.log" ]; then
+            echo "Latest health check entries:"
+            tail -5 /x00/monitoring/logs/mesh-health.log 2>/dev/null || echo "Cannot read log"
+          else
+            echo "Health log not found"
+          fi
+        else
+          echo "✗ /x00/monitoring does not exist (monitoring not deployed)"
+        fi
+      register: monitoring_data
+      changed_when: false
+      tags: [monitoring, data]
+
+    - name: Check monitoring scripts
+      raw: |
+        echo "=== Monitoring Scripts ==="
+        for script in /usr/bin/mesh-monitor.sh /usr/bin/monitoring-report.sh; do
+          if [ -x "$script" ]; then
+            echo "✓ $script - exists and executable"
+          else
+            echo "✗ $script - not found or not executable"
+          fi
+        done
+      register: monitoring_scripts
+      changed_when: false
+      tags: [monitoring, scripts]
+
+    - name: Check monitoring cron jobs
+      raw: |
+        echo "=== Monitoring Cron Jobs ==="
+        if crontab -l 2>/dev/null | grep -q mesh-monitor; then
+          echo "✓ Mesh health monitoring cron job exists:"
+          crontab -l 2>/dev/null | grep mesh-monitor
+        else
+          echo "✗ Mesh health monitoring cron job not found"
+        fi
+        echo ""
+        if crontab -l 2>/dev/null | grep -q "mesh-health.log"; then
+          echo "✓ Log rotation cron job exists:"
+          crontab -l 2>/dev/null | grep "mesh-health.log"
+        else
+          echo "✗ Log rotation cron job not found"
+        fi
+      register: monitoring_cron
+      changed_when: false
+      tags: [monitoring, cron]
+
+    - name: Check collectd configuration
+      raw: |
+        echo "=== Collectd Configuration ==="
+        if uci show luci_statistics 2>/dev/null | grep -q collectd; then
+          echo "✓ Collectd UCI configuration exists"
+          echo ""
+          echo "--- Key Settings ---"
+          echo "BaseDir: $(uci get luci_statistics.collectd.BaseDir 2>/dev/null || echo 'not set')"
+          echo "Interval: $(uci get luci_statistics.collectd.Interval 2>/dev/null || echo 'not set')"
+          echo "Hostname: $(uci get luci_statistics.collectd.Hostname 2>/dev/null || echo 'not set')"
+          echo ""
+          echo "--- Enabled Plugins ---"
+          uci show luci_statistics | grep "\.enable='1'" | sed 's/luci_statistics\.collectd_//' | sed 's/\.enable=.*//' || echo "None"
+          echo ""
+          echo "--- RRDTool Settings ---"
+          echo "DataDir: $(uci get luci_statistics.collectd_rrdtool.DataDir 2>/dev/null || echo 'not set')"
+          echo "CacheFlush: $(uci get luci_statistics.collectd_rrdtool.CacheFlush 2>/dev/null || echo 'not set')"
+        else
+          echo "✗ Collectd UCI configuration not found"
+        fi
+      register: monitoring_config
+      changed_when: false
+      tags: [monitoring, config]
+
+    - name: Check LuCI custom commands configuration
+      raw: |
+        echo "=== LuCI Custom Commands ==="
+        if uci show luci | grep -q "command.*name='Mesh Neighbors'"; then
+          COMMAND_COUNT=$(uci show luci | grep -c "\.command=command" || true)
+          echo "✓ Custom commands configured ($COMMAND_COUNT commands)"
+          echo ""
+          echo "--- Configured Commands ---"
+          uci show luci | grep "\.name=" | sed 's/.*\.name=/  - /' || true
+        else
+          echo "✗ Custom commands not configured"
+        fi
+      register: monitoring_luci_commands
+      changed_when: false
+      tags: [monitoring, luci]
+
+    - name: Get monitoring web UI URL
+      raw: |
+        LANIP=$(ip -4 addr show br-lan 2>/dev/null | grep inet | awk '{print $2}' | cut -d/ -f1)
+        if [ -n "$LANIP" ]; then
+          echo "http://$LANIP/cgi-bin/luci/admin/statistics/graph"
+        else
+          echo "Unable to determine LAN IP"
+        fi
+      register: monitoring_web_ui
+      changed_when: false
+      tags: [monitoring]
+
+    - name: Determine monitoring deployment status
+      set_fact:
+        monitoring_status:
+          deployed: "{{ '/x00/monitoring' in monitoring_data.stdout }}"
+          collectd_installed: "{{ 'collectd - installed' in monitoring_packages.stdout }}"
+          vnstat_installed: "{{ 'vnstat - installed' in monitoring_packages.stdout }}"
+          luci_vnstat_installed: "{{ 'luci-app-vnstat2 - installed' in monitoring_packages.stdout }}"
+          luci_commands_installed: "{{ 'luci-app-commands - installed' in monitoring_packages.stdout }}"
+          collectd_running: "{{ 'collectd: enabled - running' in monitoring_services.stdout }}"
+          vnstat_running: "{{ 'vnstat: enabled - running' in monitoring_services.stdout }}"
+          scripts_present: "{{ 'mesh-monitor.sh - exists' in monitoring_scripts.stdout and 'monitoring-report.sh - exists' in monitoring_scripts.stdout }}"
+          cron_configured: "{{ 'Mesh health monitoring cron job exists' in monitoring_cron.stdout }}"
+          custom_commands_configured: "{{ 'Custom commands configured' in monitoring_luci_commands.stdout }}"
+          web_ui: "{{ monitoring_web_ui.stdout | trim }}"
+      tags: [monitoring]
+
+    ###########################################################################
+    # Phase 10A: Distributed Syslog Audit
+    ###########################################################################
+
+    - name: Check syslog configuration and files
+      raw: |
+        echo "=== Syslog Configuration ==="
+        LOG_FILE=$(uci -q get system.@system[0].log_file)
+        LOG_SIZE=$(uci -q get system.@system[0].log_size)
+
+        if [ -n "$LOG_FILE" ] && echo "$LOG_FILE" | grep -q "/x00"; then
+          echo "✓ Syslog configured to USB: $LOG_FILE"
+          echo "  Log size limit: ${LOG_SIZE:-128} KB"
+
+          if [ -f "$LOG_FILE" ]; then
+            SIZE=$(ls -lh "$LOG_FILE" 2>/dev/null | awk '{print $5}')
+            LINES=$(wc -l < "$LOG_FILE" 2>/dev/null)
+            echo "  Current log: $SIZE ($LINES lines)"
+            echo ""
+            echo "--- Last 5 entries ---"
+            tail -5 "$LOG_FILE" 2>/dev/null
+          else
+            echo "  Log file not yet created (normal on fresh deploy)"
+          fi
+        else
+          echo "✗ Syslog not configured for USB storage"
+          echo "  Current log_file: ${LOG_FILE:-not set}"
+        fi
+
+        echo ""
+        echo "=== Syslog Rotation ==="
+        if crontab -l 2>/dev/null | grep -q "syslog"; then
+          echo "✓ Rotation cron job configured"
+          crontab -l 2>/dev/null | grep "syslog"
+        else
+          echo "✗ No rotation cron job found"
+        fi
+      register: syslog_data
+      changed_when: false
+      tags: [syslog]
+
+    - name: Determine syslog status
+      set_fact:
+        syslog_status:
+          configured: "{{ 'Syslog configured to USB' in syslog_data.stdout }}"
+          has_logs: "{{ 'Current log:' in syslog_data.stdout }}"
+          cron_configured: "{{ 'Rotation cron job configured' in syslog_data.stdout }}"
+      tags: [syslog]
+
+    ###########################################################################
+    # Phase 11: Package Audit and Analysis
+    ###########################################################################
+
+    # Check kernel modules functionally (loaded or .ko file exists)
+    # This handles modules baked into firmware via Image Builder
+    # Uses simple checks to avoid Jinja2/shell escaping issues
+    - name: Check kernel module availability
+      raw: >-
+        for pair in
+        "kmod-batman-adv:batman_adv"
+        "kmod-usb-storage:usb_storage"
+        "kmod-usb2:ehci_hcd"
+        "kmod-usb3:xhci_hcd"
+        "kmod-fs-f2fs:f2fs"
+        "kmod-fs-ext4:ext4"; do
+        pkg=$(echo $pair | cut -d: -f1);
+        mod=$(echo $pair | cut -d: -f2);
+        if lsmod | grep -q "$mod" || find /lib/modules/ -name "$mod.ko" 2>/dev/null | grep -q .; then
+        echo "$pkg:AVAILABLE";
+        else
+        echo "$pkg:MISSING";
+        fi;
+        done; exit 0
+      register: kmod_check_raw
+      changed_when: false
+      tags: [audit, packages]
+
+    - name: Parse kernel module availability
+      set_fact:
+        available_kmods: >-
+          {{ kmod_check_raw.stdout_lines |
+             select('match', '.*:AVAILABLE$') |
+             map('regex_replace', ':AVAILABLE$', '') |
+             list }}
+      tags: [audit, packages]
 
     - name: Analyze package compliance
       set_fact:
+        # Separate kernel modules from regular packages
+        required_kmods: "{{ required_packages | select('match', '^kmod-') | list }}"
+        required_regular: "{{ required_packages | reject('match', '^kmod-') | list }}"
+      tags: [audit]
+
+    - name: Calculate package audit results
+      set_fact:
         package_audit:
-          installed_required: "{{ installed_packages | intersect(required_packages) }}"
-          missing_required: "{{ required_packages | difference(installed_packages) }}"
+          # Regular packages - check via opkg
+          installed_required: "{{ installed_packages | intersect(required_regular) }}"
+          missing_required_regular: "{{ required_regular | difference(installed_packages) }}"
+          # Kernel modules - check via functional test (lsmod / .ko file)
+          available_kmods: "{{ available_kmods | intersect(required_kmods) }}"
+          missing_kmods: "{{ required_kmods | difference(available_kmods) }}"
+          # Combined missing (only truly missing items)
+          missing_required: "{{ (required_regular | difference(installed_packages)) | union(required_kmods | difference(available_kmods)) }}"
           conflicting: "{{ installed_packages | intersect(remove_packages) }}"
           installed_optional: "{{ installed_packages | intersect(optional_packages) }}"
           total_installed: "{{ installed_packages | length }}"
           audit_status: >-
-            {{ 'ready' if (required_packages | difference(installed_packages) | length == 0 and
-               installed_packages | intersect(remove_packages) | length == 0) else 'needs_preparation' }}
+            {{ 'ready' if (
+                 (required_regular | difference(installed_packages) | length == 0) and
+                 (required_kmods | difference(available_kmods) | length == 0) and
+                 (installed_packages | intersect(remove_packages) | length == 0)
+               ) else 'needs_preparation' }}
       tags: [audit]
 
     - name: Debug package audit results
       debug:
         msg: |
-          Required packages ({{ required_packages | length }}): {{ required_packages }}
-          Installed packages sample (first 10): {{ installed_packages[:10] | default([]) }}
-          Total installed: {{ installed_packages | length }}
-          Found required: {{ package_audit.installed_required | length }}/{{ required_packages | length }}
-          Found packages: {{ package_audit.installed_required }}
-          Missing: {{ package_audit.missing_required }}
+          === PACKAGE AUDIT DEBUG ===
+          Required regular packages ({{ required_regular | length }}): {{ required_regular }}
+          Required kernel modules ({{ required_kmods | length }}): {{ required_kmods }}
+
+          Installed regular packages: {{ package_audit.installed_required | length }}/{{ required_regular | length }}
+          Available kernel modules: {{ package_audit.available_kmods | length }}/{{ required_kmods | length }}
+
+          Missing regular packages: {{ package_audit.missing_required_regular }}
+          Missing kernel modules: {{ package_audit.missing_kmods }}
+          Combined missing: {{ package_audit.missing_required }}
           Conflicts: {{ package_audit.conflicting }}
+
+          Audit status: {{ package_audit.audit_status }}
       when: package_audit is defined
       tags: [audit, debug]
 
     ###########################################################################
-    # Phase 11: Report Generation
+    # Phase 12: Report Generation
     ###########################################################################
 
     - name: Create audit report directory
@@ -548,6 +857,16 @@
             mount_status: "{{ usb_mount_status.stdout_lines | default([]) }}"
             automount_config: "{{ usb_automount_config.stdout_lines | default([]) }}"
             kernel_modules: "{{ usb_modules.stdout_lines | default([]) }}"
+          monitoring:
+            status: "{{ monitoring_status | default({}) }}"
+            packages: "{{ monitoring_packages.stdout_lines | default([]) }}"
+            services: "{{ monitoring_services.stdout_lines | default([]) }}"
+            data_directories: "{{ monitoring_data.stdout_lines | default([]) }}"
+            scripts: "{{ monitoring_scripts.stdout_lines | default([]) }}"
+            cron_jobs: "{{ monitoring_cron.stdout_lines | default([]) }}"
+            configuration: "{{ monitoring_config.stdout_lines | default([]) }}"
+            luci_commands: "{{ monitoring_luci_commands.stdout_lines | default([]) }}"
+            web_ui: "{{ monitoring_status.web_ui | default('Not deployed') }}"
           packages:
             installed_count: "{{ installed_packages | length }}"
             installed_list: "{{ installed_packages }}"
@@ -579,7 +898,7 @@
       tags: [report]
 
     ###########################################################################
-    # Phase 12: Summary Display
+    # Phase 13: Summary Display
     ###########################################################################
 
     - name: Display audit summary
@@ -641,18 +960,53 @@
           {% endif %}
           Auto-mount: {{ 'CONFIGURED' if "target='/x00'" in usb_automount_config.stdout else 'NOT CONFIGURED' }}
 
+          MONITORING
+          ----------
+          Status: {{ 'DEPLOYED' if monitoring_status.deployed else 'NOT DEPLOYED' }}
+          {% if monitoring_status.deployed %}
+          Collectd: {{ 'Installed & Running' if (monitoring_status.collectd_installed and monitoring_status.collectd_running) else 'Installed but not running' if monitoring_status.collectd_installed else 'Not installed' }}
+          vnStat: {{ 'Installed & Running' if (monitoring_status.vnstat_installed and monitoring_status.vnstat_running) else 'Installed but not running' if monitoring_status.vnstat_installed else 'Not installed' }}
+          LuCI Apps: {{ 'vnStat ✓' if monitoring_status.luci_vnstat_installed else 'vnStat ✗' }} | {{ 'Commands ✓' if monitoring_status.luci_commands_installed else 'Commands ✗' }}
+          Custom Commands: {{ 'Configured' if monitoring_status.custom_commands_configured else 'Not configured' }}
+          Health Scripts: {{ 'Present' if monitoring_status.scripts_present else 'Missing' }}
+          Cron Jobs: {{ 'Configured' if monitoring_status.cron_configured else 'Not configured' }}
+          Web UI: {{ monitoring_status.web_ui }}
+          Data Directory: /x00/monitoring
+          {% else %}
+          To enable: Set ENABLE_MONITORING=true in .env and deploy node, or run: make deploy-monitoring NODE={{ node_number | default('N') }}
+          {% endif %}
+
+          DISTRIBUTED SYSLOG
+          ------------------
+          Status: {{ 'CONFIGURED' if syslog_status.configured else 'NOT CONFIGURED' }}
+          {% if syslog_status.configured %}
+          Log File: /x00/logs/syslog
+          Log Data: {{ 'Available' if syslog_status.has_logs else 'Empty (normal on fresh deploy)' }}
+          Rotation: {{ 'Configured (30 day retention)' if syslog_status.cron_configured else 'Not configured' }}
+          {% else %}
+          Requires USB storage at /x00 and monitoring deployment
+          {% endif %}
+
           PACKAGE AUDIT
           -------------
           Total Installed: {{ package_audit.total_installed }} packages
-          Required Packages: {{ package_audit.installed_required | length }}/{{ required_packages | length }} installed
-          Missing Required: {{ package_audit.missing_required | length }}
+          Regular Packages: {{ package_audit.installed_required | length }}/{{ required_regular | length }} installed
+          Kernel Modules: {{ package_audit.available_kmods | length }}/{{ required_kmods | length }} available
+          Missing: {{ package_audit.missing_required | length }}
           Conflicting: {{ package_audit.conflicting | length }}
           Status: {{ 'READY FOR DEPLOYMENT' if package_audit.audit_status == 'ready' else 'PREPARATION NEEDED' }}
 
-          {% if package_audit.missing_required | length > 0 %}
-          MISSING REQUIRED PACKAGES:
-          {% for pkg in package_audit.missing_required %}
+          {% if package_audit.missing_required_regular | length > 0 %}
+          MISSING REGULAR PACKAGES:
+          {% for pkg in package_audit.missing_required_regular %}
             - {{ pkg }}
+          {% endfor %}
+          {% endif %}
+
+          {% if package_audit.missing_kmods | length > 0 %}
+          MISSING KERNEL MODULES:
+          {% for pkg in package_audit.missing_kmods %}
+            - {{ pkg }} (not loaded and .ko file not found)
           {% endfor %}
           {% endif %}
 

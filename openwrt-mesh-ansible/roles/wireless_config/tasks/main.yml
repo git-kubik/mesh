@@ -1,0 +1,10 @@
+---
+# Wireless configuration role for OpenWrt mesh nodes
+# Deploys 2.4GHz mesh and 5GHz AP configuration
+
+- name: Deploy wireless configuration
+  ansible.builtin.template:
+    src: wireless.j2
+    dest: /etc/config/wireless
+    mode: '0644'
+    backup: true

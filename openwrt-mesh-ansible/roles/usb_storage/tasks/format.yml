@@ -1,0 +1,12 @@
+---
+# USB storage formatting tasks
+
+- name: Format USB storage with F2FS
+  ansible.builtin.raw: |
+    PARTITION="{{ usb_device_path }}1"
+    if [ -b "$PARTITION" ]; then
+      echo "Formatting $PARTITION with F2FS..."
+      mkfs.f2fs -f -l "MESH-USB" "$PARTITION"
+      echo "Format complete"
+    fi
+  changed_when: true

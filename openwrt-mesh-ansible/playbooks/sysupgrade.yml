@@ -1,0 +1,501 @@
+---
+# Sysupgrade Playbook - Flash firmware image to nodes
+#
+# This playbook works with BOTH:
+#   - Factory vanilla nodes at 192.168.1.1 (fresh from box or after factory-reset)
+#   - Already configured mesh nodes at 10.11.12.x
+#
+# Image Types:
+#   VANILLA - Stock OpenWrt image (for factory reset)
+#   MESH    - Custom-built mesh image with config baked in (default)
+#
+# The playbook:
+#   1. Uploads the selected firmware image
+#   2. Verifies image integrity with SHA256
+#   3. Performs sysupgrade -n (always wipes config)
+#   4. Node reboots with new firmware
+#
+# Usage:
+#   make sysupgrade NODE=3                    # Flash custom mesh image (default)
+#   make sysupgrade NODE=3 IMAGE_TYPE=mesh    # Flash custom mesh image
+#   make sysupgrade NODE=3 IMAGE_TYPE=vanilla # Flash vanilla OpenWrt (factory reset)
+#
+# Or directly:
+#   # For configured node:
+#   ansible-playbook -i inventory/hosts.yml playbooks/sysupgrade.yml --limit node3
+#
+#   # For vanilla node:
+#   ansible-playbook -i inventory/hosts-initial.yml playbooks/sysupgrade.yml --limit node3
+#
+# Options (environment variables):
+#   IMAGE_TYPE=mesh     - Use custom mesh image (default)
+#   IMAGE_TYPE=vanilla  - Use vanilla OpenWrt image
+#   IMAGE_PATH=/path    - Override with specific image file
+#
+# Image locations:
+#   Mesh images:    images/mesh-node1-sysupgrade.bin (node-specific)
+#                   images/mesh-sysupgrade.bin (generic fallback)
+#   Vanilla image:  openwrt-repo/targets/ramips/mt7621/openwrt-*-sysupgrade.bin
+#
+# After upgrade with MESH image:
+#   - Node boots with mesh config baked in
+#   - IP will be 10.11.12.x (from image)
+#   - No further deployment needed
+#
+# After upgrade with VANILLA image:
+#   - Node boots to factory defaults
+#   - IP will be 192.168.1.1
+#   - Requires full deployment: make deploy-node NODE=x
+
+- name: Sysupgrade - Flash Firmware Image
+  hosts: mesh_nodes
+  gather_facts: false
+
+  vars:
+    openwrt_version: "{{ lookup('env', 'OPENWRT_VERSION') | default('24.10.4', true) }}"
+
+    # Image type selection: mesh (default) or vanilla
+    image_type: "{{ lookup('env', 'IMAGE_TYPE') | default('mesh', true) | lower }}"
+
+    # Image paths
+    images_dir: "{{ playbook_dir }}/../images"
+    openwrt_repo_dir: "{{ playbook_dir }}/../openwrt-repo/targets/ramips/mt7621"
+
+    # Mesh image locations (node-specific or generic)
+    mesh_node_image: "{{ images_dir }}/mesh-{{ inventory_hostname }}-sysupgrade.bin"
+    mesh_generic_image: "{{ images_dir }}/mesh-sysupgrade.bin"
+
+    # Vanilla OpenWrt image
+    vanilla_image: "{{ openwrt_repo_dir }}/openwrt-{{ openwrt_version }}-ramips-mt7621-dlink_dir-1960-a1-squashfs-sysupgrade.bin"
+
+    # Allow complete override via environment variable
+    image_override: "{{ lookup('env', 'IMAGE_PATH') }}"
+
+    # Remote path on node
+    remote_image_path: "/tmp/sysupgrade.bin"
+
+    # Detect if node is vanilla (at 192.168.1.1)
+    is_vanilla_node: "{{ ansible_host == '192.168.1.1' }}"
+
+  tasks:
+    ###########################################################################
+    # Phase 1: Validate Image Type and Determine Image Path
+    ###########################################################################
+
+    - name: Validate image type
+      ansible.builtin.fail:
+        msg: |
+          Invalid IMAGE_TYPE: '{{ image_type }}'
+          Valid options: mesh, vanilla
+      when: image_type not in ['mesh', 'vanilla']
+      tags: [check]
+
+    - name: Check for image override
+      delegate_to: localhost
+      ansible.builtin.stat:
+        path: "{{ image_override }}"
+      register: override_stat
+      when: image_override != ''
+      tags: [check]
+
+    - name: Check for node-specific mesh image
+      delegate_to: localhost
+      ansible.builtin.stat:
+        path: "{{ mesh_node_image }}"
+      register: mesh_node_stat
+      when: image_type == 'mesh' and image_override == ''
+      tags: [check]
+
+    - name: Check for generic mesh image
+      delegate_to: localhost
+      ansible.builtin.stat:
+        path: "{{ mesh_generic_image }}"
+      register: mesh_generic_stat
+      when: image_type == 'mesh' and image_override == '' and not (mesh_node_stat.stat.exists | default(false))
+      tags: [check]
+
+    - name: Check for vanilla image
+      delegate_to: localhost
+      ansible.builtin.stat:
+        path: "{{ vanilla_image }}"
+      register: vanilla_stat
+      when: image_type == 'vanilla' and image_override == ''
+      tags: [check]
+
+    - name: Determine which image to use
+      ansible.builtin.set_fact:
+        sysupgrade_image: >-
+          {%- if image_override != '' and (override_stat.stat.exists | default(false)) -%}
+            {{ image_override }}
+          {%- elif image_type == 'mesh' -%}
+            {%- if mesh_node_stat.stat.exists | default(false) -%}
+              {{ mesh_node_image }}
+            {%- elif mesh_generic_stat.stat.exists | default(false) -%}
+              {{ mesh_generic_image }}
+            {%- else -%}
+              NOT_FOUND
+            {%- endif -%}
+          {%- elif image_type == 'vanilla' -%}
+            {%- if vanilla_stat.stat.exists | default(false) -%}
+              {{ vanilla_image }}
+            {%- else -%}
+              NOT_FOUND
+            {%- endif -%}
+          {%- else -%}
+            NOT_FOUND
+          {%- endif -%}
+        selected_image_type: "{{ 'override' if image_override != '' else image_type }}"
+      tags: [check]
+
+    - name: Fail if mesh image not found
+      ansible.builtin.fail:
+        msg: |
+          No MESH image found!
+          Searched for:
+            - Node-specific: {{ mesh_node_image }}
+            - Generic: {{ mesh_generic_image }}
+
+          Build an image first:
+            make image-build NODE={{ inventory_hostname | regex_replace('node', '') }}
+      when:
+        - sysupgrade_image == 'NOT_FOUND'
+        - image_type == 'mesh'
+      tags: [check]
+
+    - name: Fail if vanilla image not found
+      ansible.builtin.fail:
+        msg: |
+          No VANILLA image found!
+          Expected at: {{ vanilla_image }}
+
+          Download OpenWrt images first:
+            make repo-setup
+      when:
+        - sysupgrade_image == 'NOT_FOUND'
+        - image_type == 'vanilla'
+      tags: [check]
+
+    - name: Get image file info
+      delegate_to: localhost
+      ansible.builtin.stat:
+        path: "{{ sysupgrade_image }}"
+        checksum_algorithm: sha256
+      register: image_stat
+      tags: [check]
+
+    - name: Check for SHA256 file
+      delegate_to: localhost
+      ansible.builtin.stat:
+        path: "{{ sysupgrade_image }}.sha256"
+      register: sha256_file_stat
+      tags: [check]
+
+    - name: Read expected SHA256
+      delegate_to: localhost
+      ansible.builtin.slurp:
+        src: "{{ sysupgrade_image }}.sha256"
+      register: sha256_content
+      when: sha256_file_stat.stat.exists
+      tags: [check]
+
+    - name: Parse expected SHA256
+      ansible.builtin.set_fact:
+        expected_sha256: "{{ (sha256_content.content | b64decode).split()[0] }}"
+      when: sha256_file_stat.stat.exists
+      tags: [check]
+
+    - name: Verify local image checksum
+      ansible.builtin.fail:
+        msg: |
+          SHA256 MISMATCH!
+          Expected: {{ expected_sha256 }}
+          Actual:   {{ image_stat.stat.checksum }}
+          Image may be corrupted or modified.
+      when:
+        - sha256_file_stat.stat.exists
+        - expected_sha256 != image_stat.stat.checksum
+      tags: [check]
+
+    - name: Display image selection
+      ansible.builtin.debug:
+        msg: |
+          ╔══════════════════════════════════════════════════════════════════╗
+          ║                      IMAGE SELECTION                             ║
+          ╠══════════════════════════════════════════════════════════════════╣
+          ║  Type:  {{ (image_type | upper) | center(56) }} ║
+          ║  Image: {{ sysupgrade_image | basename | center(56) }} ║
+          ║  Size:  {{ ((image_stat.stat.size / 1024 / 1024) | round(2) | string + ' MB') | center(56) }} ║
+          ║  SHA256: {{ image_stat.stat.checksum[:20] }}...{{ image_stat.stat.checksum[-20:] }} ║
+          {% if sha256_file_stat.stat.exists %}
+          ║  Verify: ✅ Checksum verified                                     ║
+          {% else %}
+          ║  Verify: ⚠️  No .sha256 file                                      ║
+          {% endif %}
+          ╠══════════════════════════════════════════════════════════════════╣
+          {% if image_type == 'mesh' %}
+          ║  Result: Node boots with MESH CONFIG from image                  ║
+          ║  New IP: 10.11.12.{{ inventory_hostname | regex_replace('node', '') }}                                            ║
+          {% else %}
+          ║  Result: Node boots to FACTORY DEFAULTS                          ║
+          ║  New IP: 192.168.1.1                                             ║
+          {% endif %}
+          ╚══════════════════════════════════════════════════════════════════╝
+      tags: [check]
+
+    ###########################################################################
+    # Phase 2: Pre-flight Checks on Target Node
+    ###########################################################################
+
+    - name: Display target node info
+      ansible.builtin.debug:
+        msg: |
+          Target: {{ inventory_hostname }}
+          Current Address: {{ ansible_host }}
+          Node State: {{ 'VANILLA (192.168.1.1)' if is_vanilla_node else 'CONFIGURED (10.11.12.x)' }}
+      tags: [check]
+
+    - name: Wait for SSH to be available
+      ansible.builtin.raw: echo "SSH connection successful"
+      register: ssh_test
+      retries: 5
+      delay: 5
+      until: ssh_test is success
+      changed_when: false
+      tags: [check]
+
+    - name: Get current system info
+      ansible.builtin.raw: |
+        echo "Hostname: $(uci -q get system.@system[0].hostname || hostname)"
+        echo "Kernel: $(uname -r)"
+        echo "Uptime: $(uptime)"
+        cat /etc/openwrt_release 2>/dev/null | grep DISTRIB_RELEASE || echo "Release: unknown"
+        echo "IP: $(ip addr show br-lan 2>/dev/null | grep 'inet ' | awk '{print $2}' || echo 'unknown')"
+      register: system_info
+      changed_when: false
+      tags: [check]
+
+    - name: Display current system info
+      ansible.builtin.debug:
+        msg: "{{ system_info.stdout_lines }}"
+      tags: [check]
+
+    - name: Check available space in /tmp
+      ansible.builtin.raw: df /tmp | tail -1 | awk '{print $4}'
+      register: tmp_space
+      changed_when: false
+      tags: [check]
+
+    - name: Calculate required space (image size + 5MB buffer)
+      ansible.builtin.set_fact:
+        required_space_kb: "{{ ((image_stat.stat.size / 1024) + 5120) | int }}"
+      tags: [check]
+
+    - name: Verify sufficient space for upload
+      ansible.builtin.fail:
+        msg: |
+          Insufficient space in /tmp!
+          Required: {{ (required_space_kb | int / 1024) | round(1) }} MB
+          Available: {{ (tmp_space.stdout | int / 1024) | round(1) }} MB
+      when: (tmp_space.stdout | int) < (required_space_kb | int)
+      tags: [check]
+
+    ###########################################################################
+    # Phase 3: Upload Image
+    ###########################################################################
+
+    - name: Display upgrade plan
+      ansible.builtin.debug:
+        msg: |
+          ╔══════════════════════════════════════════════════════════════════╗
+          ║                      SYSUPGRADE PLAN                             ║
+          ╠══════════════════════════════════════════════════════════════════╣
+          ║  Target: {{ inventory_hostname }} @ {{ ansible_host }}                               ║
+          ║  Image:  {{ (image_type | upper) | center(56) }} ║
+          ║  Action: sysupgrade -n (CONFIG WILL BE WIPED)                    ║
+          ╠══════════════════════════════════════════════════════════════════╣
+          {% if image_type == 'mesh' %}
+          ║  After reboot:                                                   ║
+          ║    - Node IP: 10.11.12.{{ inventory_hostname | regex_replace('node', '') }}                                       ║
+          ║    - Mesh config: BAKED INTO IMAGE                               ║
+          ║    - No further deployment needed                                ║
+          {% else %}
+          ║  After reboot:                                                   ║
+          ║    - Node IP: 192.168.1.1                                        ║
+          ║    - State: FACTORY DEFAULTS                                     ║
+          ║    - Next: make deploy-node NODE={{ inventory_hostname | regex_replace('node', '') }}                             ║
+          {% endif %}
+          ╚══════════════════════════════════════════════════════════════════╝
+      tags: [upload]
+
+    # Use cat over SSH since OpenWrt doesn't have scp installed
+    # This pipes the file through stdin which works with any SSH server
+    - name: Upload firmware image to node via SSH pipe
+      delegate_to: localhost
+      ansible.builtin.shell: |
+        cat "{{ sysupgrade_image }}" | ssh -o StrictHostKeyChecking=no \
+            -o UserKnownHostsFile=/dev/null \
+            {% if not is_vanilla_node %}-i {{ lookup('env', 'SSH_KEY_PATH') }}{% endif %} \
+            root@{{ ansible_host }} "cat > {{ remote_image_path }}"
+      register: scp_result
+      changed_when: true
+      tags: [upload]
+
+    - name: Verify uploaded image checksum
+      ansible.builtin.raw: sha256sum {{ remote_image_path }}
+      register: remote_checksum
+      changed_when: false
+      tags: [upload]
+
+    - name: Validate remote checksum matches
+      ansible.builtin.fail:
+        msg: |
+          Remote checksum mismatch after upload!
+          Expected: {{ image_stat.stat.checksum }}
+          Remote:   {{ remote_checksum.stdout.split()[0] }}
+          Upload may have been corrupted.
+      when: remote_checksum.stdout.split()[0] != image_stat.stat.checksum
+      tags: [upload]
+
+    - name: Display upload verification
+      ansible.builtin.debug:
+        msg: "✅ Image uploaded and verified: {{ remote_checksum.stdout | trim }}"
+      tags: [upload]
+
+    ###########################################################################
+    # Phase 4: Perform Sysupgrade
+    ###########################################################################
+
+    - name: Test sysupgrade image validity
+      ansible.builtin.raw: sysupgrade -T {{ remote_image_path }} 2>&1
+      register: sysupgrade_test
+      changed_when: false
+      failed_when: sysupgrade_test.rc != 0
+      tags: [upgrade]
+
+    - name: Display sysupgrade test result
+      ansible.builtin.debug:
+        msg: "✅ Image validation passed (sysupgrade -T)"
+      tags: [upgrade]
+
+    - name: Display pre-upgrade warning
+      ansible.builtin.debug:
+        msg: |
+          ═══════════════════════════════════════════════════════════════
+          STARTING SYSUPGRADE
+          ═══════════════════════════════════════════════════════════════
+          Command: sysupgrade -n -v {{ remote_image_path }}
+          Config:  WIPED (always uses -n flag)
+          Image:   {{ image_type | upper }}
+
+          Node will reboot after upgrade completes.
+          {% if image_type == 'mesh' %}
+          Expected new IP: 10.11.12.{{ inventory_hostname | regex_replace('node', '') }}
+          {% else %}
+          Expected new IP: 192.168.1.1
+          {% endif %}
+          ═══════════════════════════════════════════════════════════════
+      tags: [upgrade]
+
+    - name: Execute sysupgrade
+      ansible.builtin.raw: |
+        echo "=== Starting sysupgrade ===" > /tmp/sysupgrade.log
+        echo "Time: $(date)" >> /tmp/sysupgrade.log
+        echo "Image type: {{ image_type }}" >> /tmp/sysupgrade.log
+        echo "Command: sysupgrade -n -v {{ remote_image_path }}" >> /tmp/sysupgrade.log
+        # Run sysupgrade in background (always -n to wipe config)
+        sysupgrade -n -v {{ remote_image_path }} >> /tmp/sysupgrade.log 2>&1 &
+        SYSUPGRADE_PID=$!
+        echo "Sysupgrade PID: $SYSUPGRADE_PID" >> /tmp/sysupgrade.log
+        sleep 3
+        cat /tmp/sysupgrade.log
+      ignore_errors: true
+      ignore_unreachable: true
+      register: sysupgrade_result
+      changed_when: true
+      tags: [upgrade]
+
+    - name: Wait for sysupgrade to start
+      ansible.builtin.pause:
+        seconds: 5
+      tags: [upgrade]
+
+    - name: Check sysupgrade status
+      ansible.builtin.raw: pgrep -f sysupgrade || echo "sysupgrade process not found (may have completed)"
+      ignore_errors: true
+      ignore_unreachable: true
+      register: sysupgrade_check
+      changed_when: false
+      tags: [upgrade]
+
+    - name: Display sysupgrade status
+      ansible.builtin.debug:
+        msg: "Sysupgrade status: {{ sysupgrade_check.stdout | default('Node unreachable - sysupgrade in progress') }}"
+      ignore_errors: true
+      tags: [upgrade]
+
+    ###########################################################################
+    # Phase 5: Post-Upgrade Instructions
+    ###########################################################################
+
+    - name: Calculate expected post-upgrade IP
+      ansible.builtin.set_fact:
+        expected_new_ip: "{{ '10.11.12.' + inventory_hostname | regex_replace('node', '') if image_type == 'mesh' else '192.168.1.1' }}"
+      tags: [upgrade]
+
+    - name: Display post-upgrade instructions for MESH image
+      ansible.builtin.debug:
+        msg: |
+          ╔══════════════════════════════════════════════════════════════════╗
+          ║              ✅ SYSUPGRADE INITIATED (MESH IMAGE)                 ║
+          ╠══════════════════════════════════════════════════════════════════╣
+          ║                                                                  ║
+          ║  The node is upgrading with custom mesh firmware.                ║
+          ║                                                                  ║
+          ║  NEXT STEPS:                                                     ║
+          ║                                                                  ║
+          ║  1. Wait 2-3 minutes for upgrade and reboot                     ║
+          ║                                                                  ║
+          ║  2. Switch to mesh network (10.11.12.0/24)                      ║
+          ║                                                                  ║
+          ║  3. Verify node is accessible:                                  ║
+          ║       ping {{ expected_new_ip }}                                          ║
+          ║                                                                  ║
+          ║  4. SSH to verify:                                              ║
+          ║       ssh root@{{ expected_new_ip }}                                      ║
+          ║                                                                  ║
+          ║  5. Check mesh status:                                          ║
+          ║       batctl o                                                   ║
+          ║                                                                  ║
+          ║  NOTE: Mesh config is baked into image - no deployment needed!  ║
+          ╚══════════════════════════════════════════════════════════════════╝
+      when: image_type == 'mesh'
+      tags: [upgrade]
+
+    - name: Display post-upgrade instructions for VANILLA image
+      ansible.builtin.debug:
+        msg: |
+          ╔══════════════════════════════════════════════════════════════════╗
+          ║             ✅ SYSUPGRADE INITIATED (VANILLA IMAGE)               ║
+          ╠══════════════════════════════════════════════════════════════════╣
+          ║                                                                  ║
+          ║  The node is upgrading with stock OpenWrt firmware.              ║
+          ║                                                                  ║
+          ║  NEXT STEPS:                                                     ║
+          ║                                                                  ║
+          ║  1. Wait 2-3 minutes for upgrade and reboot                     ║
+          ║                                                                  ║
+          ║  2. Switch to initial network (192.168.1.0/24)                  ║
+          ║       IP: 192.168.1.50, Gateway: 192.168.1.1                    ║
+          ║                                                                  ║
+          ║  3. Verify node is accessible:                                  ║
+          ║       ping 192.168.1.1                                          ║
+          ║                                                                  ║
+          ║  4. SSH to node (no password on vanilla):                       ║
+          ║       ssh root@192.168.1.1                                      ║
+          ║                                                                  ║
+          ║  5. Deploy mesh configuration:                                  ║
+          ║       make deploy-node NODE={{ inventory_hostname | regex_replace('node', '') }}                                  ║
+          ║                                                                  ║
+          ╚══════════════════════════════════════════════════════════════════╝
+      when: image_type == 'vanilla'
+      tags: [upgrade]

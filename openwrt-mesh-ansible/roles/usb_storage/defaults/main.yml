@@ -1,0 +1,15 @@
+---
+# Default variables for usb_storage role
+
+# USB storage configuration
+# Mount point for USB storage
+usb_mount_point: /x00
+
+# Filesystem type for USB storage
+usb_filesystem: f2fs
+
+# Mount options for USB storage
+usb_mount_options: "rw,noatime,nodiratime,background_gc=on,discard"
+
+# Volume label for USB storage
+usb_volume_label: "MESH-USB"

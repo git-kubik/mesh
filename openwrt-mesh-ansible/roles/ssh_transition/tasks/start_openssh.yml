@@ -1,0 +1,93 @@
+---
+# Phase 5: Start OpenSSH on port 22 and switch connection
+
+- name: Enable OpenSSH to start on boot
+  ansible.builtin.raw: "/etc/init.d/sshd enable 2>&1"
+  changed_when: true
+
+- name: Start OpenSSH on port 22
+  ansible.builtin.raw: |
+    echo "Starting OpenSSH on port 22..."
+    /etc/init.d/sshd start 2>&1
+    sleep 2
+    # Verify OpenSSH is running
+    if pidof sshd > /dev/null; then
+      echo "OpenSSH successfully started on port 22"
+    else
+      echo "Failed to start OpenSSH"
+      exit 1
+    fi
+  changed_when: true
+
+- name: Verify OpenSSH is listening on port 22
+  ansible.builtin.wait_for:
+    host: "{{ ansible_host }}"
+    port: 22
+    state: started
+    delay: 0
+    timeout: 30
+  delegate_to: localhost
+
+- name: Switch ansible connection to OpenSSH on port 22
+  ansible.builtin.set_fact:
+    ansible_port: 22
+    ansible_ssh_pass: ""
+    ansible_ssh_common_args: "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+    ansible_ssh_private_key_file: "{{ ssh_key_path }}"
+
+- name: Force reconnection via OpenSSH with key authentication
+  ansible.builtin.meta: reset_connection
+
+- name: Wait for new SSH connection to be ready
+  ansible.builtin.pause:
+    seconds: 2
+
+- name: Establish connection with OpenSSH key authentication
+  ansible.builtin.raw: "echo 'Connection established'"
+  register: establish_result
+  retries: 5
+  delay: 2
+  until: establish_result is success
+  changed_when: false
+
+- name: Test new OpenSSH connection with key
+  ansible.builtin.raw: "echo 'OpenSSH connection successful'"
+  register: openssh_test
+  changed_when: false
+
+- name: Verify SSH transition result
+  ansible.builtin.raw: |
+    echo "=== SSH Transition Verification ==="
+    echo "Running SSH daemons:"
+    if pidof sshd > /dev/null; then
+      echo "  OpenSSH (sshd) is running on port 22 ✓"
+    else
+      echo "  ERROR: OpenSSH is not running!"
+    fi
+    if pidof dropbear > /dev/null; then
+      echo "  Dropbear is still running on port 2222 (will be removed)"
+    fi
+    echo ""
+    echo "Port status:"
+    netstat -tlpn | grep -E ':22 |:2222 ' || true
+    echo ""
+    echo "SSH service status:"
+    /etc/init.d/sshd status 2>&1 || true
+  register: ssh_verification
+  changed_when: false
+
+- name: Display SSH transition verification
+  ansible.builtin.debug:
+    msg: "{{ ssh_verification.stdout_lines }}"
+
+- name: Verify OpenSSH process is running
+  ansible.builtin.raw: "ps | grep -v grep | grep sshd || echo 'SSHD_NOT_RUNNING'"
+  register: sshd_check
+  failed_when: "'SSHD_NOT_RUNNING' in sshd_check.stdout"
+  changed_when: false
+
+- name: Check for OpenSSH startup errors
+  ansible.builtin.raw: "logread | grep -i sshd | tail -10"
+  register: sshd_logs
+  failed_when: false
+  changed_when: false

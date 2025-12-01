@@ -1,0 +1,15 @@
+---
+# Default variables for package_management role
+# These are fallbacks - prefer setting in group_vars/all.yml
+
+# Package management defaults are sourced from group_vars/all.yml
+# This file provides documentation of required variables:
+#
+# Required variables:
+#   - opkg_repo_url: Local package repository URL (empty string to use upstream)
+#   - openwrt_version: OpenWrt version (e.g., '24.10.4')
+#   - openwrt_target: OpenWrt target (e.g., 'ramips/mt7621')
+#   - openwrt_arch: OpenWrt architecture (e.g., 'mipsel_24kc')
+#   - required_packages: List of required packages to install
+#   - remove_packages: List of packages to remove
+#   - optional_packages: List of optional packages to install

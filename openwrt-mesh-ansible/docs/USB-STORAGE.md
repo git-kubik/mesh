@@ -18,7 +18,10 @@ When you run `make deploy-node NODE=1`, the deployment will:
 1. Check for attached USB storage devices
 2. Automatically partition, format, and mount any detected USB device
 3. Configure persistent mounting at `/x00`
-4. No user confirmation required - fully automated
+4. Deploy monitoring (collectd + vnStat) if `ENABLE_MONITORING=true` (default)
+5. No user confirmation required - fully automated
+
+**Note:** If `ENABLE_MONITORING=true` in `.env`, monitoring will automatically be deployed to use the USB storage. See [MONITORING.md](MONITORING.md) for details.
 
 ## Prerequisites
 

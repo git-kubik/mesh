@@ -1,0 +1,10 @@
+---
+# Network configuration role for OpenWrt mesh nodes
+# Deploys batman-adv mesh network configuration
+
+- name: Deploy network configuration
+  ansible.builtin.template:
+    src: network.j2
+    dest: /etc/config/network
+    mode: '0644'
+    backup: true

@@ -1,0 +1,22 @@
+---
+# USB storage partitioning tasks
+
+- name: Partition USB storage device
+  ansible.builtin.raw: |
+    DEV="{{ usb_device_path }}"
+    if [ -b "$DEV" ]; then
+      # Unmount any existing partitions
+      for part in ${DEV}*; do
+        umount "$part" 2>/dev/null || true
+      done
+
+      # Create new partition table
+      echo "Creating partition on $DEV"
+      (echo o; echo n; echo p; echo 1; echo; echo; echo w) | fdisk "$DEV"
+      sleep 2
+
+      # Reload partition table
+      partprobe "$DEV" 2>/dev/null || true
+      echo "Partition created on $DEV"
+    fi
+  changed_when: true

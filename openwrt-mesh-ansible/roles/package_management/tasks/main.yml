@@ -1,0 +1,95 @@
+---
+# Package management role for OpenWrt mesh nodes
+# Handles repository configuration, package updates, and installation
+#
+# Note: Variables are loaded from environment by the deploy.yml playbook
+# via roles/common/tasks/load_env_vars.yml before this role runs.
+
+- name: Configure local package repository (if enabled)
+  ansible.builtin.raw: |
+    # Backup original distfeeds.conf
+    cp /etc/opkg/distfeeds.conf /etc/opkg/distfeeds.conf.orig
+
+    # Get kernel module directory from repository
+    KMOD_DIR=$(wget -qO- "{{ opkg_repo_url }}/targets/{{ openwrt_target }}/kmods/" | grep -oE 'href="[^"]+/"' | head -1 | sed 's/href="//;s/\/"//')
+
+    # Configure local repository
+    cat > /etc/opkg/distfeeds.conf << EOF
+    # Local OpenWrt Package Repository
+    src/gz openwrt_core {{ opkg_repo_url }}/packages/{{ openwrt_version }}/{{ openwrt_arch }}/base
+    src/gz openwrt_base {{ opkg_repo_url }}/packages/{{ openwrt_version }}/{{ openwrt_arch }}/base
+    src/gz openwrt_luci {{ opkg_repo_url }}/packages/{{ openwrt_version }}/{{ openwrt_arch }}/luci
+    src/gz openwrt_packages {{ opkg_repo_url }}/packages/{{ openwrt_version }}/{{ openwrt_arch }}/packages
+    src/gz openwrt_routing {{ opkg_repo_url }}/packages/{{ openwrt_version }}/{{ openwrt_arch }}/routing
+    src/gz openwrt_telephony {{ opkg_repo_url }}/packages/{{ openwrt_version }}/{{ openwrt_arch }}/telephony
+    src/gz openwrt_kmods {{ opkg_repo_url }}/targets/{{ openwrt_target }}/kmods/$KMOD_DIR
+    src/gz openwrt_target {{ opkg_repo_url }}/targets/{{ openwrt_target }}/packages
+    EOF
+
+    echo "Local repository configured at {{ opkg_repo_url }}"
+  when: opkg_repo_url != ''
+  changed_when: true
+
+- name: Update package lists
+  ansible.builtin.raw: opkg update
+  register: opkg_update
+  changed_when: "'Updated list of available packages' in opkg_update.stdout"
+
+- name: Upgrade pre-installed packages
+  ansible.builtin.raw: |
+    UPGRADABLE=$(opkg list-upgradable 2>/dev/null)
+    if [ -n "$UPGRADABLE" ]; then
+      echo "=== Packages to upgrade ==="
+      echo "$UPGRADABLE"
+      echo "=== Upgrading packages ==="
+      opkg list-upgradable | cut -f 1 -d ' ' | xargs -r opkg upgrade
+      echo "=== Upgrade complete ==="
+    else
+      echo "All pre-installed packages are up to date"
+    fi
+  register: upgrade_result
+  changed_when: "'Upgrading' in upgrade_result.stdout"
+
+- name: Display upgrade results
+  ansible.builtin.debug:
+    msg: "{{ upgrade_result.stdout_lines }}"
+  when: upgrade_result.stdout_lines | length > 1
+
+- name: Remove conflicting packages
+  ansible.builtin.raw: "opkg remove {{ item }} --force-removal-of-dependent-packages"
+  loop: "{{ remove_packages }}"
+  register: remove_result
+  changed_when: "'Removing package' in remove_result.stdout"
+  failed_when: false
+
+- name: Install required packages (with verbose output)
+  ansible.builtin.raw: "echo '=== Installing {{ item }} ===' && opkg install {{ item }} 2>&1 && echo '=== Installed {{ item }} ===' && opkg list-installed | grep -E '^({{ item }}|batctl)' || true"
+  loop: "{{ required_packages }}"
+  register: install_result
+  changed_when: "'Installing' in install_result.stdout or 'Configuring' in install_result.stdout"
+  failed_when: "'opkg_install_cmd: Cannot install package' in install_result.stdout"
+
+- name: Display package installation results
+  ansible.builtin.debug:
+    msg: "{{ install_result.results | map(attribute='stdout_lines') | list }}"
+
+- name: Verify batctl and kmod-batman-adv installation
+  ansible.builtin.raw: "opkg list-installed | grep -E '^(batctl|kmod-batman-adv)'"
+  register: batctl_check
+  changed_when: false
+  failed_when: false
+
+- name: Show batctl verification
+  ansible.builtin.debug:
+    msg: "{{ batctl_check.stdout_lines }}"
+
+- name: Install optional packages
+  ansible.builtin.raw: "opkg install {{ item }}"
+  loop: "{{ optional_packages }}"
+  register: optional_install_result
+  changed_when: "'Installing' in optional_install_result.stdout"
+  failed_when: false
+
+# NOTE: Local repo config is kept for the entire deployment
+# This allows monitoring and other roles to use the cached packages
+# The distfeeds.conf.orig backup is preserved if manual restore is needed

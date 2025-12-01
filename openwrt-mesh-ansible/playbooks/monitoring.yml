@@ -1,0 +1,549 @@
+---
+# Monitoring Setup Playbook for OpenWrt Mesh Nodes
+# Deploys lightweight collectd-based monitoring with data stored on USB
+#
+# Prerequisites:
+#   - USB storage must be mounted at /x00
+#   - Run after deployment: make deploy-monitoring NODE=1
+#
+# Features:
+#   - Collectd for metrics collection
+#   - LuCI Statistics web interface
+#   - RRD data stored on /x00 USB storage
+#   - vnStat for bandwidth tracking
+#   - Mesh-specific monitoring (batman-adv, interfaces)
+#   - Independent per-node monitoring
+#
+# Usage:
+#   ansible-playbook -i inventory/hosts.yml playbooks/monitoring.yml --limit node1
+#   ansible-playbook -i inventory/hosts.yml playbooks/monitoring.yml
+#
+###############################################################################
+
+- name: Deploy Monitoring to OpenWrt Mesh Nodes
+  hosts: mesh_nodes
+  gather_facts: false
+  vars:
+    monitoring_data_dir: "/x00/monitoring"
+    collectd_interval: 30  # Collect metrics every 30 seconds
+    collectd_cache_flush: 300  # Write to disk every 5 minutes
+
+  tasks:
+    ###########################################################################
+    # Phase 1: Prerequisites Check
+    ###########################################################################
+
+    - name: Check if USB storage is mounted at /x00
+      raw: |
+        if mount | grep -q "/x00"; then
+          echo "USB_MOUNTED"
+          df -h /x00
+        else
+          echo "USB_NOT_MOUNTED"
+          exit 1
+        fi
+      register: usb_mount_check
+      changed_when: false
+      failed_when: "'USB_NOT_MOUNTED' in usb_mount_check.stdout"
+      tags: [prereq, check]
+
+    - name: Display USB storage status
+      debug:
+        msg: |
+          ✓ USB storage mounted at /x00
+          {{ usb_mount_check.stdout_lines | select('match', '^/dev/sd.*') | first | default('') }}
+      tags: [prereq]
+
+    ###########################################################################
+    # Phase 2: Install Monitoring Packages
+    ###########################################################################
+
+    - name: Update package lists
+      raw: opkg update
+      register: opkg_update
+      changed_when: false
+      tags: [packages]
+
+    - name: Install collectd core and essential plugins
+      raw: |
+        opkg install collectd \
+          collectd-mod-cpu \
+          collectd-mod-memory \
+          collectd-mod-load \
+          collectd-mod-interface \
+          collectd-mod-ping \
+          collectd-mod-rrdtool \
+          collectd-mod-disk \
+          collectd-mod-df \
+          collectd-mod-uptime \
+          collectd-mod-processes \
+          collectd-mod-thermal \
+          collectd-mod-iwinfo || true
+      register: collectd_install
+      changed_when: "'Installing' in collectd_install.stdout"
+      tags: [packages, collectd]
+
+    - name: Install LuCI statistics web interface
+      raw: |
+        opkg install luci-app-statistics || true
+      register: luci_stats_install
+      changed_when: "'Installing' in luci_stats_install.stdout"
+      tags: [packages, luci]
+
+    - name: Install vnStat for bandwidth monitoring
+      raw: |
+        opkg install vnstat vnstati || true
+      register: vnstat_install
+      changed_when: "'Installing' in vnstat_install.stdout"
+      tags: [packages, vnstat]
+
+    - name: Install additional LuCI monitoring apps
+      raw: |
+        opkg install luci-app-vnstat2 || true
+        opkg install luci-app-commands || true
+      register: luci_monitoring_apps
+      changed_when: "'Installing' in luci_monitoring_apps.stdout"
+      tags: [packages, luci]
+
+    - name: Display installed packages
+      debug:
+        msg: |
+          Monitoring packages installed:
+          - collectd: {{ 'YES' if 'Installing collectd' in collectd_install.stdout or 'Configuring collectd' in collectd_install.stdout else 'Already installed' }}
+          - luci-app-statistics: {{ 'YES' if 'Installing' in luci_stats_install.stdout else 'Already installed' }}
+          - vnstat: {{ 'YES' if 'Installing' in vnstat_install.stdout else 'Already installed' }}
+          - luci-app-vnstat2: {{ 'YES' if 'Installing luci-app-vnstat2' in luci_monitoring_apps.stdout else 'Already installed' }}
+          - luci-app-commands: {{ 'YES' if 'Installing luci-app-commands' in luci_monitoring_apps.stdout else 'Already installed' }}
+      tags: [packages]
+
+    ###########################################################################
+    # Phase 3: Configure Data Storage on /x00
+    ###########################################################################
+
+    - name: Create monitoring data directories on USB
+      raw: |
+        mkdir -p {{ monitoring_data_dir }}/collectd
+        mkdir -p {{ monitoring_data_dir }}/vnstat
+        mkdir -p {{ monitoring_data_dir }}/logs
+        echo "Monitoring directories created on USB storage"
+      tags: [config, storage]
+
+    - name: Set permissions on monitoring directories
+      raw: |
+        chmod -R 755 {{ monitoring_data_dir }}
+        echo "Permissions set on monitoring directories"
+      tags: [config, storage]
+
+    ###########################################################################
+    # Phase 4: Configure Collectd
+    ###########################################################################
+
+    - name: Configure collectd via UCI
+      raw: |
+        # Base configuration
+        uci set luci_statistics.collectd=statistics
+        uci set luci_statistics.collectd.BaseDir='{{ monitoring_data_dir }}/collectd'
+        uci set luci_statistics.collectd.Include='/etc/collectd/conf.d'
+        uci set luci_statistics.collectd.PIDFile='/var/run/collectd.pid'
+        uci set luci_statistics.collectd.PluginDir='/usr/lib/collectd'
+        uci set luci_statistics.collectd.TypesDB='/usr/share/collectd/types.db'
+        uci set luci_statistics.collectd.Interval='{{ collectd_interval }}'
+        uci set luci_statistics.collectd.ReadThreads='2'
+        uci set luci_statistics.collectd.Hostname='{{ inventory_hostname }}'
+
+        # CPU monitoring
+        uci set luci_statistics.collectd_cpu=statistics
+        uci set luci_statistics.collectd_cpu.enable='1'
+        uci set luci_statistics.collectd_cpu.ReportByCpu='1'
+        uci set luci_statistics.collectd_cpu.ReportByState='1'
+
+        # Memory monitoring
+        uci set luci_statistics.collectd_memory=statistics
+        uci set luci_statistics.collectd_memory.enable='1'
+
+        # Load average monitoring
+        uci set luci_statistics.collectd_load=statistics
+        uci set luci_statistics.collectd_load.enable='1'
+
+        # Interface monitoring (mesh, wireless, lan)
+        uci set luci_statistics.collectd_interface=statistics
+        uci set luci_statistics.collectd_interface.enable='1'
+        uci set luci_statistics.collectd_interface.Interfaces='bat0 br-lan wlan0 wlan1 eth0 eth1'
+        uci set luci_statistics.collectd_interface.IgnoreSelected='0'
+
+        # Disk usage monitoring (/x00)
+        uci set luci_statistics.collectd_df=statistics
+        uci set luci_statistics.collectd_df.enable='1'
+        uci set luci_statistics.collectd_df.Devices='/dev/sda1'
+        uci set luci_statistics.collectd_df.MountPoints='/x00 /overlay'
+        uci set luci_statistics.collectd_df.FSTypes='f2fs ext4 overlay'
+        uci set luci_statistics.collectd_df.IgnoreSelected='0'
+
+        # Disk I/O monitoring
+        uci set luci_statistics.collectd_disk=statistics
+        uci set luci_statistics.collectd_disk.enable='1'
+        uci set luci_statistics.collectd_disk.Disks='sda'
+
+        # Uptime monitoring
+        uci set luci_statistics.collectd_uptime=statistics
+        uci set luci_statistics.collectd_uptime.enable='1'
+
+        # Process count monitoring
+        uci set luci_statistics.collectd_processes=statistics
+        uci set luci_statistics.collectd_processes.enable='1'
+
+        # Thermal monitoring
+        uci set luci_statistics.collectd_thermal=statistics
+        uci set luci_statistics.collectd_thermal.enable='1'
+        uci set luci_statistics.collectd_thermal.IgnoreSelected='0'
+
+        # Wireless monitoring
+        uci set luci_statistics.collectd_iwinfo=statistics
+        uci set luci_statistics.collectd_iwinfo.enable='1'
+
+        # RRDTool storage
+        uci set luci_statistics.collectd_rrdtool=statistics
+        uci set luci_statistics.collectd_rrdtool.enable='1'
+        uci set luci_statistics.collectd_rrdtool.DataDir='{{ monitoring_data_dir }}/collectd/rrd'
+        uci set luci_statistics.collectd_rrdtool.RRARows='1200'
+        uci set luci_statistics.collectd_rrdtool.RRASingle='1'
+        uci set luci_statistics.collectd_rrdtool.CacheTimeout='{{ collectd_cache_flush }}'
+        uci set luci_statistics.collectd_rrdtool.CacheFlush='{{ collectd_cache_flush }}'
+
+        # Ping monitoring (monitor other mesh nodes)
+        uci set luci_statistics.collectd_ping=statistics
+        uci set luci_statistics.collectd_ping.enable='1'
+        uci set luci_statistics.collectd_ping.Hosts='10.11.12.1 10.11.12.2 10.11.12.3'
+        uci set luci_statistics.collectd_ping.Interval='30'
+
+        # Commit all changes
+        uci commit luci_statistics
+
+        echo "Collectd configuration completed"
+      register: collectd_config
+      tags: [config, collectd]
+
+    ###########################################################################
+    # Phase 5: Configure vnStat
+    ###########################################################################
+
+    - name: Configure vnStat to use USB storage
+      raw: |
+        # Stop vnstat if running
+        /etc/init.d/vnstat stop 2>/dev/null || true
+
+        # Ensure vnstat directory exists with correct permissions
+        mkdir -p {{ monitoring_data_dir }}/vnstat
+        chmod 755 {{ monitoring_data_dir }}/vnstat
+
+        # Configure database location
+        sed -i 's|DatabaseDir.*|DatabaseDir "{{ monitoring_data_dir }}/vnstat"|g' /etc/vnstat.conf
+
+        # Set interfaces to monitor
+        sed -i 's|Interface.*|Interface "bat0"|g' /etc/vnstat.conf
+
+        # Wait a moment for interfaces to be ready
+        sleep 2
+
+        # Initialize databases only for interfaces that exist
+        echo "Creating vnStat databases..."
+        for iface in bat0 br-lan wlan0 wlan1; do
+          if ip link show "$iface" >/dev/null 2>&1; then
+            echo "  Creating database for $iface..."
+            vnstat --create -i "$iface" 2>&1 | grep -v "Unable to read database" || true
+          else
+            echo "  Skipping $iface (interface not present)"
+          fi
+        done
+
+        # Verify database creation
+        echo ""
+        echo "Database status:"
+        ls -lh {{ monitoring_data_dir }}/vnstat/ 2>/dev/null || echo "No databases created yet"
+
+        echo "vnStat configured to use {{ monitoring_data_dir }}/vnstat"
+      tags: [config, vnstat]
+
+    ###########################################################################
+    # Phase 6: Create Mesh Monitoring Script
+    ###########################################################################
+
+    - name: Create mesh health monitoring script
+      raw: |
+        cat > /usr/bin/mesh-monitor.sh << 'MESH_SCRIPT'
+        #!/bin/sh
+        ###############################################################################
+        # Mesh Network Health Monitor
+        # Checks mesh status and logs issues
+        ###############################################################################
+
+        LOG_TAG="mesh-monitor"
+        LOG_FILE="{{ monitoring_data_dir }}/logs/mesh-health.log"
+
+        log_msg() {
+            echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" >> "$LOG_FILE"
+            logger -t "$LOG_TAG" "$1"
+        }
+
+        # Check batman-adv module
+        if ! lsmod | grep -q batman_adv; then
+            log_msg "ERROR: batman-adv module not loaded"
+        fi
+
+        # Check bat0 interface
+        if ! ip link show bat0 >/dev/null 2>&1; then
+            log_msg "ERROR: bat0 interface not found"
+        fi
+
+        # Check mesh neighbors
+        NEIGHBORS=$(batctl o 2>/dev/null | grep -c "^[0-9a-f][0-9a-f]:")
+        if [ "$NEIGHBORS" -lt 1 ]; then
+            log_msg "WARNING: No mesh neighbors detected (expected 2 for 3-node mesh)"
+        else
+            log_msg "INFO: $NEIGHBORS mesh neighbors detected"
+        fi
+
+        # Check USB storage
+        if ! mount | grep -q "/x00"; then
+            log_msg "ERROR: USB storage not mounted at /x00"
+        fi
+
+        # Check free space on /x00
+        USAGE=$(df /x00 | tail -1 | awk '{print $5}' | sed 's/%//')
+        if [ "$USAGE" -gt 90 ]; then
+            log_msg "WARNING: USB storage usage at ${USAGE}%"
+        fi
+
+        # Check wireless interfaces (only if they should exist)
+        for iface in wlan0 wlan1; do
+            # Only check if interface was configured (exists in UCI)
+            if uci -q get wireless.${iface} >/dev/null 2>&1; then
+                if ! iw dev "$iface" info >/dev/null 2>&1; then
+                    log_msg "WARNING: Wireless interface $iface not operational"
+                fi
+            fi
+        done
+
+        # Log current gateway
+        GATEWAY=$(batctl gw 2>/dev/null)
+        log_msg "INFO: Gateway mode: $GATEWAY"
+
+        MESH_SCRIPT
+
+        chmod +x /usr/bin/mesh-monitor.sh
+        echo "Mesh monitoring script created"
+      tags: [scripts, monitoring]
+
+    - name: Create monitoring report script
+      raw: |
+        cat > /usr/bin/monitoring-report.sh << 'REPORT_SCRIPT'
+        #!/bin/sh
+        ###############################################################################
+        # Monitoring Report Generator
+        # Displays current monitoring status
+        ###############################################################################
+
+        # Get hostname from UCI or /proc
+        HOSTNAME=$(uci -q get system.@system[0].hostname || cat /proc/sys/kernel/hostname 2>/dev/null || echo "unknown")
+
+        echo "========================================"
+        echo "Monitoring Status - $HOSTNAME"
+        echo "========================================"
+        echo ""
+
+        echo "--- Collectd Status ---"
+        /etc/init.d/collectd status 2>/dev/null || echo "Not running"
+        echo ""
+
+        echo "--- Data Storage ---"
+        df -h /x00 | grep -v Filesystem
+        echo "Monitoring data: {{ monitoring_data_dir }}"
+        du -sh {{ monitoring_data_dir }}/* 2>/dev/null || echo "No data yet"
+        echo ""
+
+        echo "--- vnStat Bandwidth (today) ---"
+        vnstat -i bat0 -d 2>/dev/null | head -8 || echo "No data yet"
+        echo ""
+
+        echo "--- Recent Health Checks ---"
+        tail -10 {{ monitoring_data_dir }}/logs/mesh-health.log 2>/dev/null || echo "No logs yet"
+        echo ""
+
+        echo "--- Mesh Neighbors ---"
+        batctl o 2>/dev/null | head -10 || echo "Batman not available"
+        echo ""
+
+        echo "========================================"
+        echo "Web Interface: http://$(ip -4 addr show br-lan | grep inet | awk '{print $2}' | cut -d/ -f1)/cgi-bin/luci/admin/statistics/graph"
+        echo "========================================"
+
+        REPORT_SCRIPT
+
+        chmod +x /usr/bin/monitoring-report.sh
+        echo "Monitoring report script created"
+      tags: [scripts, monitoring]
+
+    - name: Configure LuCI custom commands for mesh monitoring
+      raw: |
+        # Configure luci-app-commands with useful mesh commands
+        uci -q delete luci.command
+        uci add luci command
+        uci set luci.@command[-1]=command
+        uci set luci.@command[-1].name='Mesh Neighbors'
+        uci set luci.@command[-1].command='batctl o'
+        uci set luci.@command[-1].public='1'
+
+        uci add luci command
+        uci set luci.@command[-1]=command
+        uci set luci.@command[-1].name='Gateway List'
+        uci set luci.@command[-1].command='batctl gwl'
+        uci set luci.@command[-1].public='1'
+
+        uci add luci command
+        uci set luci.@command[-1]=command
+        uci set luci.@command[-1].name='Mesh Status Report'
+        uci set luci.@command[-1].command='/usr/bin/monitoring-report.sh'
+        uci set luci.@command[-1].public='1'
+
+        uci add luci command
+        uci set luci.@command[-1]=command
+        uci set luci.@command[-1].name='Batman Interface'
+        uci set luci.@command[-1].command='batctl if'
+        uci set luci.@command[-1].public='1'
+
+        uci add luci command
+        uci set luci.@command[-1]=command
+        uci set luci.@command[-1].name='Bandwidth Stats (bat0)'
+        uci set luci.@command[-1].command='vnstat -i bat0'
+        uci set luci.@command[-1].public='1'
+
+        uci commit luci
+        echo "LuCI custom commands configured"
+      tags: [config, luci]
+
+    ###########################################################################
+    # Phase 7: Configure Cron Jobs
+    ###########################################################################
+
+    - name: Set up cron jobs for monitoring
+      raw: |
+        # Add mesh health check every 5 minutes
+        if ! crontab -l 2>/dev/null | grep -q mesh-monitor.sh; then
+            (crontab -l 2>/dev/null; echo "*/5 * * * * /usr/bin/mesh-monitor.sh") | crontab -
+            echo "Added mesh-monitor cron job"
+        else
+            echo "Mesh-monitor cron job already exists"
+        fi
+
+        # Add log rotation daily at 2 AM
+        if ! crontab -l 2>/dev/null | grep -q "mesh-health.log"; then
+            (crontab -l 2>/dev/null; echo "0 2 * * * find {{ monitoring_data_dir }}/logs -name '*.log' -mtime +30 -delete") | crontab -
+            echo "Added log rotation cron job"
+        else
+            echo "Log rotation cron job already exists"
+        fi
+      tags: [cron]
+
+    ###########################################################################
+    # Phase 8: Enable and Start Services
+    ###########################################################################
+
+    - name: Enable and start collectd
+      raw: |
+        /etc/init.d/collectd enable
+        /etc/init.d/collectd restart
+        sleep 2
+        /etc/init.d/collectd status
+      register: collectd_service
+      tags: [services]
+
+    - name: Enable and start vnstat
+      raw: |
+        /etc/init.d/vnstat enable
+        /etc/init.d/vnstat restart
+        sleep 1
+        /etc/init.d/vnstat status
+      register: vnstat_service
+      tags: [services]
+
+    - name: Run initial mesh health check
+      raw: |
+        /usr/bin/mesh-monitor.sh
+        echo "Initial health check completed"
+      tags: [services]
+
+    ###########################################################################
+    # Phase 9: Verification
+    ###########################################################################
+
+    - name: Verify monitoring setup
+      raw: |
+        echo "=== Service Status ==="
+        echo "Collectd: $(/etc/init.d/collectd status 2>&1)"
+        echo "vnStat: $(/etc/init.d/vnstat status 2>&1)"
+        echo ""
+        echo "=== Data Directories ==="
+        ls -lh {{ monitoring_data_dir }}/
+        echo ""
+        echo "=== Collectd RRD Files ==="
+        find {{ monitoring_data_dir }}/collectd/rrd -name "*.rrd" 2>/dev/null | head -5
+        echo ""
+        echo "=== Cron Jobs ==="
+        crontab -l | grep -E "(mesh-monitor|monitoring)"
+      register: monitoring_verify
+      changed_when: false
+      tags: [verify]
+
+    - name: Display verification results
+      debug:
+        msg: "{{ monitoring_verify.stdout_lines }}"
+      tags: [verify]
+
+    ###########################################################################
+    # Phase 10: Summary
+    ###########################################################################
+
+    - name: Display monitoring setup summary
+      debug:
+        msg: |
+          ================================================================================
+          ✅ MONITORING DEPLOYED TO {{ inventory_hostname }}
+          ================================================================================
+
+          Services Running:
+          - Collectd: Metrics collection every {{ collectd_interval }}s
+          - vnStat: Bandwidth tracking
+          - Mesh Monitor: Health checks every 5 minutes
+
+          Data Storage:
+          - Location: {{ monitoring_data_dir }}
+          - RRD Files: {{ monitoring_data_dir }}/collectd/rrd
+          - vnStat DB: {{ monitoring_data_dir }}/vnstat
+          - Logs: {{ monitoring_data_dir }}/logs
+
+          Monitored Metrics:
+          - CPU, Memory, Load Average
+          - Disk Usage (/x00, /overlay)
+          - Network Interfaces (bat0, br-lan, wlan0, wlan1)
+          - Wireless Stats (signal, noise, bitrate)
+          - Temperature Sensors
+          - Mesh Neighbor Connectivity (ping)
+          - Bandwidth Usage (vnStat)
+
+          Access Monitoring:
+          Web UI: http://{{ ansible_host }}/cgi-bin/luci/admin/statistics/graph
+          CLI Report: ssh root@{{ ansible_host }} monitoring-report.sh
+
+          Useful Commands:
+          - monitoring-report.sh           - Full status report
+          - vnstat -i bat0                 - Bandwidth stats
+          - tail -f {{ monitoring_data_dir }}/logs/mesh-health.log  - Health logs
+          - batctl o                       - Mesh neighbors
+
+          Next Steps:
+          1. Access LuCI web interface for graphs
+          2. Wait 5-10 minutes for initial data collection
+          3. Check monitoring-report.sh for status
+
+          ================================================================================
+      tags: [summary]

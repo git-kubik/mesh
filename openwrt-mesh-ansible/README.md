@@ -853,6 +853,18 @@ Comprehensive documentation is available in the `docs/` directory:
   - Security best practices
   - Troubleshooting guide
 
+- **`docs/LOCAL-PACKAGE-REPOSITORY.md`** - Local package repository user guide
+  - Setup and usage instructions
+  - 60% faster deployments (2 min vs 5 min)
+  - Offline deployment capability
+  - Troubleshooting and best practices
+
+- **`docs/LOCAL-REPO-IMPLEMENTATION.md`** - Local repository technical guide
+  - Implementation details and architecture
+  - Retry logic and rate limiting design
+  - Performance analysis and benchmarks
+  - Maintenance and update procedures
+
 - **`docs/SSH-KEY-AUTHENTICATION.md`** - SSH key management guide
   - Key generation and deployment process
   - Backup and rotation procedures

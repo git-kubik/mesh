@@ -1,0 +1,30 @@
+---
+# SSH transition role for OpenWrt mesh nodes
+# Orchestrates migration from Dropbear (password) to OpenSSH (key-based)
+#
+# Note: Variables are loaded from environment by the deploy.yml playbook
+# via roles/common/tasks/load_env_vars.yml before this role runs.
+
+# Phase 1: Move Dropbear to port 2222 to free up port 22
+- name: Include Dropbear move tasks
+  ansible.builtin.include_tasks: move_dropbear.yml
+
+# Phase 2: Generate SSH key on control machine (if needed)
+- name: Include SSH key generation tasks
+  ansible.builtin.include_tasks: generate_keys.yml
+
+# Phase 3: Deploy SSH key to node
+- name: Include SSH key deployment tasks
+  ansible.builtin.include_tasks: deploy_keys.yml
+
+# Phase 4: Configure OpenSSH
+- name: Include OpenSSH configuration tasks
+  ansible.builtin.include_tasks: configure_openssh.yml
+
+# Phase 5: Start OpenSSH and switch connection
+- name: Include OpenSSH startup tasks
+  ansible.builtin.include_tasks: start_openssh.yml
+
+# Phase 6: Cleanup Dropbear
+- name: Include Dropbear cleanup tasks
+  ansible.builtin.include_tasks: cleanup_dropbear.yml

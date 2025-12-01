@@ -1,0 +1,36 @@
+---
+# USB storage detection tasks
+
+- name: Load USB kernel modules
+  ansible.builtin.raw: |
+    modprobe usb-storage 2>/dev/null || true
+    modprobe uas 2>/dev/null || true
+    sleep 2
+  changed_when: false
+
+- name: Check for USB storage devices
+  ansible.builtin.raw: |
+    if ls /dev/sd[a-z] 2>/dev/null | grep -q sd; then
+      for dev in /dev/sd[a-z]; do
+        if [ -b "$dev" ]; then
+          echo "USB_FOUND:$dev"
+          break
+        fi
+      done
+    else
+      echo "NO_USB"
+    fi
+  register: usb_check
+  changed_when: false
+
+- name: Set USB device fact
+  ansible.builtin.set_fact:
+    usb_device_detected: "{{ 'USB_FOUND:' in usb_check.stdout }}"
+    usb_device_path: "{{ (usb_check.stdout | regex_search('USB_FOUND:(/dev/sd[a-z])', '\\1'))[0] if 'USB_FOUND:' in usb_check.stdout else '' }}"
+
+- name: Display USB storage detection result
+  ansible.builtin.debug:
+    msg: |
+      USB Storage Detection:
+      - Device found: {{ usb_device_detected }}
+      - Device path: {{ usb_device_path | default('N/A') }}

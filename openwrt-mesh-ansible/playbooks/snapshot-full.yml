@@ -1,0 +1,190 @@
+---
+# Full filesystem snapshot for OpenWrt mesh nodes
+# Downloads the entire overlay filesystem (all changes from factory default)
+#
+# Usage:
+#   make snapshot NODE=1       # Uses this playbook
+#   make snapshot-all          # Snapshot all nodes
+#
+# Output:
+#   snapshots/<hostname>/
+#   ├── metadata.json          # Node info and timestamp
+#   ├── overlay/               # Full /overlay/upper filesystem
+#   │   ├── etc/               # All config files
+#   │   ├── root/              # Root home directory
+#   │   └── ...                # Any other customizations
+#   └── packages/
+#       └── installed.txt      # Package list for image builder
+#
+# The overlay directory can be used directly as FILES= in Image Builder
+
+- name: Full Filesystem Snapshot
+  hosts: "{{ target_hosts | default('mesh_nodes') }}"
+  gather_facts: false
+
+  vars:
+    snapshot_base_dir: "{{ playbook_dir }}/../snapshots"
+    timestamp: "{{ ansible_date_time.iso8601 | default(lookup('pipe', 'date -Iseconds')) }}"
+
+  tasks:
+    - name: Wait for node to be reachable
+      wait_for_connection:
+        timeout: 60
+        delay: 2
+
+    - name: Get hostname
+      raw: uci -q get system.@system[0].hostname || cat /proc/sys/kernel/hostname
+      register: node_hostname_raw
+      changed_when: false
+
+    - name: Set hostname fact
+      set_fact:
+        node_hostname: "{{ node_hostname_raw.stdout | trim }}"
+
+    - name: Display snapshot target
+      debug:
+        msg: "Creating full filesystem snapshot for {{ node_hostname }}"
+
+    ###########################################################################
+    # Phase 1: Prepare snapshot directory
+    ###########################################################################
+
+    - name: Remove old snapshot
+      file:
+        path: "{{ snapshot_base_dir }}/{{ node_hostname }}"
+        state: absent
+      delegate_to: localhost
+
+    - name: Create snapshot directory
+      file:
+        path: "{{ snapshot_base_dir }}/{{ node_hostname }}/{{ item }}"
+        state: directory
+        mode: "0755"
+      delegate_to: localhost
+      loop:
+        - overlay
+        - packages
+
+    ###########################################################################
+    # Phase 2: Capture metadata
+    ###########################################################################
+
+    - name: Get system info
+      raw: |
+        echo "{"
+        echo "  \"hostname\": \"$(uci -q get system.@system[0].hostname)\","
+        echo "  \"model\": \"$(cat /tmp/sysinfo/model 2>/dev/null || echo 'Unknown')\","
+        echo "  \"board\": \"$(cat /tmp/sysinfo/board_name 2>/dev/null || echo 'Unknown')\","
+        echo "  \"openwrt_version\": \"$(cat /etc/openwrt_version 2>/dev/null || echo 'Unknown')\","
+        echo "  \"kernel\": \"$(uname -r)\","
+        echo "  \"uptime\": \"$(uptime)\","
+        echo "  \"snapshot_date\": \"$(date -Iseconds)\","
+        echo "  \"snapshot_type\": \"full_overlay\""
+        echo "}"
+      register: metadata
+      changed_when: false
+
+    - name: Save metadata
+      copy:
+        content: "{{ metadata.stdout }}"
+        dest: "{{ snapshot_base_dir }}/{{ node_hostname }}/metadata.json"
+      delegate_to: localhost
+
+    ###########################################################################
+    # Phase 3: Capture package list (for Image Builder)
+    ###########################################################################
+
+    - name: Get installed packages
+      raw: opkg list-installed | cut -d' ' -f1 | sort
+      register: packages_installed
+      changed_when: false
+
+    - name: Save package list
+      copy:
+        content: "{{ packages_installed.stdout }}"
+        dest: "{{ snapshot_base_dir }}/{{ node_hostname }}/packages/installed.txt"
+      delegate_to: localhost
+
+    - name: Get packages with versions
+      raw: opkg list-installed | sort
+      register: packages_full
+      changed_when: false
+
+    - name: Save full package list
+      copy:
+        content: "{{ packages_full.stdout }}"
+        dest: "{{ snapshot_base_dir }}/{{ node_hostname }}/packages/installed_full.txt"
+      delegate_to: localhost
+
+    ###########################################################################
+    # Phase 4: Download entire overlay filesystem
+    ###########################################################################
+
+    - name: Create tarball of overlay filesystem on router
+      raw: >-
+        printf '%s\n' etc/rc.d etc/init.d etc/uci-defaults usr/lib/opkg lib/upgrade lib/preinit usr/bin/ssh usr/bin/scp usr/bin/dbclient usr/bin/dropbearkey usr/sbin/dropbear > /tmp/tar-exclude.txt &&
+        cd /overlay/upper &&
+        tar -czf /tmp/overlay-snapshot.tar.gz -X /tmp/tar-exclude.txt . &&
+        ls -la /tmp/overlay-snapshot.tar.gz &&
+        rm -f /tmp/tar-exclude.txt
+      register: tar_result
+      changed_when: false
+
+    - name: Display tarball info
+      debug:
+        msg: "{{ tar_result.stdout_lines }}"
+
+    - name: Fetch overlay tarball
+      fetch:
+        src: /tmp/overlay-snapshot.tar.gz
+        dest: "{{ snapshot_base_dir }}/{{ node_hostname }}/overlay-snapshot.tar.gz"
+        flat: yes
+
+    - name: Extract overlay tarball locally
+      shell: |
+        cd "{{ snapshot_base_dir }}/{{ node_hostname }}"
+        tar -xzf overlay-snapshot.tar.gz -C overlay/
+        rm -f overlay-snapshot.tar.gz
+      delegate_to: localhost
+      args:
+        executable: /bin/bash
+
+    - name: Clean up tarball on router
+      raw: rm -f /tmp/overlay-snapshot.tar.gz
+      changed_when: false
+
+    ###########################################################################
+    # Phase 5: Summary
+    ###########################################################################
+
+    - name: Count captured files
+      shell: find "{{ snapshot_base_dir }}/{{ node_hostname }}/overlay" -type f | wc -l
+      delegate_to: localhost
+      register: file_count
+      changed_when: false
+
+    - name: Get snapshot size
+      shell: du -sh "{{ snapshot_base_dir }}/{{ node_hostname }}"
+      delegate_to: localhost
+      register: snapshot_size
+      changed_when: false
+
+    - name: Display summary
+      debug:
+        msg: |
+          ═══════════════════════════════════════════════════════════════
+          SNAPSHOT COMPLETE: {{ node_hostname }}
+          ═══════════════════════════════════════════════════════════════
+          Location:  {{ snapshot_base_dir }}/{{ node_hostname }}/
+          Files:     {{ file_count.stdout | trim }} files captured
+          Size:      {{ snapshot_size.stdout.split()[0] }}
+          Packages:  {{ packages_installed.stdout_lines | length }} installed
+
+          Contents:
+            overlay/    - Full filesystem overlay (use as FILES= in Image Builder)
+            packages/   - Package lists for Image Builder
+            metadata.json - Node identification
+
+          Next steps:
+            make image-build NODE={{ node_hostname | regex_replace('mesh-node', '') }}
+          ═══════════════════════════════════════════════════════════════

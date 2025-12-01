@@ -92,7 +92,7 @@ Invoke these skills for detailed technical guidance:
 - **`project-standards`** - Code quality, testing, security standards
 - **`mesh-pm`** - Project management and progress tracking
 
-See `.claude/skills/README.md` for details.
+See `~/.claude/skills/skills-index.md` for details.
 
 ## Repository Structure
 

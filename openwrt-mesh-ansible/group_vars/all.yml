@@ -16,6 +16,26 @@
 # ============================================================================
 
 # ============================================================================
+# OpenWrt Target Configuration
+# ============================================================================
+
+openwrt_version: "{{ lookup('env', 'OPENWRT_VERSION') | default('24.10.4', true) }}"
+openwrt_target: "{{ lookup('env', 'OPENWRT_TARGET') | default('ramips/mt7621', true) }}"
+openwrt_arch: "{{ lookup('env', 'OPENWRT_ARCH') | default('mipsel_24kc', true) }}"
+
+# ============================================================================
+# Local Package Repository Configuration
+# ============================================================================
+
+opkg_repo_url: "{{ lookup('env', 'OPKG_REPO_URL') | default('', true) }}"
+
+# ============================================================================
+# Deployment Options
+# ============================================================================
+
+skip_reboot: "{{ lookup('env', 'SKIP_REBOOT') | default('false', true) | bool }}"
+
+# ============================================================================
 # SSH & System Security Configuration
 # ============================================================================
 # NOTE: Factory OpenWrt uses Dropbear SSH with NO root password set
@@ -118,7 +138,7 @@ mtu_wireless_mesh: "{{ lookup('env', 'MTU_WIRELESS_MESH') | default('1532', true
 # ============================================================================
 
 # Required packages (converted from comma-separated string to list)
-required_packages: "{{ lookup('env', 'REQUIRED_PACKAGES') | default('python3,batctl-full,kmod-batman-adv,wpad-mesh-mbedtls,ip-full,tcpdump-mini,openssh-server,openssh-sftp-server,openssh-keygen', true) | split(',') }}"
+required_packages: "{{ lookup('env', 'REQUIRED_PACKAGES') | default('python3,batctl-full,kmod-batman-adv,wpad-mesh-mbedtls,ip-full,tcpdump-mini,openssh-server,openssh-sftp-server,openssh-keygen,curl', true) | split(',') }}"
 
 # Packages to remove (converted from comma-separated string to list)
 remove_packages: "{{ lookup('env', 'REMOVE_PACKAGES') | default('wpad-basic-mbedtls,wpad-basic-wolfssl,wpad-basic', true) | split(',') }}"
@@ -130,9 +150,12 @@ optional_packages: "{{ lookup('env', 'OPTIONAL_PACKAGES') | default('iperf3,etht
 # System Configuration
 # ============================================================================
 
-timezone: "{{ lookup('env', 'TIMEZONE') | default('AEST-10', true) }}"
+timezone: "{{ lookup('env', 'TIMEZONE') | default('ACST-9:30ACDT,M10.1.0,M4.1.0/3', true) }}"
 zonename: "{{ lookup('env', 'ZONENAME') | default('Australia/Adelaide', true) }}"
 hostname_prefix: "{{ lookup('env', 'HOSTNAME_PREFIX') | default('mesh-node', true) }}"
+
+# NTP servers (converted from comma-separated string to list)
+ntp_servers: "{{ lookup('env', 'NTP_SERVERS') | default('0.au.pool.ntp.org,1.au.pool.ntp.org,2.au.pool.ntp.org,3.au.pool.ntp.org', true) | split(',') }}"
 
 # ============================================================================
 # Service Configuration

@@ -1,0 +1,45 @@
+---
+# USB storage role for OpenWrt mesh nodes
+# Orchestrates USB detection, partitioning, formatting, and mounting
+
+- name: Include USB detection tasks
+  ansible.builtin.include_tasks: detect.yml
+
+- name: Include USB partitioning tasks
+  ansible.builtin.include_tasks: partition.yml
+  when:
+    - usb_device_detected
+    - usb_device_path != ''
+
+- name: Include USB formatting tasks
+  ansible.builtin.include_tasks: format.yml
+  when:
+    - usb_device_detected
+    - usb_device_path != ''
+
+- name: Include USB mounting tasks
+  ansible.builtin.include_tasks: mount.yml
+  when: usb_device_detected
+
+- name: Include persistent mount configuration tasks
+  ansible.builtin.include_tasks: configure_persistent.yml
+  when:
+    - usb_device_detected
+    - usb_device_path != ''
+
+- name: Verify USB storage setup
+  ansible.builtin.raw: |
+    if mount | grep -q "/x00"; then
+      echo "USB storage successfully mounted at /x00"
+      df -h /x00
+    else
+      echo "USB storage not mounted"
+    fi
+  when: usb_device_detected
+  register: usb_verify
+  changed_when: false
+
+- name: Display USB storage setup result
+  ansible.builtin.debug:
+    msg: "{{ usb_verify.stdout_lines | default(['USB storage not configured']) }}"
+  when: usb_device_detected

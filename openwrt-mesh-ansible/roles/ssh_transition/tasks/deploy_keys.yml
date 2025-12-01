@@ -1,0 +1,14 @@
+---
+# Phase 3: Deploy SSH key to node
+
+- name: Create .ssh directory on node
+  ansible.builtin.raw: "mkdir -p /root/.ssh && chmod 700 /root/.ssh"
+  changed_when: true
+
+- name: Deploy SSH public key to node
+  ansible.builtin.raw: "echo '{{ ssh_public_key }}' > /root/.ssh/authorized_keys"
+  changed_when: true
+
+- name: Set authorized_keys permissions
+  ansible.builtin.raw: "chmod 600 /root/.ssh/authorized_keys"
+  changed_when: true

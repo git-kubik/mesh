@@ -9,6 +9,7 @@ backups/
 
 # Logs
 *.log
+logs/
 
 # Audit reports (generated files)
 audit_reports/
@@ -43,3 +44,13 @@ Thumbs.db
 # Temporary files
 tmp/
 temp/
+
+# Local package repository (downloaded packages)
+openwrt-repo/
+
+# Built firmware images
+images/*.bin
+images/*.sha256
+
+# Node configuration snapshots (contain sensitive data)
+snapshots/

@@ -278,6 +278,12 @@ def test_required_packages_defined(group_vars_path: str) -> None:
     assert isinstance(packages, list), "required_packages must be list"
 
     # Check for essential packages
-    essential = ["kmod-batman-adv", "batctl"]
+    # Note: batctl-full is the preferred package (more features than batctl)
+    essential = ["kmod-batman-adv"]
     for pkg in essential:
         assert pkg in packages, f"Essential package missing: {pkg}"
+
+    # Either batctl or batctl-full should be present
+    assert (
+        "batctl" in packages or "batctl-full" in packages
+    ), "Essential package missing: batctl or batctl-full"

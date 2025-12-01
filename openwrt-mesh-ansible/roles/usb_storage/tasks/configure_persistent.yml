@@ -1,0 +1,32 @@
+---
+# USB storage persistent mount configuration tasks
+
+- name: Configure persistent USB mount
+  ansible.builtin.raw: |
+    PARTITION="{{ usb_device_path }}1"
+    if [ -b "$PARTITION" ]; then
+      # Get UUID
+      UUID=$(block info "$PARTITION" | sed -n 's/.*UUID="\([^"]*\)".*/\1/p')
+
+      if [ -n "$UUID" ]; then
+        # Configure using UCI
+        uci -q delete fstab.@mount[-1] 2>/dev/null || true
+        uci add fstab mount
+        uci set fstab.@mount[-1].target='/x00'
+        uci set fstab.@mount[-1].uuid="$UUID"
+        uci set fstab.@mount[-1].enabled='1'
+        uci set fstab.@mount[-1].fstype='f2fs'
+        uci set fstab.@mount[-1].options='rw,noatime,nodiratime,background_gc=on,discard'
+        uci commit fstab
+
+        # Enable block-mount
+        /etc/init.d/fstab enable
+
+        echo "Configured auto-mount for UUID $UUID"
+      fi
+
+      # Also add to /etc/fstab as fallback
+      sed -i '\|/x00|d' /etc/fstab
+      echo "$PARTITION /x00 f2fs rw,noatime,nodiratime,background_gc=on,discard 0 0" >> /etc/fstab
+    fi
+  changed_when: true

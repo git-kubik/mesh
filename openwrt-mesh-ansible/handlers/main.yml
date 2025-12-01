@@ -1,0 +1,41 @@
+---
+# Centralized handlers for OpenWrt mesh network deployment
+#
+# Note: Most handlers are NOT used in this project because
+# all configuration changes are applied atomically via reboot.
+# These handlers are available for future use or selective reloads.
+
+- name: Reload network
+  ansible.builtin.raw: /etc/init.d/network reload
+  listen: "reload network"
+  changed_when: true
+
+- name: Reload wireless
+  ansible.builtin.raw: wifi reload
+  listen: "reload wireless"
+  changed_when: true
+
+- name: Reload firewall
+  ansible.builtin.raw: /etc/init.d/firewall reload
+  listen: "reload firewall"
+  changed_when: true
+
+- name: Reload dnsmasq
+  ansible.builtin.raw: /etc/init.d/dnsmasq reload
+  listen: "reload dnsmasq"
+  changed_when: true
+
+- name: Restart sshd
+  ansible.builtin.raw: /etc/init.d/sshd restart
+  listen: "restart sshd"
+  changed_when: true
+
+- name: Commit system
+  ansible.builtin.raw: uci commit system
+  listen: "commit system"
+  changed_when: true
+
+- name: Restart fstab
+  ansible.builtin.raw: /etc/init.d/fstab restart
+  listen: "restart fstab"
+  changed_when: true

@@ -5,13 +5,139 @@ This module provides common fixtures for testing the mesh network deployment:
 - Node connection fixtures
 - SSH client fixtures
 - Configuration fixtures
+- Role fixtures
 - Cleanup fixtures
 """
 
 import os
+from pathlib import Path
 from typing import Any, Dict, Generator, List
 
 import pytest
+
+# Base paths
+ANSIBLE_ROOT = Path("openwrt-mesh-ansible")
+ROLES_ROOT = ANSIBLE_ROOT / "roles"
+HANDLERS_ROOT = ANSIBLE_ROOT / "handlers"
+
+
+@pytest.fixture
+def ansible_root() -> Path:
+    """
+    Provide path to Ansible project root.
+
+    Returns:
+        Path to openwrt-mesh-ansible directory.
+    """
+    return ANSIBLE_ROOT
+
+
+@pytest.fixture
+def roles_root() -> Path:
+    """
+    Provide path to roles directory.
+
+    Returns:
+        Path to roles directory.
+    """
+    return ROLES_ROOT
+
+
+@pytest.fixture
+def all_role_names() -> List[str]:
+    """
+    Provide list of all role names.
+
+    Returns:
+        List of all role directory names.
+    """
+    return [
+        "backup",
+        "package_management",
+        "ssh_transition",
+        "system_config",
+        "network_config",
+        "wireless_config",
+        "dhcp_config",
+        "firewall_config",
+        "usb_storage",
+    ]
+
+
+@pytest.fixture
+def role_paths(all_role_names: List[str]) -> Dict[str, Path]:
+    """
+    Provide paths to all role directories.
+
+    Args:
+        all_role_names: List of role names from fixture.
+
+    Returns:
+        Dictionary mapping role names to their directory paths.
+    """
+    return {name: ROLES_ROOT / name for name in all_role_names}
+
+
+@pytest.fixture
+def roles_with_templates() -> Dict[str, str]:
+    """
+    Provide mapping of roles to their template files.
+
+    Returns:
+        Dictionary mapping role names to template filenames.
+    """
+    return {
+        "network_config": "network.j2",
+        "wireless_config": "wireless.j2",
+        "dhcp_config": "dhcp.j2",
+        "firewall_config": "firewall.j2",
+    }
+
+
+@pytest.fixture
+def ssh_transition_subtasks() -> List[str]:
+    """
+    Provide list of ssh_transition role subtask files.
+
+    Returns:
+        List of subtask filenames for ssh_transition role.
+    """
+    return [
+        "move_dropbear.yml",
+        "generate_keys.yml",
+        "deploy_keys.yml",
+        "configure_openssh.yml",
+        "start_openssh.yml",
+        "cleanup_dropbear.yml",
+    ]
+
+
+@pytest.fixture
+def usb_storage_subtasks() -> List[str]:
+    """
+    Provide list of usb_storage role subtask files.
+
+    Returns:
+        List of subtask filenames for usb_storage role.
+    """
+    return [
+        "detect.yml",
+        "partition.yml",
+        "format.yml",
+        "mount.yml",
+        "configure_persistent.yml",
+    ]
+
+
+@pytest.fixture
+def handlers_path() -> Path:
+    """
+    Provide path to centralized handlers.
+
+    Returns:
+        Path to handlers directory.
+    """
+    return HANDLERS_ROOT
 
 
 @pytest.fixture

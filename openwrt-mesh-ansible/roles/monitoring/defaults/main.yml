@@ -1,0 +1,17 @@
+---
+# Monitoring role defaults
+
+monitoring_data_dir: "/x00/monitoring"
+collectd_interval: 30  # Collect metrics every 30 seconds
+collectd_cache_flush: 300  # Write to disk every 5 minutes
+
+# Telegram alerting (from environment variables)
+telegram_bot_token: "{{ lookup('env', 'TELEGRAM_BOT_TOKEN') }}"
+telegram_chat_id: "{{ lookup('env', 'TELEGRAM_CHAT_ID') }}"
+telegram_enabled: "{{ telegram_bot_token != '' and telegram_chat_id != '' }}"
+
+# Alert thresholds
+alert_disk_threshold: 95  # Alert when disk usage exceeds this percentage
+alert_memory_threshold: 5  # Alert when free memory falls below this (MB)
+alert_cpu_threshold: 90  # Alert when CPU usage exceeds this percentage
+alert_cooldown: 3600  # Seconds between duplicate alerts (1 hour)

@@ -1,0 +1,35 @@
+---
+# Phase 4: Configure OpenSSH
+
+- name: Configure OpenSSH for key-based authentication
+  ansible.builtin.raw: |
+    cat > /etc/ssh/sshd_config << 'EOF'
+    # OpenSSH Configuration for OpenWrt Mesh
+    Port 22
+    PermitRootLogin prohibit-password
+    PubkeyAuthentication yes
+    AuthorizedKeysFile /root/.ssh/authorized_keys
+    PasswordAuthentication no
+    ChallengeResponseAuthentication no
+    UsePAM no
+    X11Forwarding no
+    Subsystem sftp /usr/libexec/sftp-server
+    EOF
+  changed_when: true
+
+- name: Ensure SSH configuration directory exists
+  ansible.builtin.raw: "mkdir -p /etc/ssh"
+  changed_when: true
+
+- name: Generate SSH host keys if missing
+  ansible.builtin.raw: |
+    for type in rsa ed25519; do
+      key=/etc/ssh/ssh_host_${type}_key
+      if [ ! -f "$key" ]; then
+        echo "Generating $type host key..."
+        ssh-keygen -N '' -t $type -f $key 2>&1
+      else
+        echo "$type host key already exists"
+      fi
+    done
+  changed_when: true

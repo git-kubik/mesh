@@ -1,0 +1,42 @@
+---
+# Phase 1: Move Dropbear to port 2222 to free up port 22
+
+- name: Move dropbear to port 2222
+  ansible.builtin.raw: |
+    echo "Reconfiguring dropbear to port 2222..."
+    uci set dropbear.@dropbear[0].Port='2222'
+    uci commit dropbear
+    echo "Restarting dropbear on port 2222..."
+    /etc/init.d/dropbear restart
+    sleep 2
+    echo "Dropbear moved to port 2222"
+  changed_when: true
+
+- name: Wait for dropbear to be listening on port 2222
+  ansible.builtin.wait_for:
+    host: "{{ ansible_host }}"
+    port: 2222
+    delay: 2
+    timeout: 30
+    state: started
+  delegate_to: localhost
+
+- name: Update ansible connection to port 2222
+  ansible.builtin.set_fact:
+    ansible_port: 2222
+
+- name: Force reconnection on port 2222
+  ansible.builtin.meta: reset_connection
+
+- name: Verify connection on port 2222
+  ansible.builtin.raw: "echo 'Connection verified'"
+  register: verify_result
+  retries: 5
+  delay: 2
+  until: verify_result is success
+  changed_when: false
+
+- name: Test dropbear connection on port 2222
+  ansible.builtin.raw: "echo 'Connected via dropbear on port 2222 - port 22 is now free for OpenSSH'"
+  register: dropbear_2222_test
+  changed_when: false

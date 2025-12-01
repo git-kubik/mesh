@@ -1,0 +1,18 @@
+---
+# USB storage mounting tasks
+
+- name: Create USB mount point
+  ansible.builtin.raw: |
+    mkdir -p /x00
+    echo "Mount point /x00 created"
+  changed_when: true
+
+- name: Mount USB storage
+  ansible.builtin.raw: |
+    PARTITION="{{ usb_device_path }}1"
+    if [ -b "$PARTITION" ]; then
+      mount -t f2fs -o noatime,nodiratime,background_gc=on,discard "$PARTITION" /x00
+      echo "Mounted $PARTITION at /x00"
+    fi
+  when: usb_device_path != ''
+  changed_when: true
