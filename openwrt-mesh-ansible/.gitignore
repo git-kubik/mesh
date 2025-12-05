@@ -54,3 +54,4 @@ images/*.sha256
 
 # Node configuration snapshots (contain sensitive data)
 snapshots/
+switches/*.cfg
