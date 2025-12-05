@@ -38,6 +38,17 @@ config dhcp 'wan'
 	option interface 'wan'
 	option ignore '1'
 
+# IoT/Infrastructure Network DHCP (LAN2 - 10.11.30.0/24)
+config dhcp 'iot'
+	option interface 'iot'
+	option start '{{ iot_dhcp_start }}'
+	option limit '{{ iot_dhcp_limit }}'
+	option leasetime '{{ dhcp_leasetime }}'
+	option dhcpv4 'server'
+	# IoT devices get IoT gateway as DNS
+	list dhcp_option '6,{{ iot_gateway }}'
+	list dhcp_option '3,{{ iot_gateway }}'
+
 config odhcpd 'odhcpd'
 	option maindhcp '0'
 	option leasefile '/tmp/hosts/odhcpd'

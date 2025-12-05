@@ -62,26 +62,69 @@
   changed_when: "'Removing package' in remove_result.stdout"
   failed_when: false
 
-- name: Install required packages (with verbose output)
-  ansible.builtin.raw: "echo '=== Installing {{ item }} ===' && opkg install {{ item }} 2>&1 && echo '=== Installed {{ item }} ===' && opkg list-installed | grep -E '^({{ item }}|batctl)' || true"
+- name: Install required packages
+  ansible.builtin.raw: |
+    echo "=== Installing {{ item }} ==="
+    # Attempt installation
+    OUTPUT=$(opkg install {{ item }} 2>&1)
+    RC=$?
+    echo "$OUTPUT"
+
+    # Check for opkg errors
+    if [ $RC -ne 0 ]; then
+      echo "ERROR: opkg install {{ item }} failed with exit code $RC"
+      exit 1
+    fi
+
+    # Check for specific error messages that opkg returns with exit 0
+    if echo "$OUTPUT" | grep -q "Cannot install package"; then
+      echo "ERROR: Cannot install package {{ item }}"
+      exit 1
+    fi
+
+    # Verify package is actually installed (handle package name variations)
+    # Some packages like python3 install as python3-light, batctl-full installs as batctl-full
+    PKG_BASE=$(echo "{{ item }}" | sed 's/-full$//')
+    if ! opkg list-installed | grep -qE "^({{ item }}|${PKG_BASE}) "; then
+      echo "ERROR: {{ item }} not found in installed packages after installation"
+      exit 1
+    fi
+
+    echo "SUCCESS: {{ item }} installed"
   loop: "{{ required_packages }}"
   register: install_result
-  changed_when: "'Installing' in install_result.stdout or 'Configuring' in install_result.stdout"
-  failed_when: "'opkg_install_cmd: Cannot install package' in install_result.stdout"
+  changed_when: "'Configuring' in install_result.stdout or 'Installing' in install_result.stdout"
+  failed_when: install_result.rc != 0
 
 - name: Display package installation results
   ansible.builtin.debug:
     msg: "{{ install_result.results | map(attribute='stdout_lines') | list }}"
 
-- name: Verify batctl and kmod-batman-adv installation
-  ansible.builtin.raw: "opkg list-installed | grep -E '^(batctl|kmod-batman-adv)'"
-  register: batctl_check
+- name: Verify critical packages installation
+  ansible.builtin.raw: |
+    echo "=== Verifying critical packages ==="
+    FAILED=""
+    for pkg in batctl-full kmod-batman-adv openssh-server curl; do
+      PKG_BASE=$(echo "$pkg" | sed 's/-full$//')
+      if opkg list-installed | grep -qE "^(${pkg}|${PKG_BASE}) "; then
+        echo "OK: $pkg"
+      else
+        echo "MISSING: $pkg"
+        FAILED="$FAILED $pkg"
+      fi
+    done
+    if [ -n "$FAILED" ]; then
+      echo "ERROR: Critical packages missing:$FAILED"
+      exit 1
+    fi
+    echo "=== All critical packages verified ==="
+  register: verify_critical
   changed_when: false
-  failed_when: false
+  failed_when: verify_critical.rc != 0
 
-- name: Show batctl verification
+- name: Show critical package verification
   ansible.builtin.debug:
-    msg: "{{ batctl_check.stdout_lines }}"
+    msg: "{{ verify_critical.stdout_lines }}"
 
 - name: Install optional packages
   ansible.builtin.raw: "opkg install {{ item }}"

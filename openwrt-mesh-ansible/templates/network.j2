@@ -40,18 +40,21 @@ config interface 'bat0'
 config interface 'bat0_hardif_lan3'
 	option proto 'batadv_hardif'
 	option master 'bat0'
+	option device 'lan3'
 	option mtu '{{ mtu_wired_mesh }}'
 
 # Wired mesh interface - lan4
 config interface 'bat0_hardif_lan4'
 	option proto 'batadv_hardif'
 	option master 'bat0'
+	option device 'lan4'
 	option mtu '{{ mtu_wired_mesh }}'
 
 # Wireless mesh interface - 2.4GHz backup
 config interface 'bat0_hardif_mesh0'
 	option proto 'batadv_hardif'
 	option master 'bat0'
+	option device 'phy0-mesh0'
 	option mtu '{{ mtu_wireless_mesh }}'
 
 # Physical device for mesh ports

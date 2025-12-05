@@ -10,6 +10,10 @@
 
 ![Mesh Topology Overview](images/mesh-topology-overview.svg)
 
+### Physical Wiring Diagram
+
+![Network Wiring Diagram](images/network-wiring-diagram.svg)
+
 ### Detailed Port Layout
 
 ![Mesh Network Port Layout](images/mesh-port-layout.svg)

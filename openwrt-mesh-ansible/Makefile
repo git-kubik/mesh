@@ -42,7 +42,7 @@ endif
 .PHONY: help validate-env \
         deploy-node check-node audit-node \
         check-all check-connectivity audit deploy \
-        switch-to-initial-network switch-to-mesh-network \
+        switch-to-initial-network switch-to-mesh-network switch-to-switch-network switch-to-mgmt-network \
         verify backup update update-check check ping clean \
         deploy-network deploy-wireless deploy-dhcp deploy-firewall \
         packages batman-status logs \
@@ -55,7 +55,8 @@ endif
         repo-setup repo-setup-selective repo-start repo-status repo-clean \
         snapshot snapshot-all snapshot-diff \
         image-build image-build-all image-clean image-shell image-info \
-        factory-reset sysupgrade
+        factory-reset sysupgrade \
+        test test-quick test-full test-destructive
 
 help:
 	@echo "OpenWrt Mesh Network - Ansible Commands"
@@ -113,8 +114,10 @@ help:
 	@echo "================================================================================"
 	@echo "These are available for manual operations (deploy-node handles automatically):"
 	@echo ""
-	@echo "  make switch-to-initial-network  - Switch workstation to 192.168.1.100"
-	@echo "  make switch-to-mesh-network     - Switch workstation to 10.11.12.100"
+	@echo "  make switch-to-initial-network  - Switch workstation to 192.168.1.100 (fresh nodes)"
+	@echo "  make switch-to-mesh-network     - Switch workstation to 10.11.12.100 (deployed nodes)"
+	@echo "  make switch-to-switch-network   - Switch workstation to 192.168.0.2 (factory TP-Link switches)"
+	@echo "  make switch-to-mgmt-network     - Switch workstation to 10.11.10.100 (configured switches)"
 	@echo ""
 	@echo "================================================================================"
 	@echo "TARGETED DEPLOYMENTS (Deploy Specific Components Only)"
@@ -249,6 +252,17 @@ help:
 	@echo ""
 	@echo "  Works with both vanilla (192.168.1.1) and configured (10.11.12.x) nodes"
 	@echo "  Config is ALWAYS wiped (sysupgrade -n)"
+	@echo ""
+	@echo "================================================================================"
+	@echo "LIVE NETWORK TESTING (Validate Mesh is Working)"
+	@echo "================================================================================"
+	@echo "  make test                       - Run standard live tests (recommended)"
+	@echo "  make test-quick                 - Run quick connectivity tests only"
+	@echo "  make test-full                  - Run all tests with HTML report"
+	@echo "  make test-destructive           - Run destructive failover tests"
+	@echo "                                    (CAUTION: temporarily disrupts network)"
+	@echo ""
+	@echo "  Test reports saved to: ../test-reports/"
 	@echo ""
 	@echo "================================================================================"
 	@echo "ADVANCED OPERATIONS"
@@ -649,6 +663,12 @@ switch-to-initial-network:
 
 switch-to-mesh-network:
 	@bash -c "$(ANSIBLE_CMD) playbooks/switch-to-mesh-network.yml"
+
+switch-to-switch-network:
+	@bash -c "$(ANSIBLE_CMD) playbooks/switch-to-switch-network.yml"
+
+switch-to-mgmt-network:
+	@bash -c "$(ANSIBLE_CMD) playbooks/switch-to-mgmt-network.yml"
 
 # ============================================================================
 # Multi-Node Operations (All Nodes at Once)
@@ -1139,3 +1159,83 @@ endif
 			exit 1; \
 		fi; \
 	fi"
+
+# ============================================================================
+# Live Network Testing
+# ============================================================================
+# Run pytest live tests to validate mesh network is functioning correctly
+# Tests are located in ../tests/live/
+# Reports are saved to ../test-reports/
+
+# Test report directory
+TEST_REPORT_DIR := ../test-reports
+
+# Standard live tests (recommended)
+# Runs all non-destructive tests with standard timeout
+# Usage: make test
+test:
+	@echo "=== Running Live Network Tests ==="
+	@echo "Testing mesh network functionality..."
+	@echo ""
+	@mkdir -p $(TEST_REPORT_DIR)
+	@cd .. && uv run pytest tests/live/ -v --timeout=120 \
+		-m "live and not destructive and not wlan2" \
+		--html=$(TEST_REPORT_DIR)/live-tests-$$(date +%Y%m%d_%H%M%S).html \
+		--self-contained-html \
+		2>&1 | tee $(TEST_REPORT_DIR)/live-tests-latest.log
+	@echo ""
+	@echo "=== Test Complete ==="
+	@echo "Report: $(TEST_REPORT_DIR)/"
+
+# Quick connectivity tests only
+# Runs basic connectivity and batman status tests
+# Usage: make test-quick
+test-quick:
+	@echo "=== Running Quick Connectivity Tests ==="
+	@echo ""
+	@cd .. && uv run pytest tests/live/test_connectivity.py tests/live/test_batman_mesh.py -v --timeout=60 \
+		-m "live and not destructive"
+	@echo ""
+	@echo "=== Quick Tests Complete ==="
+
+# Full test suite with HTML report
+# Runs all tests including performance benchmarks
+# Usage: make test-full
+test-full:
+	@echo "=== Running Full Live Test Suite ==="
+	@echo "This may take several minutes..."
+	@echo ""
+	@mkdir -p $(TEST_REPORT_DIR)
+	@cd .. && uv run pytest tests/live/ -v --timeout=180 \
+		-m "live and not destructive" \
+		--html=$(TEST_REPORT_DIR)/full-tests-$$(date +%Y%m%d_%H%M%S).html \
+		--self-contained-html \
+		2>&1 | tee $(TEST_REPORT_DIR)/full-tests-latest.log
+	@echo ""
+	@echo "=== Full Test Suite Complete ==="
+	@echo "Report: $(TEST_REPORT_DIR)/"
+
+# Destructive failover tests
+# WARNING: These tests temporarily disrupt network connectivity!
+# Usage: make test-destructive
+test-destructive:
+	@echo "=== Destructive Failover Tests ==="
+	@echo ""
+	@echo "WARNING: These tests will temporarily disrupt network connectivity!"
+	@echo "They test link failover and WAN failover scenarios."
+	@echo ""
+	@read -p "Are you sure you want to run destructive tests? (yes/no): " confirm; \
+	if [ "$$confirm" = "yes" ]; then \
+		echo ""; \
+		mkdir -p $(TEST_REPORT_DIR); \
+		cd .. && MESH_RUN_DESTRUCTIVE_TESTS=true uv run pytest tests/live/ -v --timeout=300 \
+			-m "live and destructive" \
+			--html=$(TEST_REPORT_DIR)/destructive-tests-$$(date +%Y%m%d_%H%M%S).html \
+			--self-contained-html \
+			2>&1 | tee $(TEST_REPORT_DIR)/destructive-tests-latest.log; \
+		echo ""; \
+		echo "=== Destructive Tests Complete ==="; \
+		echo "Report: $(TEST_REPORT_DIR)/"; \
+	else \
+		echo "Operation cancelled"; \
+	fi

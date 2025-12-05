@@ -1,0 +1,118 @@
+---
+# Switch local workstation network to connect to TP-Link switches
+#
+# This playbook configures the local eth2 interface to 192.168.0.2/24
+# allowing connection to factory-default TP-Link TL-SG108E switches at 192.168.0.1
+#
+# Usage:
+#   ansible-playbook playbooks/switch-to-switch-network.yml
+#   make switch-to-switch-network
+
+- name: Switch workstation to switch configuration network (192.168.0.x)
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  become: true
+
+  vars:
+    interface: "{{ lookup('env', 'ETH_INTERFACE') | default('eth2', true) }}"
+    address: "192.168.0.2/24"
+    gateway: "192.168.0.1"
+    network: "192.168.0.0/24"
+    mesh_network: "10.11.12.0/24"
+    initial_network: "192.168.1.0/24"
+
+  tasks:
+    - name: Check if interface exists
+      ansible.builtin.command: ip link show {{ interface }}
+      register: interface_check
+      failed_when: false
+      changed_when: false
+
+    - name: Display available interfaces if target not found
+      when: interface_check.rc != 0
+      block:
+        - name: Get available interfaces
+          ansible.builtin.command: ip -br link show
+          register: available_interfaces
+          changed_when: false
+
+        - name: Show error and available interfaces
+          ansible.builtin.fail:
+            msg: |
+              Error: Interface {{ interface }} does not exist
+
+              Available interfaces:
+              {{ available_interfaces.stdout }}
+
+              Set ETH_INTERFACE in .env to use a different interface
+
+    - name: Get current IP address
+      ansible.builtin.shell: |
+        set -o pipefail
+        ip -4 addr show {{ interface }} | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | head -n1
+      args:
+        executable: /bin/bash
+      register: current_ip
+      failed_when: false
+      changed_when: false
+
+    - name: Display current configuration
+      ansible.builtin.debug:
+        msg: |
+          Current IP on {{ interface }}: {{ current_ip.stdout | default('none') }}
+          Switching to: {{ address }}
+
+    - name: Remove old network-specific routes
+      ansible.builtin.command: ip route del {{ item }}
+      loop:
+        - "{{ network }}"
+        - "{{ mesh_network }}"
+        - "{{ initial_network }}"
+      failed_when: false
+      changed_when: false
+
+    - name: Flush current IP addresses on interface
+      ansible.builtin.command: ip addr flush dev {{ interface }}
+      changed_when: true
+
+    - name: Add new IP address
+      ansible.builtin.command: ip addr add {{ address }} dev {{ interface }}
+      changed_when: true
+
+    - name: Bring interface up
+      ansible.builtin.command: ip link set {{ interface }} up
+      changed_when: true
+
+    - name: Display new configuration
+      block:
+        - name: Get interface IP info
+          ansible.builtin.command: ip -4 addr show {{ interface }}
+          register: interface_info
+          changed_when: false
+
+        - name: Get route table
+          ansible.builtin.command: ip route show
+          register: route_info
+          changed_when: false
+
+        - name: Show configuration summary
+          ansible.builtin.debug:
+            msg: |
+              ═══════════════════════════════════════
+              Successfully switched to switch config network
+              ═══════════════════════════════════════
+
+              Interface: {{ interface }}
+              IP Address: {{ address }}
+              Gateway: {{ gateway }}
+
+              Current configuration:
+              {{ interface_info.stdout }}
+
+              Routes:
+              {{ route_info.stdout }}
+              ═══════════════════════════════════════
+
+              Ready to configure TP-Link switch at http://{{ gateway }}
+              Default login: admin / admin

@@ -165,16 +165,45 @@ ntp_servers: "{{ lookup('env', 'NTP_SERVERS') | default('0.au.pool.ntp.org,1.au.
 enable_services: "{{ lookup('env', 'ENABLE_SERVICES') | default('network,firewall,dnsmasq,sshd', true) | split(',') }}"
 
 # ============================================================================
+# Switch Integration Configuration
+# ============================================================================
+# Dual TP-Link TL-SG108E switches for mesh redundancy and client expansion
+# See docs/SWITCH-INTEGRATION.md for setup guide
+
+# VLAN IDs for switch trunk ports
+switch_mesh_vlan: "{{ lookup('env', 'SWITCH_MESH_VLAN') | default('100', true) | int }}"
+switch_client_vlan: "{{ lookup('env', 'SWITCH_CLIENT_VLAN') | default('200', true) | int }}"
+
+# Switch management IPs (for documentation/monitoring)
+switch_a_ip: "{{ lookup('env', 'SWITCH_A_IP') | default('10.11.10.11', true) }}"
+switch_b_ip: "{{ lookup('env', 'SWITCH_B_IP') | default('10.11.10.12', true) }}"
+
+# ============================================================================
+# IoT/Infrastructure Network Configuration (LAN2)
+# ============================================================================
+# Separate network for IoT devices, Proxmox servers, etc.
+# Isolated from LAN but has internet access
+
+iot_vlan: "{{ lookup('env', 'IOT_VLAN') | default('300', true) | int }}"
+iot_network: "{{ lookup('env', 'IOT_NETWORK') | default('10.11.30.0', true) }}"
+iot_netmask: "{{ lookup('env', 'IOT_NETMASK') | default('255.255.255.0', true) }}"
+iot_gateway: "{{ lookup('env', 'IOT_GATEWAY') | default('10.11.30.1', true) }}"
+iot_dhcp_start: "{{ lookup('env', 'IOT_DHCP_START') | default('100', true) | int }}"
+iot_dhcp_limit: "{{ lookup('env', 'IOT_DHCP_LIMIT') | default('100', true) | int }}"
+
+# ============================================================================
 # VLAN Configuration (Optional Multi-Network Support)
 # ============================================================================
 
 enable_vlans: "{{ lookup('env', 'ENABLE_VLANS') | default('true', true) | bool }}"
 
-# VLAN Definitions
+# VLAN Definitions (for WiFi VLANs - management and guest)
 vlans:
   management:
     vid: "{{ lookup('env', 'MGMT_VLAN_VID') | default('10', true) | int }}"
     network: "{{ lookup('env', 'MGMT_VLAN_NETWORK') | default('10.11.10.0/24', true) }}"
+    gateway_ip: "{{ lookup('env', 'MGMT_VLAN_GATEWAY') | default('10.11.10.1', true) }}"
+    netmask: "255.255.255.0"
     dhcp_start: "{{ lookup('env', 'MGMT_VLAN_DHCP_START') | default('100', true) | int }}"
     dhcp_limit: "{{ lookup('env', 'MGMT_VLAN_DHCP_LIMIT') | default('50', true) | int }}"
     description: "Management network - 2.4GHz AP for admin access"
@@ -185,6 +214,8 @@ vlans:
   guest:
     vid: "{{ lookup('env', 'GUEST_VLAN_VID') | default('30', true) | int }}"
     network: "{{ lookup('env', 'GUEST_VLAN_NETWORK') | default('10.11.30.0/24', true) }}"
+    gateway_ip: "{{ lookup('env', 'GUEST_VLAN_GATEWAY') | default('10.11.30.1', true) }}"
+    netmask: "255.255.255.0"
     dhcp_start: "{{ lookup('env', 'GUEST_VLAN_DHCP_START') | default('100', true) | int }}"
     dhcp_limit: "{{ lookup('env', 'GUEST_VLAN_DHCP_LIMIT') | default('50', true) | int }}"
     isolation: "{{ lookup('env', 'GUEST_VLAN_ISOLATION') | default('true', true) | bool }}"
