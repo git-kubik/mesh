@@ -1,0 +1,375 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+     viewBox="0 0 1400 1000"
+     role="img"
+     aria-labelledby="wiring-diagram-title wiring-diagram-desc">
+  <title id="wiring-diagram-title">OpenWrt Mesh Network - Physical Wiring Diagram</title>
+  <desc id="wiring-diagram-desc">Complete physical wiring diagram showing all cable connections for a 3-node OpenWrt mesh network using D-Link DIR-1960 routers. Shows WAN connections to ISPs, LAN1/LAN2 for client devices, and LAN3/LAN4 forming a full ring mesh topology with 2.4GHz wireless backup.</desc>
+
+  <defs>
+    <!-- Design System Styles -->
+    <style>
+      /* Background */
+      .bg-area {
+        fill: #f8f9fa;
+        stroke: #dee2e6;
+        stroke-width: 1;
+      }
+
+      /* Router/Node styling */
+      .router-body {
+        fill: #212529;
+        stroke: #000;
+        stroke-width: 2;
+      }
+
+      .router-front {
+        fill: #343a40;
+        stroke: #495057;
+        stroke-width: 1;
+      }
+
+      /* Port styling by type */
+      .port-wan {
+        fill: #0d6efd;
+        stroke: #084298;
+        stroke-width: 1.5;
+      }
+
+      .port-client {
+        fill: #198754;
+        stroke: #0f5132;
+        stroke-width: 1.5;
+      }
+
+      .port-mesh {
+        fill: #ffc107;
+        stroke: #997404;
+        stroke-width: 1.5;
+      }
+
+      /* Cable styling */
+      .cable-wan {
+        stroke: #0d6efd;
+        stroke-width: 4;
+        fill: none;
+        stroke-linecap: round;
+      }
+
+      .cable-mesh {
+        stroke: #ffc107;
+        stroke-width: 4;
+        fill: none;
+        stroke-linecap: round;
+      }
+
+      .wireless-link {
+        stroke: #6c757d;
+        stroke-width: 2;
+        fill: none;
+        stroke-dasharray: 4,4;
+      }
+
+      /* ISP/Internet cloud */
+      .cloud {
+        fill: #cfe2ff;
+        stroke: #0d6efd;
+        stroke-width: 2;
+      }
+
+      /* LED indicators */
+      .led-on {
+        fill: #20c997;
+      }
+
+      /* Typography */
+      .text-title {
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        font-size: 24px;
+        font-weight: 700;
+        fill: #212529;
+      }
+
+      .text-node-name {
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        font-size: 18px;
+        font-weight: 600;
+        fill: #fff;
+        text-anchor: middle;
+      }
+
+      .text-ip {
+        font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
+        font-size: 14px;
+        font-weight: 500;
+        fill: #20c997;
+        text-anchor: middle;
+      }
+
+      .text-port {
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        font-size: 11px;
+        font-weight: 500;
+        fill: #fff;
+        text-anchor: middle;
+      }
+
+      .text-port-label {
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        font-size: 12px;
+        font-weight: 400;
+        fill: #495057;
+        text-anchor: middle;
+      }
+
+      .text-cable-label {
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        font-size: 11px;
+        font-weight: 500;
+        fill: #495057;
+        text-anchor: middle;
+      }
+
+      .text-section {
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        font-size: 14px;
+        font-weight: 600;
+        fill: #495057;
+      }
+
+      .text-legend {
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        font-size: 12px;
+        font-weight: 400;
+        fill: #212529;
+      }
+
+      .text-note {
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        font-size: 11px;
+        font-weight: 400;
+        fill: #6c757d;
+        font-style: italic;
+      }
+    </style>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1400" height="1000" fill="#fff"/>
+
+  <!-- Title -->
+  <text class="text-title" x="700" y="40" text-anchor="middle">OpenWrt Mesh Network - Physical Wiring Diagram</text>
+  <text class="text-note" x="700" y="60" text-anchor="middle">D-Link DIR-1960 A1 (3 nodes) - Full Ring Topology with Multi-WAN</text>
+
+  <!-- Internet/ISP Cloud -->
+  <g id="internet-cloud">
+    <ellipse class="cloud" cx="700" cy="140" rx="200" ry="50"/>
+    <text class="text-section" x="700" y="145" text-anchor="middle">Internet / ISP Connections</text>
+  </g>
+
+  <!-- ========== NODE 1 (Left) ========== -->
+  <!-- Position: x=100, y=280 -->
+  <!-- Ports at y=100 relative = y=380 absolute, height=25, so bottom at y=405 -->
+  <!-- WAN: x=20-60 relative = 120-160 absolute, center=140 -->
+  <!-- LAN1: x=70-110 relative = 170-210 absolute, center=190 -->
+  <!-- LAN2: x=120-160 relative = 220-260 absolute, center=240 -->
+  <!-- LAN3: x=180-220 relative = 280-320 absolute, center=300 -->
+  <!-- LAN4: x=230-270 relative = 330-370 absolute, center=350 -->
+  <g id="node1" transform="translate(100, 280)">
+    <rect class="router-body" x="0" y="0" width="300" height="180" rx="8"/>
+    <text class="text-node-name" x="150" y="30">mesh-node1</text>
+    <text class="text-ip" x="150" y="50">10.11.12.1</text>
+
+    <!-- LED strip -->
+    <circle class="led-on" cx="80" cy="70" r="4"/>
+    <circle class="led-on" cx="100" cy="70" r="4"/>
+    <circle class="led-on" cx="120" cy="70" r="4"/>
+    <circle class="led-on" cx="140" cy="70" r="4"/>
+    <circle class="led-on" cx="160" cy="70" r="4"/>
+
+    <!-- Port panel background -->
+    <rect class="router-front" x="10" y="90" width="280" height="80" rx="4"/>
+
+    <!-- WAN Port (center x=40) -->
+    <rect class="port-wan" x="20" y="100" width="40" height="25" rx="2"/>
+    <text class="text-port" x="40" y="117">WAN</text>
+    <text class="text-port-label" x="40" y="145">ISP #1</text>
+
+    <!-- LAN1 Port (center x=90) -->
+    <rect class="port-client" x="70" y="100" width="40" height="25" rx="2"/>
+    <text class="text-port" x="90" y="117">LAN1</text>
+    <text class="text-port-label" x="90" y="145">Client</text>
+
+    <!-- LAN2 Port (center x=140) -->
+    <rect class="port-client" x="120" y="100" width="40" height="25" rx="2"/>
+    <text class="text-port" x="140" y="117">LAN2</text>
+    <text class="text-port-label" x="140" y="145">Client</text>
+
+    <!-- LAN3 Port (center x=200) -->
+    <rect class="port-mesh" x="180" y="100" width="40" height="25" rx="2"/>
+    <text class="text-port" x="200" y="117">LAN3</text>
+    <text class="text-port-label" x="200" y="145">→N2</text>
+
+    <!-- LAN4 Port (center x=250) -->
+    <rect class="port-mesh" x="230" y="100" width="40" height="25" rx="2"/>
+    <text class="text-port" x="250" y="117">LAN4</text>
+    <text class="text-port-label" x="250" y="145">→N3</text>
+
+    <text class="text-note" x="150" y="175" text-anchor="middle">Primary Gateway (gw_mode: server)</text>
+  </g>
+
+  <!-- ========== NODE 2 (Center) ========== -->
+  <!-- Position: x=550, y=280 -->
+  <!-- WAN center: 550+40=590 -->
+  <!-- LAN3 center: 550+200=750 -->
+  <!-- LAN4 center: 550+250=800 -->
+  <g id="node2" transform="translate(550, 280)">
+    <rect class="router-body" x="0" y="0" width="300" height="180" rx="8"/>
+    <text class="text-node-name" x="150" y="30">mesh-node2</text>
+    <text class="text-ip" x="150" y="50">10.11.12.2</text>
+
+    <circle class="led-on" cx="80" cy="70" r="4"/>
+    <circle class="led-on" cx="100" cy="70" r="4"/>
+    <circle class="led-on" cx="120" cy="70" r="4"/>
+    <circle class="led-on" cx="140" cy="70" r="4"/>
+    <circle class="led-on" cx="160" cy="70" r="4"/>
+
+    <rect class="router-front" x="10" y="90" width="280" height="80" rx="4"/>
+
+    <rect class="port-wan" x="20" y="100" width="40" height="25" rx="2"/>
+    <text class="text-port" x="40" y="117">WAN</text>
+    <text class="text-port-label" x="40" y="145">ISP #2</text>
+
+    <rect class="port-client" x="70" y="100" width="40" height="25" rx="2"/>
+    <text class="text-port" x="90" y="117">LAN1</text>
+    <text class="text-port-label" x="90" y="145">Client</text>
+
+    <rect class="port-client" x="120" y="100" width="40" height="25" rx="2"/>
+    <text class="text-port" x="140" y="117">LAN2</text>
+    <text class="text-port-label" x="140" y="145">Client</text>
+
+    <rect class="port-mesh" x="180" y="100" width="40" height="25" rx="2"/>
+    <text class="text-port" x="200" y="117">LAN3</text>
+    <text class="text-port-label" x="200" y="145">←N1</text>
+
+    <rect class="port-mesh" x="230" y="100" width="40" height="25" rx="2"/>
+    <text class="text-port" x="250" y="117">LAN4</text>
+    <text class="text-port-label" x="250" y="145">→N3</text>
+
+    <text class="text-note" x="150" y="175" text-anchor="middle">Secondary Gateway (gw_mode: client)</text>
+  </g>
+
+  <!-- ========== NODE 3 (Right) ========== -->
+  <!-- Position: x=1000, y=280 -->
+  <!-- WAN center: 1000+40=1040 -->
+  <!-- LAN3 center: 1000+200=1200 -->
+  <!-- LAN4 center: 1000+250=1250 -->
+  <g id="node3" transform="translate(1000, 280)">
+    <rect class="router-body" x="0" y="0" width="300" height="180" rx="8"/>
+    <text class="text-node-name" x="150" y="30">mesh-node3</text>
+    <text class="text-ip" x="150" y="50">10.11.12.3</text>
+
+    <circle class="led-on" cx="80" cy="70" r="4"/>
+    <circle class="led-on" cx="100" cy="70" r="4"/>
+    <circle class="led-on" cx="120" cy="70" r="4"/>
+    <circle class="led-on" cx="140" cy="70" r="4"/>
+    <circle class="led-on" cx="160" cy="70" r="4"/>
+
+    <rect class="router-front" x="10" y="90" width="280" height="80" rx="4"/>
+
+    <rect class="port-wan" x="20" y="100" width="40" height="25" rx="2"/>
+    <text class="text-port" x="40" y="117">WAN</text>
+    <text class="text-port-label" x="40" y="145">ISP #3</text>
+
+    <rect class="port-client" x="70" y="100" width="40" height="25" rx="2"/>
+    <text class="text-port" x="90" y="117">LAN1</text>
+    <text class="text-port-label" x="90" y="145">Client</text>
+
+    <rect class="port-client" x="120" y="100" width="40" height="25" rx="2"/>
+    <text class="text-port" x="140" y="117">LAN2</text>
+    <text class="text-port-label" x="140" y="145">Client</text>
+
+    <rect class="port-mesh" x="180" y="100" width="40" height="25" rx="2"/>
+    <text class="text-port" x="200" y="117">LAN3</text>
+    <text class="text-port-label" x="200" y="145">←N2</text>
+
+    <rect class="port-mesh" x="230" y="100" width="40" height="25" rx="2"/>
+    <text class="text-port" x="250" y="117">LAN4</text>
+    <text class="text-port-label" x="250" y="145">←N1</text>
+
+    <text class="text-note" x="150" y="175" text-anchor="middle">Tertiary Gateway (gw_mode: server)</text>
+  </g>
+
+  <!-- ========== WAN CABLES TO ISPs ========== -->
+  <!-- Node1 WAN (center 140, top of port at y=380) → ISP cloud -->
+  <path class="cable-wan" d="M 140 380 L 140 220 Q 140 200 160 200 L 540 200 Q 560 200 560 180 L 560 170"/>
+  <text class="text-cable-label" x="350" y="190">Cat6 to ISP #1</text>
+
+  <!-- Node2 WAN (center 590, top of port at y=380) → ISP cloud -->
+  <path class="cable-wan" d="M 590 380 L 590 220 Q 590 200 610 200 L 690 200 Q 700 200 700 180 L 700 170"/>
+  <text class="text-cable-label" x="650" y="215">Cat6 to ISP #2</text>
+
+  <!-- Node3 WAN (center 1040, top of port at y=380) → ISP cloud -->
+  <path class="cable-wan" d="M 1040 380 L 1040 220 Q 1040 200 1020 200 L 860 200 Q 840 200 840 180 L 840 170"/>
+  <text class="text-cable-label" x="940" y="190">Cat6 to ISP #3</text>
+
+  <!-- ========== MESH RING CABLES ========== -->
+
+  <!-- Cable A: Node1 LAN3 (center 300) → Node2 LAN3 (center 750) -->
+  <!-- Start from bottom of port (y=405), go down, across, and up to other port -->
+  <path class="cable-mesh" d="M 300 405 L 300 520 Q 300 540 320 540 L 730 540 Q 750 540 750 520 L 750 405"/>
+  <text class="text-cable-label" x="525" y="560">Cable A: N1:LAN3 ↔ N2:LAN3</text>
+
+  <!-- Cable B: Node2 LAN4 (center 800) → Node3 LAN3 (center 1200) -->
+  <path class="cable-mesh" d="M 800 405 L 800 600 Q 800 620 820 620 L 1180 620 Q 1200 620 1200 600 L 1200 405"/>
+  <text class="text-cable-label" x="1000" y="640">Cable B: N2:LAN4 ↔ N3:LAN3</text>
+
+  <!-- Cable C: Node1 LAN4 (center 350) → Node3 LAN4 (center 1250) -->
+  <!-- Long cable going down and around the bottom -->
+  <path class="cable-mesh" d="M 350 405 L 350 700 Q 350 720 370 720 L 1230 720 Q 1250 720 1250 700 L 1250 405"/>
+  <text class="text-cable-label" x="700" y="740">Cable C: N1:LAN4 ↔ N3:LAN4 (completes ring)</text>
+
+  <!-- ========== WIRELESS MESH BACKUP ========== -->
+  <g id="wireless-backup" transform="translate(0, 800)">
+    <rect class="bg-area" x="50" y="0" width="1300" height="80" rx="8"/>
+    <text class="text-section" x="700" y="25" text-anchor="middle">2.4GHz Wireless Mesh Backup (ha-mesh-net)</text>
+
+    <path class="wireless-link" d="M 250 50 Q 450 30 650 50" />
+    <text class="text-note" x="450" y="45" text-anchor="middle">N1 ↔ N2</text>
+
+    <path class="wireless-link" d="M 700 50 Q 900 30 1100 50" />
+    <text class="text-note" x="900" y="45" text-anchor="middle">N2 ↔ N3</text>
+
+    <path class="wireless-link" d="M 250 55 Q 700 100 1100 55" />
+    <text class="text-note" x="680" y="75" text-anchor="middle">N1 ↔ N3 (if in range)</text>
+  </g>
+
+  <!-- ========== LEGEND ========== -->
+  <g id="legend" transform="translate(50, 910)">
+    <text class="text-section" x="0" y="0">Legend:</text>
+
+    <rect class="port-wan" x="80" y="-12" width="20" height="14" rx="2"/>
+    <text class="text-legend" x="110" y="0">WAN Port (ISP)</text>
+
+    <rect class="port-client" x="250" y="-12" width="20" height="14" rx="2"/>
+    <text class="text-legend" x="280" y="0">Client Port (LAN1/2)</text>
+
+    <rect class="port-mesh" x="450" y="-12" width="20" height="14" rx="2"/>
+    <text class="text-legend" x="480" y="0">Mesh Port (LAN3/4)</text>
+
+    <line class="cable-wan" x1="650" y1="-5" x2="690" y2="-5"/>
+    <text class="text-legend" x="700" y="0">WAN Cable</text>
+
+    <line class="cable-mesh" x1="820" y1="-5" x2="860" y2="-5"/>
+    <text class="text-legend" x="870" y="0">Mesh Cable</text>
+
+    <line class="wireless-link" x1="1000" y1="-5" x2="1040" y2="-5"/>
+    <text class="text-legend" x="1050" y="0">Wireless Backup</text>
+  </g>
+
+  <!-- ========== CABLE REQUIREMENTS ========== -->
+  <g id="cable-requirements" transform="translate(50, 950)">
+    <text class="text-section" x="0" y="0">Required Cables:</text>
+    <text class="text-legend" x="150" y="0">3x WAN cables (to ISP modems/ONTs) + 3x Mesh cables (Cat5e/Cat6, any length)</text>
+  </g>
+
+</svg>

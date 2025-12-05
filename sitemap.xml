@@ -2,66 +2,118 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://git-kubik.github.io/mesh/</loc>
-         <lastmod>2025-12-01</lastmod>
+         <lastmod>2025-12-05</lastmod>
     </url>
     <url>
          <loc>https://git-kubik.github.io/mesh/ANSIBLE-QUICKSTART/</loc>
-         <lastmod>2025-12-01</lastmod>
+         <lastmod>2025-12-05</lastmod>
     </url>
     <url>
          <loc>https://git-kubik.github.io/mesh/CONTRIBUTING/</loc>
-         <lastmod>2025-12-01</lastmod>
+         <lastmod>2025-12-05</lastmod>
+    </url>
+    <url>
+         <loc>https://git-kubik.github.io/mesh/DISTRIBUTED-SYSLOG/</loc>
+         <lastmod>2025-12-05</lastmod>
+    </url>
+    <url>
+         <loc>https://git-kubik.github.io/mesh/ENV-CONFIGURATION/</loc>
+         <lastmod>2025-12-05</lastmod>
+    </url>
+    <url>
+         <loc>https://git-kubik.github.io/mesh/FACTORY-RESET-PASSWORD-PERSISTENCE/</loc>
+         <lastmod>2025-12-05</lastmod>
+    </url>
+    <url>
+         <loc>https://git-kubik.github.io/mesh/FULL-ARCHIVE-MODE/</loc>
+         <lastmod>2025-12-05</lastmod>
     </url>
     <url>
          <loc>https://git-kubik.github.io/mesh/GITHUB-COMPLETE-SETUP/</loc>
-         <lastmod>2025-12-01</lastmod>
+         <lastmod>2025-12-05</lastmod>
     </url>
     <url>
          <loc>https://git-kubik.github.io/mesh/GITHUB-SETUP/</loc>
-         <lastmod>2025-12-01</lastmod>
+         <lastmod>2025-12-05</lastmod>
+    </url>
+    <url>
+         <loc>https://git-kubik.github.io/mesh/IMAGE-BUILDER/</loc>
+         <lastmod>2025-12-05</lastmod>
     </url>
     <url>
          <loc>https://git-kubik.github.io/mesh/INITIAL-NODE-SETUP/</loc>
-         <lastmod>2025-12-01</lastmod>
+         <lastmod>2025-12-05</lastmod>
+    </url>
+    <url>
+         <loc>https://git-kubik.github.io/mesh/LOCAL-PACKAGE-REPOSITORY/</loc>
+         <lastmod>2025-12-05</lastmod>
+    </url>
+    <url>
+         <loc>https://git-kubik.github.io/mesh/LOCAL-REPO-IMPLEMENTATION/</loc>
+         <lastmod>2025-12-05</lastmod>
+    </url>
+    <url>
+         <loc>https://git-kubik.github.io/mesh/MONITORING/</loc>
+         <lastmod>2025-12-05</lastmod>
     </url>
     <url>
          <loc>https://git-kubik.github.io/mesh/MULTI-NETWORK-ARCHITECTURE/</loc>
-         <lastmod>2025-12-01</lastmod>
+         <lastmod>2025-12-05</lastmod>
     </url>
     <url>
          <loc>https://git-kubik.github.io/mesh/NODE-AUDIT/</loc>
-         <lastmod>2025-12-01</lastmod>
+         <lastmod>2025-12-05</lastmod>
     </url>
     <url>
          <loc>https://git-kubik.github.io/mesh/PRE-COMMIT-HOOKS/</loc>
-         <lastmod>2025-12-01</lastmod>
+         <lastmod>2025-12-05</lastmod>
     </url>
     <url>
          <loc>https://git-kubik.github.io/mesh/PROJECT-MANAGEMENT/</loc>
-         <lastmod>2025-12-01</lastmod>
+         <lastmod>2025-12-05</lastmod>
     </url>
     <url>
          <loc>https://git-kubik.github.io/mesh/PROJECT-STATUS/</loc>
-         <lastmod>2025-12-01</lastmod>
+         <lastmod>2025-12-05</lastmod>
+    </url>
+    <url>
+         <loc>https://git-kubik.github.io/mesh/RECOMMENDED-MONITORING-ALERTING/</loc>
+         <lastmod>2025-12-05</lastmod>
+    </url>
+    <url>
+         <loc>https://git-kubik.github.io/mesh/RECOVERY/</loc>
+         <lastmod>2025-12-05</lastmod>
+    </url>
+    <url>
+         <loc>https://git-kubik.github.io/mesh/SSH-KEY-AUTHENTICATION/</loc>
+         <lastmod>2025-12-05</lastmod>
     </url>
     <url>
          <loc>https://git-kubik.github.io/mesh/STATUS-UPDATE/</loc>
-         <lastmod>2025-12-01</lastmod>
+         <lastmod>2025-12-05</lastmod>
+    </url>
+    <url>
+         <loc>https://git-kubik.github.io/mesh/SWITCH-INTEGRATION/</loc>
+         <lastmod>2025-12-05</lastmod>
+    </url>
+    <url>
+         <loc>https://git-kubik.github.io/mesh/USB-STORAGE/</loc>
+         <lastmod>2025-12-05</lastmod>
     </url>
     <url>
          <loc>https://git-kubik.github.io/mesh/WALKTHROUGH/</loc>
-         <lastmod>2025-12-01</lastmod>
+         <lastmod>2025-12-05</lastmod>
     </url>
     <url>
          <loc>https://git-kubik.github.io/mesh/docker-README/</loc>
-         <lastmod>2025-12-01</lastmod>
+         <lastmod>2025-12-05</lastmod>
     </url>
     <url>
          <loc>https://git-kubik.github.io/mesh/openwrt-batman-mesh-setup/</loc>
-         <lastmod>2025-12-01</lastmod>
+         <lastmod>2025-12-05</lastmod>
     </url>
     <url>
          <loc>https://git-kubik.github.io/mesh/tests-README/</loc>
-         <lastmod>2025-12-01</lastmod>
+         <lastmod>2025-12-05</lastmod>
     </url>
 </urlset>
