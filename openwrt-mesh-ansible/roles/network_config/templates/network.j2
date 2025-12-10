@@ -4,8 +4,8 @@
 # Architecture: Dual-switch aggregation with VLAN separation
 # - LAN1: Client devices (bridged to bat0)
 # - LAN2: IoT/Infrastructure (isolated, internet-only)
-# - LAN3: Switch A trunk (mesh VLAN {{ switch_mesh_vlan }}, client VLAN {{ switch_client_vlan }})
-# - LAN4: Switch B trunk (mesh VLAN {{ switch_mesh_vlan }}, client VLAN {{ switch_client_vlan }})
+# - LAN3: Switch A trunk (VLANs: {{ switch_mesh_vlan }}, {{ switch_client_vlan }}, {{ vlans.management.vid }}, {{ iot_vlan }})
+# - LAN4: Switch B trunk (VLANs: {{ switch_mesh_vlan }}, {{ switch_client_vlan }}, {{ vlans.management.vid }}, {{ iot_vlan }})
 
 config interface 'loopback'
 	option device 'lo'
@@ -35,12 +35,21 @@ config interface 'wan6'
 # ============================================================================
 # Batman-adv Main Interface
 # ============================================================================
+# Gateway mode: server (has WAN) or client (no WAN)
+# Nodes with has_wan=true advertise themselves as gateways
+# Nodes with has_wan=false route through gateway nodes
 
 config interface 'bat0'
 	option proto 'batadv'
 	option routing_algo '{{ batman_routing_algo }}'
+{% if has_wan | default(true) %}
 	option gw_mode 'server'
 	option gw_bandwidth '{{ batman_gw_bandwidth }}'
+{% else %}
+	option gw_mode 'client'
+	# gw_sel_class: prefer higher bandwidth gateways
+	option gw_sel_class '20'
+{% endif %}
 	option distributed_arp_table '1'
 	option bridge_loop_avoidance '1'
 	option multicast_mode '1'
@@ -102,6 +111,42 @@ config device 'lan4_client'
 	option ifname 'lan4'
 	option vid '{{ switch_client_vlan }}'
 
+# VLAN {{ vlans.management.vid }} - Management (LAN3 to Switch A)
+config device 'lan3_mgmt'
+	option name 'lan3.{{ vlans.management.vid }}'
+	option type '8021q'
+	option ifname 'lan3'
+	option vid '{{ vlans.management.vid }}'
+
+# VLAN {{ vlans.management.vid }} - Management (LAN4 to Switch B)
+config device 'lan4_mgmt'
+	option name 'lan4.{{ vlans.management.vid }}'
+	option type '8021q'
+	option ifname 'lan4'
+	option vid '{{ vlans.management.vid }}'
+
+# VLAN {{ iot_vlan }} - IoT (LAN3 to Switch A)
+config device 'lan3_iot'
+	option name 'lan3.{{ iot_vlan }}'
+	option type '8021q'
+	option ifname 'lan3'
+	option vid '{{ iot_vlan }}'
+
+# VLAN {{ iot_vlan }} - IoT (LAN4 to Switch B)
+config device 'lan4_iot'
+	option name 'lan4.{{ iot_vlan }}'
+	option type '8021q'
+	option ifname 'lan4'
+	option vid '{{ iot_vlan }}'
+
+# IoT VLAN device on Batman mesh (802.1q VLAN on bat0)
+# This enables IoT traffic to flow through the wireless mesh as backup
+config device 'bat0_iot'
+	option name 'bat0.{{ iot_vlan }}'
+	option type '8021q'
+	option ifname 'bat0'
+	option vid '{{ iot_vlan }}'
+
 # ============================================================================
 # Batman-adv Hard Interfaces (Mesh Backbone)
 # ============================================================================
@@ -155,42 +200,65 @@ config interface 'lan'
 # IoT/Infrastructure Network (VLAN {{ iot_vlan }} - 10.11.30.0/24)
 # ============================================================================
 
-# IoT Bridge device (LAN2 only - not bridged to mesh)
-config device 'br_iot'
-	option name 'br-iot'
-	option type 'bridge'
-	list ports 'lan2'
-
 # IoT interface configuration
+# Bridge includes: LAN2 (direct), trunk VLANs from switches
+# WiFi interface added via wireless config
+# Each node gets its own IP: 10.11.30.{node_number} based on node_ip last octet
+{% set iot_network_octets = iot_network.split('.') %}
+{% set iot_node_octet = node_ip.split('.')[3] %}
 config interface 'iot'
-	option device 'br-iot'
 	option proto 'static'
-	option ipaddr '{{ iot_gateway }}'
+	option type 'bridge'
+	list ports 'bat0.{{ iot_vlan }}'
+	list ports 'lan2'
+	list ports 'lan3.{{ iot_vlan }}'
+	list ports 'lan4.{{ iot_vlan }}'
+	option ipaddr '{{ iot_network_octets[0] }}.{{ iot_network_octets[1] }}.{{ iot_network_octets[2] }}.{{ iot_node_octet }}'
 	option netmask '{{ iot_netmask }}'
 
 {% if enable_vlans %}
 # ============================================================================
 # Optional VLAN Configurations (Management, Guest WiFi)
 # ============================================================================
-{% for vlan_name, vlan_config in vlans.items() %}
-{% if vlan_name not in ['iot'] %}
 
-config interface '{{ vlan_name }}'
-	option proto 'batadv_vlan'
-	option master 'bat0'
-	option vid '{{ vlan_config.vid }}'
-{% if vlan_config.isolation is defined and vlan_config.isolation %}
-	option ap_isolation '1'
-{% else %}
-	option ap_isolation '0'
-{% endif %}
+# Management VLAN device on Batman mesh (802.1q VLAN on bat0)
+# This enables management traffic to flow through the wireless mesh
+config device 'bat0_mgmt'
+	option name 'bat0.{{ vlans.management.vid }}'
+	option type '8021q'
+	option ifname 'bat0'
+	option vid '{{ vlans.management.vid }}'
 
-config interface '{{ vlan_name }}_bridge'
+# Guest VLAN device on Batman mesh (802.1q VLAN on bat0)
+config device 'bat0_guest'
+	option name 'bat0.{{ vlans.guest.vid }}'
+	option type '8021q'
+	option ifname 'bat0'
+	option vid '{{ vlans.guest.vid }}'
+
+# Management Network Bridge (br-mgmt, max 15 char limit)
+# Includes: Batman VLAN (mesh backup), trunk VLANs from switches (wired primary)
+# WiFi interface added via wireless config
+# Each node gets its own IP: 10.11.10.{node_number} based on node_ip last octet
+{% set mgmt_network = vlans.management.network.split('/')[0].split('.') %}
+{% set node_octet = node_ip.split('.')[3] %}
+config interface 'mgmt'
 	option proto 'static'
 	option type 'bridge'
-	list ports '{{ vlan_name }}'
-	option ipaddr '{{ vlan_config.gateway_ip }}'
-	option netmask '{{ vlan_config.netmask }}'
-{% endif %}
-{% endfor %}
+	option bridge_empty '1'
+	list ports 'bat0.{{ vlans.management.vid }}'
+	list ports 'lan3.{{ vlans.management.vid }}'
+	list ports 'lan4.{{ vlans.management.vid }}'
+	option ipaddr '{{ mgmt_network[0] }}.{{ mgmt_network[1] }}.{{ mgmt_network[2] }}.{{ node_octet }}'
+	option netmask '{{ vlans.management.netmask }}'
+
+# Guest Network Bridge
+# Isolated guest network via Batman mesh VLAN
+config interface 'guest_bridge'
+	option proto 'static'
+	option type 'bridge'
+	option bridge_empty '1'
+	list ports 'bat0.{{ vlans.guest.vid }}'
+	option ipaddr '{{ vlans.guest.gateway_ip }}'
+	option netmask '{{ vlans.guest.netmask }}'
 {% endif %}

@@ -83,10 +83,29 @@ dhcp_pools:
     limit: "{{ lookup('env', 'DHCP_NODE3_LIMIT') | default('50', true) | int }}"
 
 # Static Host Reservations (optional)
-static_hosts: []
+# These work across all networks - dnsmasq matches by IP subnet
+# Add MAC addresses after discovering them from your devices
+static_hosts:
+  # Management/Infrastructure (10.11.10.x)
+  - name: rpi-qdevice
+    mac: 'dc:a6:32:94:67:eb'
+    ip: 10.11.10.20
+#  - name: proxmox1
+#    mac: 'XX:XX:XX:XX:XX:XX'  # Get from: ip link show eth0
+#    ip: 10.11.10.21
+#  - name: proxmox2
+#    mac: 'XX:XX:XX:XX:XX:XX'  # Get from: ip link show eth0
+#    ip: 10.11.10.22
+#
+#  # LAN examples (10.11.12.x)
 #  - name: admin-workstation
 #    mac: 'AA:BB:CC:DD:EE:FF'
 #    ip: 10.11.12.10
+#
+#  # IoT examples (10.11.30.x)
+#  - name: homeassistant-vm
+#    mac: 'AA:BB:CC:DD:EE:03'
+#    ip: 10.11.30.50
 
 # ============================================================================
 # Batman-adv Configuration
@@ -94,14 +113,20 @@ static_hosts: []
 
 batman_routing_algo: "{{ lookup('env', 'BATMAN_ROUTING_ALGO') | default('BATMAN_V', true) }}"
 batman_gw_bandwidth: "{{ lookup('env', 'BATMAN_GW_BANDWIDTH') | default('100000/100000', true) }}"
-batman_orig_interval: "{{ lookup('env', 'BATMAN_ORIG_INTERVAL') | default('1000', true) | int }}"
+batman_orig_interval: "{{ lookup('env', 'BATMAN_ORIG_INTERVAL') | default('500', true) | int }}"
+
+# Per-interface hop penalties to prevent wired/wireless route flapping
+batman_hop_penalty_wired: "{{ lookup('env', 'BATMAN_HOP_PENALTY_WIRED') | default('5', true) | int }}"
+batman_hop_penalty_wireless: "{{ lookup('env', 'BATMAN_HOP_PENALTY_WIRELESS') | default('30', true) | int }}"
+
+# Legacy hop penalty (deprecated, kept for compatibility)
 batman_hop_penalty: "{{ lookup('env', 'BATMAN_HOP_PENALTY') | default('15', true) | int }}"
 
 # ============================================================================
 # Wireless Mesh Configuration (2.4GHz - Backbone)
 # ============================================================================
 
-mesh_id: "{{ lookup('env', 'MESH_ID') | default('ha-mesh-net', true) }}"
+mesh_id: "{{ lookup('env', 'MESH_ID') | default('HA-Mesh', true) }}"
 mesh_encryption: "{{ lookup('env', 'MESH_ENCRYPTION') | default('sae', true) }}"
 mesh_password: "{{ lookup('env', 'MESH_PASSWORD') | default('CHANGE_THIS_PASSWORD', true) }}"
 mesh_channel: "{{ lookup('env', 'MESH_CHANNEL') | default('6', true) | int }}"
@@ -112,7 +137,7 @@ mesh_mcast_rate: "{{ lookup('env', 'MESH_MCAST_RATE') | default('24000', true) |
 # Client WiFi Configuration (5GHz - Access Point)
 # ============================================================================
 
-client_ssid: "{{ lookup('env', 'CLIENT_SSID') | default('HA-Network-5G', true) }}"
+client_ssid: "{{ lookup('env', 'CLIENT_SSID') | default('HA-Client', true) }}"
 client_encryption: "{{ lookup('env', 'CLIENT_ENCRYPTION') | default('psk2+ccmp', true) }}"
 client_password: "{{ lookup('env', 'CLIENT_PASSWORD') | default('CHANGE_THIS_PASSWORD', true) }}"
 client_channel: "{{ lookup('env', 'CLIENT_CHANNEL') | default('36', true) | int }}"
@@ -138,7 +163,7 @@ mtu_wireless_mesh: "{{ lookup('env', 'MTU_WIRELESS_MESH') | default('1532', true
 # ============================================================================
 
 # Required packages (converted from comma-separated string to list)
-required_packages: "{{ lookup('env', 'REQUIRED_PACKAGES') | default('python3,batctl-full,kmod-batman-adv,wpad-mesh-mbedtls,ip-full,tcpdump-mini,openssh-server,openssh-sftp-server,openssh-keygen,curl', true) | split(',') }}"
+required_packages: "{{ lookup('env', 'REQUIRED_PACKAGES') | default('python3,batctl-full,kmod-batman-adv,wpad-mesh-mbedtls,ip-full,tcpdump-mini,openssh-server,openssh-sftp-server,openssh-keygen,openssh-client,curl', true) | split(',') }}"
 
 # Packages to remove (converted from comma-separated string to list)
 remove_packages: "{{ lookup('env', 'REMOVE_PACKAGES') | default('wpad-basic-mbedtls,wpad-basic-wolfssl,wpad-basic', true) | split(',') }}"
@@ -184,12 +209,15 @@ switch_b_ip: "{{ lookup('env', 'SWITCH_B_IP') | default('10.11.10.12', true) }}"
 # Separate network for IoT devices, Proxmox servers, etc.
 # Isolated from LAN but has internet access
 
-iot_vlan: "{{ lookup('env', 'IOT_VLAN') | default('300', true) | int }}"
+iot_vlan: "{{ lookup('env', 'IOT_VLAN') | default('30', true) | int }}"
 iot_network: "{{ lookup('env', 'IOT_NETWORK') | default('10.11.30.0', true) }}"
 iot_netmask: "{{ lookup('env', 'IOT_NETMASK') | default('255.255.255.0', true) }}"
 iot_gateway: "{{ lookup('env', 'IOT_GATEWAY') | default('10.11.30.1', true) }}"
 iot_dhcp_start: "{{ lookup('env', 'IOT_DHCP_START') | default('100', true) | int }}"
 iot_dhcp_limit: "{{ lookup('env', 'IOT_DHCP_LIMIT') | default('100', true) | int }}"
+iot_ssid: "{{ lookup('env', 'IOT_SSID') | default('HA-IoT', true) }}"
+iot_password: "{{ lookup('env', 'IOT_PASSWORD') | default('CHANGE_THIS_PASSWORD', true) }}"
+iot_encryption: "{{ lookup('env', 'IOT_ENCRYPTION') | default('psk2+ccmp', true) }}"
 
 # ============================================================================
 # VLAN Configuration (Optional Multi-Network Support)
@@ -212,9 +240,9 @@ vlans:
     encryption: "{{ lookup('env', 'MGMT_VLAN_ENCRYPTION') | default('psk2+ccmp', true) }}"
 
   guest:
-    vid: "{{ lookup('env', 'GUEST_VLAN_VID') | default('30', true) | int }}"
-    network: "{{ lookup('env', 'GUEST_VLAN_NETWORK') | default('10.11.30.0/24', true) }}"
-    gateway_ip: "{{ lookup('env', 'GUEST_VLAN_GATEWAY') | default('10.11.30.1', true) }}"
+    vid: "{{ lookup('env', 'GUEST_VLAN_VID') | default('20', true) | int }}"
+    network: "{{ lookup('env', 'GUEST_VLAN_NETWORK') | default('10.11.20.0/24', true) }}"
+    gateway_ip: "{{ lookup('env', 'GUEST_VLAN_GATEWAY') | default('10.11.20.1', true) }}"
     netmask: "255.255.255.0"
     dhcp_start: "{{ lookup('env', 'GUEST_VLAN_DHCP_START') | default('100', true) | int }}"
     dhcp_limit: "{{ lookup('env', 'GUEST_VLAN_DHCP_LIMIT') | default('50', true) | int }}"

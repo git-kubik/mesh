@@ -437,10 +437,10 @@ Reviewers may use these prefixes:
 
 ### Documentation
 
-- [Pre-commit Hooks](PRE-COMMIT-HOOKS.md) - Pre-commit configuration guide
-- [Initial Node Setup](INITIAL-NODE-SETUP.md) - Hardware setup guide
-- [Complete Setup](openwrt-batman-mesh-setup.md) - Full deployment guide
-- [Ansible Quick Start](ANSIBLE-QUICKSTART.md) - Quick deployment guide
+- [Pre-commit Hooks](pre-commit.md) - Pre-commit configuration guide
+- [Initial Node Setup](../getting-started/initial-setup.md) - Hardware setup guide
+- [Architecture Overview](../architecture/overview.md) - Full deployment guide
+- [Ansible Quick Start](../getting-started/ansible-basics.md) - Quick deployment guide
 
 ### External Resources
 

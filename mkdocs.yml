@@ -126,21 +126,6 @@ extra:
       link: https://github.com/git-kubik/mesh
     - icon: fontawesome/brands/docker
       link: https://hub.docker.com/
-  analytics:
-    feedback:
-      title: Was this page helpful?
-      ratings:
-        - icon: material/emoticon-happy-outline
-          name: This page was helpful
-          data: 1
-          note: >-
-            Thanks for your feedback!
-        - icon: material/emoticon-sad-outline
-          name: This page could be improved
-          data: 0
-          note: >-
-            Thanks for your feedback! Help us improve this page by
-            opening an issue on GitHub.
 
 extra_css:
   - stylesheets/extra.css
@@ -148,20 +133,53 @@ extra_css:
 nav:
   - Home:
       - index.md
-      - Project Status: STATUS-UPDATE.md
+      - Design Philosophy: philosophy.md
   - Getting Started:
-      - Quick Start: ANSIBLE-QUICKSTART.md
-      - Initial Node Setup: INITIAL-NODE-SETUP.md
-      - Complete Setup Guide: openwrt-batman-mesh-setup.md
-  - Development:
-      - Contributing: CONTRIBUTING.md
-      - Pre-commit Hooks: PRE-COMMIT-HOOKS.md
-      - Project Status: PROJECT-STATUS.md
-  - GitHub Integration:
-      - Setup Guide: GITHUB-SETUP.md
-      - Complete Integration: GITHUB-COMPLETE-SETUP.md
+      - getting-started/index.md
+      - Quick Start: getting-started/quickstart.md
+      - Initial Setup: getting-started/initial-setup.md
+      - Ansible Basics: getting-started/ansible-basics.md
   - Architecture:
-      - Multi-Network VLANs: MULTI-NETWORK-ARCHITECTURE.md
+      - architecture/index.md
+      - Overview: architecture/overview.md
+      - Batman-adv Protocol: architecture/batman-mesh.md
+      - Network Topology: architecture/network-topology.md
+      - VLAN Architecture: architecture/vlan-architecture.md
+      - Switch Integration: architecture/switch-integration.md
+  - Deployment:
+      - deployment/index.md
+      - Configuration: deployment/configuration.md
+      - SSH Keys: deployment/ssh-keys.md
+  - Operations:
+      - operations/index.md
+      - Backup & Restore: operations/backup-restore.md
+      - Firmware Management: operations/firmware.md
+      - USB Storage: operations/usb-storage.md
+      - Monitoring: operations/monitoring.md
+      - Distributed Syslog: operations/syslog.md
+      - Recovery: operations/recovery.md
+  - Development:
+      - development/index.md
+      - Testing Guide: development/testing.md
+      - Contributing: development/contributing.md
+      - Pre-commit Hooks: development/pre-commit.md
+      - Docker Setup: development/docker.md
+      - Docker MCP: development/docker-mcp.md
+  - Troubleshooting:
+      - troubleshooting/index.md
+      - Common Issues: troubleshooting/common-issues.md
+      - Debugging Guide: troubleshooting/debugging.md
   - Reference:
-      - Docker Setup: docker-README.md
-      - Test Suite: tests-README.md
+      - reference/index.md
+      - Makefile Commands: reference/makefile.md
+      - Playbooks: reference/playbooks.md
+      - CLI Commands: reference/cli-commands.md
+      - Node Audit: reference/node-audit.md
+      - Factory Reset: reference/factory-reset.md
+  - Advanced:
+      - advanced/index.md
+      - Image Builder: advanced/image-builder.md
+      - Local Repository: advanced/local-repository.md
+      - Repository Implementation: advanced/repo-implementation.md
+      - Full Archive Mode: advanced/full-archive.md
+      - Monitoring & Alerting: advanced/monitoring-alerting.md

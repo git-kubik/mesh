@@ -121,6 +121,11 @@ addopts = """
     --tb=short
     --maxfail=5
 """
+# Show captured stdout/stderr on failures
+log_cli = true
+log_cli_level = "INFO"
+log_cli_format = "%(asctime)s [%(levelname)s] %(message)s"
+log_cli_date_format = "%H:%M:%S"
 markers = [
     "unit: Unit tests (fast, no network)",
     "integration: Integration tests (require nodes)",
@@ -132,6 +137,7 @@ markers = [
     "wlan2: Tests requiring wlan2 adapter",
     "destructive: Tests that disrupt network connectivity",
     "requires_nodes: Tests requiring physical nodes",
+    "infrastructure: Tests for switches and infrastructure devices (10.11.10.x)",
 ]
 
 [tool.coverage.run]

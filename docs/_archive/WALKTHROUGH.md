@@ -798,7 +798,7 @@ Originator       TQ (#/255) Nexthop          [outgoingIF] Bandwidth
 
 You should see these SSIDs:
 
-- **HA-Network-5G** (appears 3 times - one from each node)
+- **HA-Client** (appears 3 times - one from each node)
   - Frequency: 5GHz
   - Security: WPA2-PSK
   - Password: From `group_vars/all.yml` → `client_password`
@@ -806,11 +806,12 @@ You should see these SSIDs:
 If VLANs are enabled, you'll also see:
 
 - **HA-Management** (2.4GHz, VLAN 10)
-- **HA-Guest** (5GHz, VLAN 30, isolated)
+- **HA-IoT** (2.4GHz, VLAN 300, isolated)
+- **HA-Guest** (5GHz, VLAN 31, isolated)
 
 **Connect a device:**
 
-1. Connect to **HA-Network-5G**
+1. Connect to **HA-Client**
 2. Enter the password
 3. You should get IP: 10.11.12.100-249
 4. Test internet: `ping 8.8.8.8`
@@ -1063,7 +1064,7 @@ make update
 
 ### WiFi Not Visible
 
-**Problem:** Can't see HA-Network-5G SSID
+**Problem:** Can't see HA-Client SSID
 
 **Solutions:**
 
@@ -1144,9 +1145,9 @@ make update
 
 ### Learn More
 
-- **[NODE-AUDIT.md](NODE-AUDIT.md)** - Detailed audit system documentation
-- **[openwrt-batman-mesh-setup.md](openwrt-batman-mesh-setup.md)** - Technical deep dive
-- **[ANSIBLE-QUICKSTART.md](ANSIBLE-QUICKSTART.md)** - Ansible basics
+- **[Node Audit](../reference/node-audit.md)** - Detailed audit system documentation
+- **[Architecture Overview](../architecture/overview.md)** - Technical deep dive
+- **[Ansible Basics](../getting-started/ansible-basics.md)** - Ansible basics
 
 ### Customize Your Network
 

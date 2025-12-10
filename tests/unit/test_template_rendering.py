@@ -31,10 +31,10 @@ def mock_node_variables() -> Dict[str, Any]:
         "batman_gateway_mode": "server",
         "batman_gw_bandwidth": "100000/100000",
         # Wireless settings
-        "mesh_id": "ha-mesh-net",
+        "mesh_id": "HA-Mesh",
         "mesh_password": "test-mesh-password",
         "mesh_channel": 6,
-        "client_ssid": "HA-Network-5G",
+        "client_ssid": "HA-Client",
         "client_password": "test-client-password",
         "client_channel": 36,
         "country_code": "AU",

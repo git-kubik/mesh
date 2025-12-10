@@ -14,13 +14,14 @@ This mesh network now supports **multiple isolated networks** using VLANs and du
 
 | Network | VLAN ID | Subnet | Wireless | Purpose | Isolation |
 |---------|---------|---------|----------|---------|-----------|
-| **Main LAN** | None | 10.11.12.0/24 | 5GHz (HA-Network-5G) | Trusted internal devices | No |
+| **Main LAN** | None | 10.11.12.0/24 | 5GHz (HA-Client) | Trusted internal devices | No |
 | **Management** | 10 | 10.11.10.0/24 | 2.4GHz (HA-Management) | Admin/management access | No (can access LAN) |
-| **Guest** | 30 | 10.11.30.0/24 | 5GHz (HA-Guest) | Guest WiFi | Yes (isolated from LAN) |
+| **IoT** | 30 | 10.11.30.0/24 | 2.4GHz (HA-IoT) | IoT devices | Yes (isolated from LAN) |
+| **Guest** | 20 | 10.11.20.0/24 | 5GHz (HA-Guest) | Guest WiFi | Yes (isolated from LAN) |
 
 ### Wireless Configuration
 
-#### 2.4GHz Radio (radio0) - Dual Purpose
+#### 2.4GHz Radio (radio0) - Triple Purpose
 
 ```
 ┌─────────────────────────────────┐
@@ -28,13 +29,15 @@ This mesh network now supports **multiple isolated networks** using VLANs and du
 ├─────────────────────────────────┤
 │ mesh0:  Batman-adv mesh backup   │  ← Mesh backhaul
 │ mgmt0:  Management AP (VLAN 10)  │  ← Admin access
+│ iot0:   IoT AP (VLAN 30)         │  ← IoT devices
 └─────────────────────────────────┘
 ```
 
 **SSIDs:**
 
-- **Mesh**: `ha-mesh-net` (hidden, mesh protocol)
+- **Mesh**: `HA-Mesh` (hidden, mesh protocol)
 - **Management**: `HA-Management` (VLAN 10)
+- **IoT**: `HA-IoT` (VLAN 30, isolated)
 
 #### 5GHz Radio (radio1) - Dual SSID
 
@@ -43,14 +46,14 @@ This mesh network now supports **multiple isolated networks** using VLANs and du
 │        5GHz Radio (radio1)       │
 ├─────────────────────────────────┤
 │ wlan0:  Internal AP (Main LAN)   │  ← Trusted devices
-│ guest0: Guest AP (VLAN 30)       │  ← Isolated guests
+│ guest0: Guest AP (VLAN 20)       │  ← Isolated guests
 └─────────────────────────────────┘
 ```
 
 **SSIDs:**
 
-- **Internal**: `HA-Network-5G` (Main LAN, 802.11r roaming)
-- **Guest**: `HA-Guest` (VLAN 30, isolated)
+- **Internal**: `HA-Client` (Main LAN, 802.11r roaming)
+- **Guest**: `HA-Guest` (VLAN 20, isolated)
 
 ## IP Address Allocation
 
@@ -75,13 +78,13 @@ This mesh network now supports **multiple isolated networks** using VLANs and du
 10.11.10.100-149 - DHCP pool (all nodes serve)
 ```
 
-### Guest VLAN 30 (10.11.30.0/24)
+### Guest VLAN 20 (10.11.20.0/24)
 
 ```
-10.11.30.1      - Node 1 (VLAN interface)
-10.11.30.2      - Node 2 (VLAN interface)
-10.11.30.3      - Node 3 (VLAN interface)
-10.11.30.100-149 - DHCP pool (all nodes serve)
+10.11.20.1      - Node 1 (VLAN interface)
+10.11.20.2      - Node 2 (VLAN interface)
+10.11.20.3      - Node 3 (VLAN interface)
+10.11.20.100-149 - DHCP pool (all nodes serve)
 ```
 
 ## Firewall Rules
@@ -137,7 +140,7 @@ This mesh network now supports **multiple isolated networks** using VLANs and du
 
 **Features**: 802.11r fast roaming between nodes
 
-### Guest Network (5GHz - VLAN 30)
+### Guest Network (5GHz - VLAN 20)
 
 **Purpose**: Internet-only access for visitors/untrusted devices
 
@@ -172,8 +175,8 @@ vlans:
     encryption: psk2+ccmp
 
   guest:
-    vid: 30
-    network: 10.11.30.0/24
+    vid: 20
+    network: 10.11.20.0/24
     dhcp_start: 100
     dhcp_limit: 50
     isolation: true  # Blocks LAN access
@@ -209,7 +212,7 @@ ansible mesh_nodes -a "iw dev" -i inventory/hosts.yml
 
 ### Connecting to Internal Network
 
-1. Scan for WiFi: `HA-Network-5G` (5GHz)
+1. Scan for WiFi: `HA-Client` (5GHz)
 2. Connect with internal password
 3. Receive IP: 10.11.12.x (from one of the node pools)
 4. DNS: 10.11.12.1, 10.11.12.2, 10.11.12.3
@@ -221,8 +224,8 @@ ansible mesh_nodes -a "iw dev" -i inventory/hosts.yml
 
 1. Scan for WiFi: `HA-Guest` (5GHz)
 2. Connect with guest password
-3. Receive IP: 10.11.30.x
-4. DNS: 10.11.30.1, 10.11.30.2, 10.11.30.3
+3. Receive IP: 10.11.20.x
+4. DNS: 10.11.20.1, 10.11.20.2, 10.11.20.3
 5. Gateway: Automatic
 6. **Access**: WAN only (isolated from LAN)
 7. **Isolation**: Client isolation enabled (guests can't see each other)

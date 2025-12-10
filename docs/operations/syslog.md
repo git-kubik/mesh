@@ -461,9 +461,9 @@ crontab -l | { cat; echo "*/15 * * * * /usr/bin/syslog-capture-batman.sh"; } | c
 
 ## Related Documentation
 
-- [Monitoring Guide](MONITORING.md) - Collectd and vnStat monitoring
-- [USB Storage Guide](USB-STORAGE.md) - USB storage configuration
-- [Audit Guide](../README.md#auditing) - System auditing
+- [Monitoring Guide](monitoring.md) - Collectd and vnStat monitoring
+- [USB Storage Guide](usb-storage.md) - USB storage configuration
+- [Node Audit](../reference/node-audit.md) - System auditing
 
 ## Summary
 

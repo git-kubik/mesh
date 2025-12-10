@@ -314,7 +314,7 @@ docker system prune -a
 
 ## Architecture
 
-![Docker Architecture Diagram](images/docker-architecture.svg)
+![Docker Architecture Diagram](../images/docker-architecture.svg)
 
 The Docker environment consists of:
 
@@ -346,7 +346,7 @@ The Docker environment consists of:
 For issues or questions:
 
 1. Check logs: `docker-compose logs -f`
-2. Review [CONTRIBUTING.md](CONTRIBUTING.md)
+2. Review [Contributing Guide](contributing.md)
 3. Consult Docker skill: Use `docker-dev` skill in Claude Code
 4. Open GitHub issue with relevant logs
 

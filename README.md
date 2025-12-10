@@ -127,7 +127,7 @@ Node1 (10.11.12.1) ←lan3→ Node2 (10.11.12.2)
 - **LAN**: 10.11.12.0/24
 - **DHCP**: 10.11.12.100-250 (served by Node1)
 - **Gateways**: All 3 nodes (automatic failover)
-- **Client AP**: HA-Network-5G (5GHz, WPA2/WPA3)
+- **Client AP**: HA-Client (5GHz, WPA2/WPA3)
 
 ## Development
 

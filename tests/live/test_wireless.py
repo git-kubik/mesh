@@ -5,12 +5,17 @@ Tests validate wireless configuration, SSIDs, and mesh wireless backup.
 Includes tests that use local wlan2 adapter for client-side validation.
 """
 
+import logging
+import os
 import re
 import time
+from typing import Optional
 
 import pytest
 
 from .conftest import NETWORK_CONFIG, NodeExecutor, run_local
+
+logger = logging.getLogger(__name__)
 
 
 @pytest.mark.live
@@ -57,7 +62,7 @@ class TestWirelessSSIDs:
     """Test SSID configuration."""
 
     def test_client_ssid_configured(self, all_node_executors: list[NodeExecutor]) -> None:
-        """Verify client SSID (HA-Network-5G) is configured."""
+        """Verify client SSID (HA-Client) is configured."""
         expected_ssid = str(NETWORK_CONFIG["client_ssid"])
         for executor in all_node_executors:
             output = executor.run_ok("uci show wireless | grep ssid")
@@ -66,7 +71,7 @@ class TestWirelessSSIDs:
             ), f"{executor.node} missing client SSID {expected_ssid}: {output}"
 
     def test_mesh_ssid_configured(self, all_node_executors: list[NodeExecutor]) -> None:
-        """Verify mesh SSID (ha-mesh-net) is configured."""
+        """Verify mesh SSID (HA-Mesh) is configured."""
         expected_mesh_id = str(NETWORK_CONFIG["mesh_ssid"])
         for executor in all_node_executors:
             output = executor.run_ok("uci show wireless | grep mesh_id")
@@ -94,6 +99,16 @@ class TestWirelessSSIDs:
                 assert True
             else:
                 pytest.skip(f"Guest SSID not configured on {executor.node}")
+
+    def test_iot_ssid_configured(self, all_node_executors: list[NodeExecutor]) -> None:
+        """Verify IoT SSID (HA-IoT) is configured."""
+        expected_ssid = str(NETWORK_CONFIG["iot_ssid"])
+        for executor in all_node_executors:
+            rc, output, _ = executor.run("uci show wireless | grep ssid")
+            if expected_ssid in output:
+                assert True
+            else:
+                pytest.skip(f"IoT SSID not configured on {executor.node}")
 
 
 @pytest.mark.live
@@ -152,13 +167,14 @@ class TestWlan2ClientConnection:
         expected_ssids = [
             str(NETWORK_CONFIG["client_ssid"]),
             str(NETWORK_CONFIG["management_ssid"]),
+            str(NETWORK_CONFIG["iot_ssid"]),
             str(NETWORK_CONFIG["guest_ssid"]),
         ]
         found_ssid = any(ssid in stdout for ssid in expected_ssids)
         assert found_ssid, f"No mesh SSIDs found in scan: {stdout}"
 
     def test_wlan2_can_see_client_ssid(self) -> None:
-        """Test that wlan2 can see the client SSID (HA-Network-5G)."""
+        """Test that wlan2 can see the client SSID (HA-Client)."""
         run_local("sudo ip link set wlan2 up")
         time.sleep(1)
 
@@ -183,14 +199,111 @@ class TestWlan2ClientConnection:
             assert max_signal > -80, f"Signal too weak: {max_signal} dBm"
 
 
+class Wlan2Helper:
+    """Helper class for wlan2 WiFi connection tests."""
+
+    @staticmethod
+    def disconnect() -> None:
+        """Disconnect wlan2 from any network."""
+        run_local("sudo pkill -f 'wpa_supplicant.*wlan2' 2>/dev/null")
+        run_local("sudo dhcpcd --release wlan2 2>/dev/null")
+        run_local("sudo ip addr flush dev wlan2 2>/dev/null")
+        time.sleep(1)
+
+    @staticmethod
+    def connect(ssid: str, password: str, timeout: int = 30) -> bool:
+        """Connect wlan2 to a network using wpa_supplicant."""
+        import tempfile
+
+        Wlan2Helper.disconnect()
+
+        rc, _, _ = run_local("sudo ip link set wlan2 up")
+        if rc != 0:
+            return False
+
+        ctrl_dir = "/tmp/wpa_supplicant_test"
+        run_local(f"sudo mkdir -p {ctrl_dir} && sudo chmod 755 {ctrl_dir}")
+
+        wpa_config = f"""ctrl_interface={ctrl_dir}
+ctrl_interface_group=0
+update_config=1
+
+network={{
+    ssid="{ssid}"
+    psk="{password}"
+    key_mgmt=WPA-PSK
+    proto=RSN WPA
+    pairwise=CCMP TKIP
+    group=CCMP TKIP
+    scan_ssid=1
+}}
+"""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".conf", delete=False) as f:
+            f.write(wpa_config)
+            config_file = f.name
+
+        try:
+            rc, stdout, stderr = run_local(
+                f"sudo wpa_supplicant -B -i wlan2 -c {config_file} 2>&1", timeout=10
+            )
+            logger.info(f"wpa_supplicant start: rc={rc}, out={stdout}, err={stderr}")
+            if rc != 0:
+                return False
+
+            time.sleep(2)
+
+            last_state = ""
+            for i in range(timeout // 2):
+                time.sleep(2)
+                rc, stdout, stderr = run_local(f"sudo wpa_cli -p {ctrl_dir} -i wlan2 status 2>&1")
+                if rc == 0 and stdout.strip():
+                    for line in stdout.split("\n"):
+                        if line.startswith("wpa_state="):
+                            state = line.split("=")[1]
+                            if state != last_state:
+                                logger.info(f"wpa_state: {state} (attempt {i+1})")
+                                last_state = state
+                    if "wpa_state=COMPLETED" in stdout:
+                        return True
+
+            logger.error(f"Connection failed. Final status:\n{stdout}")
+            return False
+        finally:
+            run_local(f"rm -f {config_file}")
+            run_local(f"sudo rm -rf {ctrl_dir}")
+
+    @staticmethod
+    def get_dhcp_address(timeout: int = 30) -> Optional[str]:
+        """Get DHCP address on wlan2."""
+        run_local("sudo dhcpcd --release wlan2 2>&1", timeout=10)
+        time.sleep(1)
+
+        rc, stdout, stderr = run_local("sudo dhcpcd --rebind wlan2 2>&1", timeout=timeout)
+        logger.info(f"dhcpcd rebind: rc={rc}, out={stdout[:500] if stdout else ''}")
+
+        for attempt in range(timeout // 2):
+            time.sleep(2)
+            rc, stdout, _ = run_local("ip -4 addr show wlan2")
+            if rc == 0 and "inet " in stdout:
+                match = re.search(r"inet (\d+\.\d+\.\d+\.\d+)", stdout)
+                if match:
+                    ip = match.group(1)
+                    logger.info(f"Got IP address: {ip} (attempt {attempt + 1})")
+                    return ip
+            logger.info(f"Waiting for IP... (attempt {attempt + 1})")
+
+        logger.error(f"Failed to get IP. Final state: {stdout}")
+        return None
+
+
 @pytest.mark.live
 @pytest.mark.wlan2
 @pytest.mark.slow
-class TestWlan2NetworkAccess:
+class TestWlan2Networks:
     """
-    Tests for connecting wlan2 to mesh networks and verifying access.
+    Comprehensive wlan2 connection tests for all wireless networks.
 
-    These are slower tests that actually connect to networks.
+    Each test connects once and validates: connection, DHCP, internet, and isolation.
     """
 
     @pytest.fixture(autouse=True)
@@ -199,42 +312,175 @@ class TestWlan2NetworkAccess:
         if not can_use_wlan2:
             pytest.skip("wlan2 adapter not available")
 
-    def _connect_to_network(self, ssid: str, password: str) -> bool:
-        """Connect wlan2 to a network using wpa_supplicant."""
-        # Create temporary wpa_supplicant config
-        wpa_config = f"""
-ctrl_interface=/var/run/wpa_supplicant
-network={{
-    ssid="{ssid}"
-    psk="{password}"
-    key_mgmt=WPA-PSK
-}}
-"""
-        # This is a template - actual implementation would need password
-        # For now, skip if password not provided
-        _ = wpa_config  # Placeholder for future implementation
-        return False
-
-    def test_connect_to_client_network(self) -> None:
-        """Test connecting to client network (HA-Network-5G)."""
-        # This test requires the actual password
-        # Skip by default, can be enabled with environment variable
-        password = pytest.importorskip("os").environ.get("MESH_CLIENT_PASSWORD")
+    def test_client_network_5ghz(self) -> None:
+        """Test 5GHz Client network (HA-Client): connect, DHCP, internet."""
+        password = os.environ.get("CLIENT_PASSWORD")
         if not password:
-            pytest.skip("MESH_CLIENT_PASSWORD not set")
+            pytest.skip("CLIENT_PASSWORD not set")
+            return  # For mypy
+        ssid = os.environ.get("CLIENT_SSID") or str(NETWORK_CONFIG["client_ssid"])
 
-        # Would implement actual connection test here
-        pytest.skip("Connection test not implemented - requires password handling")
+        try:
+            # 1. Connect
+            logger.info(f"Connecting to {ssid}...")
+            connected = Wlan2Helper.connect(ssid, password)
+            assert connected, f"Failed to connect to {ssid}"
+            logger.info(f"Connected to {ssid}")
 
-    def test_dhcp_from_mesh_network(self) -> None:
-        """Test that DHCP works when connected to mesh network."""
-        # Requires actual connection
-        pytest.skip("Requires connection to mesh network")
+            # 2. DHCP
+            logger.info("Requesting DHCP address...")
+            ip_addr = Wlan2Helper.get_dhcp_address()
+            assert ip_addr is not None, "Failed to get DHCP address"
+            assert ip_addr.startswith(
+                "10.11.12."
+            ), f"Unexpected IP: {ip_addr} (expected 10.11.12.x)"
+            logger.info(f"Got IP: {ip_addr}")
 
-    def test_internet_via_mesh_network(self) -> None:
-        """Test internet access when connected via mesh network."""
-        # Requires actual connection
-        pytest.skip("Requires connection to mesh network")
+            # 3. Internet connectivity
+            logger.info("Testing internet connectivity...")
+            rc, _, _ = run_local("ping -c 3 -W 5 1.1.1.1")
+            assert rc == 0, "Cannot ping 1.1.1.1 via Client network"
+
+            # 4. DNS resolution
+            logger.info("Testing DNS resolution...")
+            rc, _, _ = run_local("ping -c 3 -W 5 google.com")
+            assert rc == 0, "Cannot resolve DNS via Client network"
+
+            logger.info("All Client network tests passed")
+        finally:
+            Wlan2Helper.disconnect()
+
+    def test_management_network_24ghz(self) -> None:
+        """Test 2.4GHz Management network (HA-Management): connect, DHCP, internet."""
+        password = os.environ.get("MGMT_PASSWORD")
+        if not password:
+            pytest.skip("MGMT_PASSWORD not set")
+            return  # For mypy
+        ssid = str(NETWORK_CONFIG["management_ssid"])
+
+        try:
+            # 1. Connect
+            logger.info(f"Connecting to {ssid}...")
+            connected = Wlan2Helper.connect(ssid, password)
+            assert connected, f"Failed to connect to {ssid}"
+            logger.info(f"Connected to {ssid}")
+
+            # 2. DHCP
+            logger.info("Requesting DHCP address...")
+            ip_addr = Wlan2Helper.get_dhcp_address()
+            assert ip_addr is not None, "Failed to get DHCP address"
+            assert ip_addr.startswith(
+                "10.11.10."
+            ), f"Unexpected IP: {ip_addr} (expected 10.11.10.x)"
+            logger.info(f"Got IP: {ip_addr}")
+
+            # 3. Internet connectivity
+            logger.info("Testing internet connectivity...")
+            rc, _, _ = run_local("ping -c 3 -W 5 1.1.1.1")
+            assert rc == 0, "Cannot ping 1.1.1.1 via Management network"
+
+            # 4. DNS resolution
+            logger.info("Testing DNS resolution...")
+            rc, _, _ = run_local("ping -c 3 -W 5 google.com")
+            assert rc == 0, "Cannot resolve DNS via Management network"
+
+            logger.info("All Management network tests passed")
+        finally:
+            Wlan2Helper.disconnect()
+
+    def test_iot_network_24ghz(self) -> None:
+        """Test 2.4GHz IoT network (HA-IoT): connect, DHCP, internet, isolation."""
+        password = os.environ.get("IOT_PASSWORD")
+        if not password:
+            pytest.skip("IOT_PASSWORD not set")
+            return  # For mypy
+        ssid = os.environ.get("IOT_SSID") or str(NETWORK_CONFIG["iot_ssid"])
+
+        try:
+            # 1. Connect
+            logger.info(f"Connecting to {ssid}...")
+            connected = Wlan2Helper.connect(ssid, password)
+            assert connected, f"Failed to connect to {ssid}"
+            logger.info(f"Connected to {ssid}")
+
+            # 2. DHCP
+            logger.info("Requesting DHCP address...")
+            ip_addr = Wlan2Helper.get_dhcp_address()
+            assert ip_addr is not None, "Failed to get DHCP address"
+            assert ip_addr.startswith(
+                "10.11.30."
+            ), f"Unexpected IP: {ip_addr} (expected 10.11.30.x)"
+            logger.info(f"Got IP: {ip_addr}")
+
+            # 3. Internet connectivity
+            logger.info("Testing internet connectivity...")
+            rc, _, _ = run_local("ping -c 3 -W 5 1.1.1.1")
+            assert rc == 0, "Cannot ping 1.1.1.1 via IoT network"
+
+            # 4. DNS resolution
+            logger.info("Testing DNS resolution...")
+            rc, _, _ = run_local("ping -c 3 -W 5 google.com")
+            assert rc == 0, "Cannot resolve DNS via IoT network"
+
+            # 5. Isolation - should NOT reach internal LAN
+            logger.info("Testing IoT isolation from internal LAN...")
+            rc, stdout, _ = run_local("ping -c 2 -W 3 10.11.12.1")
+            assert rc != 0, f"SECURITY: IoT reached internal LAN 10.11.12.1! Output: {stdout}"
+
+            logger.info("All IoT network tests passed (including isolation)")
+        finally:
+            Wlan2Helper.disconnect()
+
+    def test_guest_network_5ghz(self) -> None:
+        """Test 5GHz Guest network (HA-Guest): connect, DHCP, internet, isolation."""
+        password = os.environ.get("GUEST_PASSWORD")
+        if not password:
+            pytest.skip("GUEST_PASSWORD not set")
+            return  # For mypy
+        ssid = str(NETWORK_CONFIG["guest_ssid"])
+
+        try:
+            # 1. Connect
+            logger.info(f"Connecting to {ssid}...")
+            connected = Wlan2Helper.connect(ssid, password)
+            assert connected, f"Failed to connect to {ssid}"
+            logger.info(f"Connected to {ssid}")
+
+            # 2. DHCP
+            logger.info("Requesting DHCP address...")
+            ip_addr = Wlan2Helper.get_dhcp_address()
+            assert ip_addr is not None, "Failed to get DHCP address"
+            assert ip_addr.startswith(
+                "10.11.20."
+            ), f"Unexpected IP: {ip_addr} (expected 10.11.20.x)"
+            logger.info(f"Got IP: {ip_addr}")
+
+            # 3. Internet connectivity
+            logger.info("Testing internet connectivity...")
+            rc, _, _ = run_local("ping -c 3 -W 5 1.1.1.1")
+            assert rc == 0, "Cannot ping 1.1.1.1 via Guest network"
+
+            # 4. DNS resolution
+            logger.info("Testing DNS resolution...")
+            rc, _, _ = run_local("ping -c 3 -W 5 google.com")
+            assert rc == 0, "Cannot resolve DNS via Guest network"
+
+            # 5. Isolation - should NOT reach internal LAN
+            logger.info("Testing guest isolation from internal LAN...")
+            rc, stdout, _ = run_local("ping -c 2 -W 3 10.11.12.1")
+            assert rc != 0, f"SECURITY: Guest reached internal LAN 10.11.12.1! Output: {stdout}"
+
+            rc, stdout, _ = run_local("ping -c 2 -W 3 10.11.12.2")
+            assert rc != 0, f"SECURITY: Guest reached internal LAN 10.11.12.2! Output: {stdout}"
+
+            # 6. Isolation - should NOT reach management network
+            logger.info("Testing guest isolation from management network...")
+            rc, stdout, _ = run_local("ping -c 2 -W 3 10.11.10.1")
+            assert rc != 0, f"SECURITY: Guest reached management 10.11.10.1! Output: {stdout}"
+
+            logger.info("All Guest network tests passed (including isolation)")
+        finally:
+            Wlan2Helper.disconnect()
 
 
 @pytest.mark.live

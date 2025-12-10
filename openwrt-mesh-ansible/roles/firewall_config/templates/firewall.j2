@@ -34,13 +34,21 @@ config zone
 	option masq '1'
 	option mtu_fix '1'
 
-# IoT/Infrastructure Zone (LAN2 - isolated from LAN, internet access only)
+# IoT Zone (isolated from LAN, limited access to management services)
 config zone
 	option name 'iot'
 	list network 'iot'
 	option input 'REJECT'
 	option output 'ACCEPT'
 	option forward 'REJECT'
+
+# Management Zone (Proxmox, VMs, admin devices)
+config zone
+	option name 'management'
+	list network 'mgmt'
+	option input 'ACCEPT'
+	option output 'ACCEPT'
+	option forward 'ACCEPT'
 
 # ============================================================================
 # Forwarding Rules
@@ -55,6 +63,21 @@ config forwarding
 config forwarding
 	option src 'iot'
 	option dest 'wan'
+
+# Management to WAN (internet access)
+config forwarding
+	option src 'management'
+	option dest 'wan'
+
+# Management to LAN (full access to client network)
+config forwarding
+	option src 'management'
+	option dest 'lan'
+
+# LAN to Management (trusted clients can access management)
+config forwarding
+	option src 'lan'
+	option dest 'management'
 
 # ============================================================================
 # IoT Zone Rules
@@ -97,6 +120,55 @@ config rule
 	option name 'Block-IoT-to-LAN'
 	option src 'iot'
 	option dest 'lan'
+	option target 'REJECT'
+
+# ============================================================================
+# IoT to Management Rules (Selective Access)
+# ============================================================================
+# Allow IoT devices to reach specific services on Management network
+# All other IoT → Management traffic is blocked
+
+# Allow IoT → MQTT Broker (port 1883)
+config rule
+	option name 'Allow-IoT-MQTT'
+	option src 'iot'
+	option dest 'management'
+	option proto 'tcp'
+	option dest_port '1883'
+	option target 'ACCEPT'
+
+# Allow IoT → MQTT TLS (port 8883)
+config rule
+	option name 'Allow-IoT-MQTT-TLS'
+	option src 'iot'
+	option dest 'management'
+	option proto 'tcp'
+	option dest_port '8883'
+	option target 'ACCEPT'
+
+# Allow IoT → Home Assistant API (port 8123)
+config rule
+	option name 'Allow-IoT-HomeAssistant'
+	option src 'iot'
+	option dest 'management'
+	option proto 'tcp'
+	option dest_port '8123'
+	option target 'ACCEPT'
+
+# Allow IoT → Home Assistant HTTPS (port 8443)
+config rule
+	option name 'Allow-IoT-HomeAssistant-TLS'
+	option src 'iot'
+	option dest 'management'
+	option proto 'tcp'
+	option dest_port '8443'
+	option target 'ACCEPT'
+
+# Block all other IoT → Management traffic
+config rule
+	option name 'Block-IoT-to-Management'
+	option src 'iot'
+	option dest 'management'
 	option target 'REJECT'
 
 # ============================================================================
@@ -236,18 +308,28 @@ config rule
 	list dest_port '67'
 	option target 'ACCEPT'
 
-# Block {{ vlan_name }} access to LAN
+# Block {{ vlan_name }} access to LAN (all protocols including ICMP)
 config rule
 	option name 'Block-{{ vlan_name }}-to-LAN'
 	option src '{{ vlan_name }}'
 	option dest 'lan'
+	option proto 'all'
 	option target 'REJECT'
 
-# Block {{ vlan_name }} access to IoT
+# Block {{ vlan_name }} access to IoT (all protocols including ICMP)
 config rule
 	option name 'Block-{{ vlan_name }}-to-IoT'
 	option src '{{ vlan_name }}'
 	option dest 'iot'
+	option proto 'all'
+	option target 'REJECT'
+
+# Block {{ vlan_name }} access to Management (all protocols)
+config rule
+	option name 'Block-{{ vlan_name }}-to-Management'
+	option src '{{ vlan_name }}'
+	option dest 'management'
+	option proto 'all'
 	option target 'REJECT'
 
 {% endif %}

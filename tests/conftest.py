@@ -231,7 +231,7 @@ def mesh_wireless_config() -> Dict[str, Any]:
         Dictionary containing mesh wireless settings.
     """
     return {
-        "mesh_id": "ha-mesh-net",
+        "mesh_id": "HA-Mesh",
         "encryption": "sae",
         "channel": 6,
         "htmode": "HT40",
@@ -248,7 +248,7 @@ def client_wireless_config() -> Dict[str, Any]:
         Dictionary containing client AP wireless settings.
     """
     return {
-        "ssid": "HA-Network-5G",
+        "ssid": "HA-Client",
         "encryption": "psk2+ccmp",
         "channel": 36,
         "htmode": "VHT80",

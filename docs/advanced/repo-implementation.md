@@ -4,7 +4,7 @@ This document provides technical details about the implementation of the local O
 
 **Related Documentation:**
 
-- **User Guide**: [`LOCAL-PACKAGE-REPOSITORY.md`](LOCAL-PACKAGE-REPOSITORY.md) - How to use the local repository
+- **User Guide**: [Local Repository](local-repository.md) - How to use the local repository
 - **This Document**: Technical implementation details and design decisions
 
 ---

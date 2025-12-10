@@ -56,7 +56,7 @@ endif
         snapshot snapshot-all snapshot-diff \
         image-build image-build-all image-clean image-shell image-info \
         factory-reset sysupgrade \
-        test test-quick test-full test-destructive
+        test test-quick test-wireless test-full test-destructive test-infrastructure
 
 help:
 	@echo "OpenWrt Mesh Network - Ansible Commands"
@@ -259,6 +259,8 @@ help:
 	@echo "  make test                       - Run standard live tests (recommended)"
 	@echo "  make test-quick                 - Run quick connectivity tests only"
 	@echo "  make test-full                  - Run all tests with HTML report"
+	@echo "  make test-infrastructure        - Test switches and infrastructure devices"
+	@echo "                                    (Pings all switches, RPi, Proxmox nodes)"
 	@echo "  make test-destructive           - Run destructive failover tests"
 	@echo "                                    (CAUTION: temporarily disrupts network)"
 	@echo ""
@@ -1165,10 +1167,10 @@ endif
 # ============================================================================
 # Run pytest live tests to validate mesh network is functioning correctly
 # Tests are located in ../tests/live/
-# Reports are saved to ../test-reports/
+# Reports are saved to test-reports/ within the project root
 
-# Test report directory
-TEST_REPORT_DIR := ../test-reports
+# Test report directory (relative to project root, not Makefile location)
+TEST_REPORT_DIR := test-reports
 
 # Standard live tests (recommended)
 # Runs all non-destructive tests with standard timeout
@@ -1177,8 +1179,7 @@ test:
 	@echo "=== Running Live Network Tests ==="
 	@echo "Testing mesh network functionality..."
 	@echo ""
-	@mkdir -p $(TEST_REPORT_DIR)
-	@cd .. && uv run pytest tests/live/ -v --timeout=120 \
+	@cd .. && mkdir -p $(TEST_REPORT_DIR) && uv run pytest tests/live/ -v --timeout=120 \
 		-m "live and not destructive and not wlan2" \
 		--html=$(TEST_REPORT_DIR)/live-tests-$$(date +%Y%m%d_%H%M%S).html \
 		--self-contained-html \
@@ -1186,6 +1187,17 @@ test:
 	@echo ""
 	@echo "=== Test Complete ==="
 	@echo "Report: $(TEST_REPORT_DIR)/"
+
+# Wireless/wlan2 tests only
+# Runs wireless configuration and client connection tests
+# Usage: make test-wireless
+test-wireless:
+	@echo "=== Running Wireless Tests ==="
+	@echo ""
+	@cd .. && uv run pytest tests/live/test_wireless.py -v --timeout=120 \
+		-m "live"
+	@echo ""
+	@echo "=== Wireless Tests Complete ==="
 
 # Quick connectivity tests only
 # Runs basic connectivity and batman status tests
@@ -1205,8 +1217,7 @@ test-full:
 	@echo "=== Running Full Live Test Suite ==="
 	@echo "This may take several minutes..."
 	@echo ""
-	@mkdir -p $(TEST_REPORT_DIR)
-	@cd .. && uv run pytest tests/live/ -v --timeout=180 \
+	@cd .. && mkdir -p $(TEST_REPORT_DIR) && uv run pytest tests/live/ -v --timeout=180 \
 		-m "live and not destructive" \
 		--html=$(TEST_REPORT_DIR)/full-tests-$$(date +%Y%m%d_%H%M%S).html \
 		--self-contained-html \
@@ -1227,8 +1238,7 @@ test-destructive:
 	@read -p "Are you sure you want to run destructive tests? (yes/no): " confirm; \
 	if [ "$$confirm" = "yes" ]; then \
 		echo ""; \
-		mkdir -p $(TEST_REPORT_DIR); \
-		cd .. && MESH_RUN_DESTRUCTIVE_TESTS=true uv run pytest tests/live/ -v --timeout=300 \
+		cd .. && mkdir -p $(TEST_REPORT_DIR) && MESH_RUN_DESTRUCTIVE_TESTS=true uv run pytest tests/live/ -v --timeout=300 \
 			-m "live and destructive" \
 			--html=$(TEST_REPORT_DIR)/destructive-tests-$$(date +%Y%m%d_%H%M%S).html \
 			--self-contained-html \
@@ -1239,3 +1249,19 @@ test-destructive:
 	else \
 		echo "Operation cancelled"; \
 	fi
+
+# Infrastructure tests (switches and infrastructure devices)
+# Tests connectivity to all switches and infrastructure on management network
+# Usage: make test-infrastructure
+test-infrastructure:
+	@echo "=== Running Infrastructure Tests ==="
+	@echo "Testing switches (10.11.10.11-13) and infrastructure devices..."
+	@echo ""
+	@cd .. && mkdir -p $(TEST_REPORT_DIR) && uv run pytest tests/live/test_infrastructure.py -v --timeout=120 \
+		-m "infrastructure" \
+		--html=$(TEST_REPORT_DIR)/infrastructure-tests-$$(date +%Y%m%d_%H%M%S).html \
+		--self-contained-html \
+		2>&1 | tee $(TEST_REPORT_DIR)/infrastructure-tests-latest.log
+	@echo ""
+	@echo "=== Infrastructure Tests Complete ==="
+	@echo "Report: $(TEST_REPORT_DIR)/"

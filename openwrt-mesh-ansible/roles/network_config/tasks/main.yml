@@ -8,3 +8,15 @@
     dest: /etc/config/network
     mode: '0644'
     backup: true
+
+- name: Ensure hotplug.d directory exists
+  ansible.builtin.file:
+    path: /etc/hotplug.d/iface
+    state: directory
+    mode: '0755'
+
+- name: Deploy Batman-adv per-interface hop penalty hotplug script
+  ansible.builtin.template:
+    src: batman-hop-penalty.hotplug.j2
+    dest: /etc/hotplug.d/iface/50-batman-hop-penalty
+    mode: '0755'

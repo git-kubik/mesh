@@ -2,6 +2,9 @@
 # Firewall configuration role for OpenWrt mesh nodes
 # Deploys iptables/nftables firewall configuration
 
+- name: Load environment variables
+  ansible.builtin.include_tasks: ../../common/tasks/load_env_vars.yml
+
 - name: Deploy firewall configuration
   ansible.builtin.template:
     src: firewall.j2

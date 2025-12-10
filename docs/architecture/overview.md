@@ -8,15 +8,15 @@
 **Network:** 10.11.12.0/24
 **Devices:** 3x D-Link DIR-1960 A1
 
-![Mesh Topology Overview](images/mesh-topology-overview.svg)
+![Mesh Topology Overview](../images/mesh-topology-overview.svg)
 
 ### Physical Wiring Diagram
 
-![Network Wiring Diagram](images/network-wiring-diagram.svg)
+![Network Wiring Diagram](../images/network-wiring-diagram.svg)
 
 ### Detailed Port Layout
 
-![Mesh Network Port Layout](images/mesh-port-layout.svg)
+![Mesh Network Port Layout](../images/mesh-port-layout.svg)
 
 **Port Configuration:**
 
@@ -36,7 +36,7 @@
 
 **Wireless Clients:**
 
-- 5GHz unified SSID: "HA-Network-5G"
+- 5GHz unified SSID: "HA-Client"
 - Seamless roaming between nodes (802.11r)
 - Same network as wired clients (10.11.12.0/24)
 
@@ -161,8 +161,8 @@ Node1 LAN1 ─→ Gigabit Switch ─┬─ Device 1
 
 ```
 Node1 LAN1 ─→ Managed Switch ─┬─ VLAN 10 devices (Management)
-                               ├─ VLAN 20 devices (Trusted)
-                               └─ VLAN 30 devices (Guest)
+                               ├─ VLAN 20 devices (Guest)
+                               └─ VLAN 30 devices (IoT)
 ```
 
 - Requires VLAN configuration (see VLAN section)
@@ -385,7 +385,7 @@ Download:
 
 ### Ring Topology Connections
 
-![Mesh Ring Topology Wiring](images/mesh-ring-wiring.svg)
+![Mesh Ring Topology Wiring](../images/mesh-ring-wiring.svg)
 
 **Physical Connections:**
 
@@ -549,7 +549,7 @@ config wifi-iface 'mesh0'
  option device 'radio0'
  option mode 'mesh'
  option network 'bat0_hardif_mesh0'
- option mesh_id 'ha-mesh-net'
+ option mesh_id 'HA-Mesh'
  option mesh_fwding '0'
  option mesh_ttl '1'
  option encryption 'sae'
@@ -570,7 +570,7 @@ config wifi-iface 'wlan0'
  option device 'radio1'
  option mode 'ap'
  option network 'lan'
- option ssid 'HA-Network-5G'
+ option ssid 'HA-Client'
  option encryption 'psk2+ccmp'
  option key 'YourClientPassword123!'
  option ieee80211r '1'
@@ -833,9 +833,8 @@ config dhcp 'lan'
 Batman-adv supports VLANs for network segmentation over the mesh. Common use cases:
 
 - VLAN 10: Management
-- VLAN 20: Trusted clients
-- VLAN 30: Guest network
-- VLAN 40: IoT devices
+- VLAN 20: Guest network
+- VLAN 30: IoT devices
 
 ### Enable VLAN Support
 
@@ -856,32 +855,18 @@ config interface 'mgmt_bridge'
  option ipaddr '10.11.10.1'  # Different subnet
  option netmask '255.255.255.0'
 
-# VLAN 20 - Trusted Clients (example)
-config interface 'trusted'
- option proto 'batadv_vlan'
- option master 'bat0'
- option vid '20'
- option ap_isolation '0'
-
-config interface 'trusted_bridge'
- option proto 'static'
- option type 'bridge'
- list ports 'trusted'
- option ipaddr '10.11.20.1'
- option netmask '255.255.255.0'
-
-# VLAN 30 - Guest Network (example)
+# VLAN 20 - Guest Network (example)
 config interface 'guest'
  option proto 'batadv_vlan'
  option master 'bat0'
- option vid '30'
+ option vid '20'
  option ap_isolation '1'  # Isolate guest clients
 
 config interface 'guest_bridge'
  option proto 'static'
  option type 'bridge'
  list ports 'guest'
- option ipaddr '10.11.30.1'
+ option ipaddr '10.11.20.1'
  option netmask '255.255.255.0'
 ```
 
@@ -890,7 +875,7 @@ config interface 'guest_bridge'
 Modify `/etc/config/wireless` to add VLAN-specific SSIDs:
 
 ```bash
-# Guest WiFi on VLAN 30
+# Guest WiFi on VLAN 20
 config wifi-iface 'guest_wifi'
  option device 'radio1'
  option mode 'ap'
@@ -1304,7 +1289,7 @@ Expected:
 # From guest VLAN client, try to reach LAN
 ping 10.11.12.1  # Should fail if firewall rules correct
 
-# From guest VLAN, test internet
+# From guest VLAN, test internet (guest network is 10.11.20.0/24)
 ping 1.1.1.1     # Should work
 ```
 
@@ -2019,13 +2004,13 @@ ping 10.11.12.2
 
    ```bash
    # From VLAN interface
-   ping -I br-guest 10.11.30.1
+   ping -I br-guest 10.11.20.1
    ```
 
 5. **Check firewall rules for VLAN:**
 
    ```bash
-   iptables -L -v -n | grep 10.11.30
+   iptables -L -v -n | grep 10.11.20
    ```
 
 ### Issue: Frequent Gateway Switching
@@ -2328,8 +2313,8 @@ git commit -m "Initial mesh configuration"
 With VLAN configuration, ensure:
 
 - Management VLAN (10) restricted to admin devices only
-- Guest VLAN (30) fully isolated from LAN
-- IoT VLAN (40) restricted to internet-only, no local access
+- Guest VLAN (20) fully isolated from LAN
+- IoT VLAN (30) restricted to internet-only, no local access
 
 ### Monitoring for Security
 

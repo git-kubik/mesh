@@ -855,7 +855,7 @@ openwrt-mesh-ansible/
 
 ## See Also
 
-- [ANSIBLE-QUICKSTART.md](ANSIBLE-QUICKSTART.md) - Ansible basics
-- [openwrt-batman-mesh-setup.md](openwrt-batman-mesh-setup.md) - Technical details
+- [Ansible Basics](../getting-started/ansible-basics.md) - Ansible basics
+- [Architecture Overview](../architecture/overview.md) - Technical details
 - `group_vars/all.yml` - Package requirements configuration
 - `inventory/hosts.yml` - Node definitions

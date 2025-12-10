@@ -585,9 +585,9 @@ Run hooks only on specific directories:
 **Issues with pre-commit**:
 
 1. Check this guide first
-2. Review [CONTRIBUTING.md](CONTRIBUTING.md)
-3. Check [GitHub Issues](https://github.com/yourusername/mesh/issues)
-4. Ask in [GitHub Discussions](https://github.com/yourusername/mesh/discussions)
+2. Review [Contributing Guide](contributing.md)
+3. Check [GitHub Issues](https://github.com/git-kubik/mesh/issues)
+4. Ask in [GitHub Discussions](https://github.com/git-kubik/mesh/discussions)
 
 **Reporting problems**:
 

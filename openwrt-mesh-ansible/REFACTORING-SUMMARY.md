@@ -477,8 +477,8 @@ VLANs are ENABLED - checking VLAN passwords...
 Configuration summary:
   - Mesh Network: 10.11.12.0/24
   - Gateway: 10.11.12.1
-  - Mesh SSID: ha-mesh-net
-  - Client SSID: HA-Network-5G
+  - Mesh SSID: HA-Mesh
+  - Client SSID: HA-Client
   - Country: AU
   - Timezone: Australia/Adelaide
 

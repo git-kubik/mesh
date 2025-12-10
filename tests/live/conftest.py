@@ -58,12 +58,28 @@ NETWORK_CONFIG = {
     "mesh_network": "10.11.12.0/24",
     "mesh_gateway": "10.11.12.1",
     "management_network": "10.11.10.0/24",
-    "guest_network": "10.11.30.0/24",
+    "iot_network": "10.11.30.0/24",
+    "guest_network": "10.11.20.0/24",
     "dns_servers": ["1.1.1.1", "8.8.8.8"],
-    "mesh_ssid": "ha-mesh-net",
-    "client_ssid": "HA-Network-5G",
+    "mesh_ssid": "HA-Mesh",
+    "client_ssid": "HA-Client",
     "management_ssid": "HA-Management",
+    "iot_ssid": "HA-IoT",
     "guest_ssid": "HA-Guest",
+}
+
+# Switch configuration (management network)
+SWITCHES = {
+    "switch_a": {"ip": "10.11.10.11", "description": "Primary mesh switch"},
+    "switch_b": {"ip": "10.11.10.12", "description": "Secondary mesh switch"},
+    "switch_c": {"ip": "10.11.10.13", "description": "Infrastructure switch"},
+}
+
+# Infrastructure devices (management network)
+INFRASTRUCTURE = {
+    "rpi_qdevice": {"ip": "10.11.10.20", "description": "Proxmox QDevice"},
+    "proxmox1": {"ip": "10.11.10.21", "description": "Proxmox node 1"},
+    "proxmox2": {"ip": "10.11.10.22", "description": "Proxmox node 2"},
 }
 
 

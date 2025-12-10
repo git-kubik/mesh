@@ -21,7 +21,7 @@ When you run `make deploy-node NODE=1`, the deployment will:
 4. Deploy monitoring (collectd + vnStat) if `ENABLE_MONITORING=true` (default)
 5. No user confirmation required - fully automated
 
-**Note:** If `ENABLE_MONITORING=true` in `.env`, monitoring will automatically be deployed to use the USB storage. See [MONITORING.md](MONITORING.md) for details.
+**Note:** If `ENABLE_MONITORING=true` in `.env`, monitoring will automatically be deployed to use the USB storage. See [Monitoring Guide](monitoring.md) for details.
 
 ## Prerequisites
 

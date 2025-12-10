@@ -188,8 +188,8 @@
           Configuration summary:
             - Mesh Network: {{ lookup('env', 'MESH_NETWORK') | default('10.11.12.0', true) }}/{{ lookup('env', 'MESH_CIDR') | default('24', true) }}
             - Gateway: {{ lookup('env', 'MESH_GATEWAY') | default('10.11.12.1', true) }}
-            - Mesh SSID: {{ lookup('env', 'MESH_ID') | default('ha-mesh-net', true) }}
-            - Client SSID: {{ lookup('env', 'CLIENT_SSID') | default('HA-Network-5G', true) }}
+            - Mesh SSID: {{ lookup('env', 'MESH_ID') | default('HA-Mesh', true) }}
+            - Client SSID: {{ lookup('env', 'CLIENT_SSID') | default('HA-Client', true) }}
             - Country: {{ lookup('env', 'CLIENT_COUNTRY') | default('AU', true) }}
             - Timezone: {{ lookup('env', 'ZONENAME') | default('Australia/Adelaide', true) }}
 

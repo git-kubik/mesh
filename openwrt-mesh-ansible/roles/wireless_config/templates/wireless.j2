@@ -28,11 +28,21 @@ config wifi-iface 'mesh0'
 config wifi-iface 'mgmt0'
 	option device 'radio0'
 	option mode 'ap'
-	option network 'management_bridge'
+	option network 'mgmt'
 	option ssid '{{ vlans.management.ssid }}'
 	option encryption '{{ vlans.management.encryption }}'
 	option key '{{ vlans.management.password }}'
 {% endif %}
+
+# 2.4GHz IoT AP (isolated from LAN, internet only)
+config wifi-iface 'iot0'
+	option device 'radio0'
+	option mode 'ap'
+	option network 'iot'
+	option ssid '{{ iot_ssid }}'
+	option encryption '{{ iot_encryption }}'
+	option key '{{ iot_password }}'
+	option isolate '1'
 
 config wifi-device 'radio1'
 	option type 'mac80211'
