@@ -8,10 +8,12 @@ This project provides infrastructure-as-code for deploying a high-availability 3
 
 **Key Features:**
 
-- **Full Ring Topology**: 3 wired connections forming a complete ring
-- **Wireless Backup**: 2.4GHz 802.11s mesh for automatic failover
-- **Multi-Gateway**: 3 independent WAN connections with automatic failover
-- **Unified WiFi**: 5GHz client AP with 802.11r seamless roaming
+- **Full Ring Topology**: Wired mesh via managed switches + 2.4GHz 802.11s wireless backup
+- **VLAN Segmentation**: Management (10), Guest (20), IoT (30), Mesh (100), Client (200)
+- **Multi-Gateway**: 3 independent WAN connections with Batman-adv failover
+- **Bridge Loop Avoidance**: BLA prevents L2 loops across mesh + switch topology
+- **Switch Integration**: TP-Link TL-SG108E VLAN trunking for wired backbone
+- **802.11r Fast Roaming**: Seamless WiFi handoff on 5GHz client network
 - **Ansible Automation**: Complete deployment via Makefile commands
 
 ## Quick Navigation
@@ -30,25 +32,42 @@ This project provides infrastructure-as-code for deploying a high-availability 3
 ## Architecture at a Glance
 
 ```
-         Node1 (10.11.12.1)
-          /  \
-     LAN3/    \LAN4
-        /      \
-       /        \
-  Node2 -------- Node3
-(10.11.12.2) (10.11.12.3)
-     LAN4 - LAN3
-
-+ 2.4GHz wireless mesh backup
-+ 5GHz unified client AP (802.11r roaming)
-+ Multi-gateway WAN failover
+                 ┌─────────────────────────────────────┐
+                 │           INTERNET                  │
+                 └───────┬───────────┬───────────┬─────┘
+                         │           │           │
+                    ┌────┴────┐ ┌────┴────┐ ┌────┴────┐
+                    │  WAN 1  │ │  WAN 2  │ │  WAN 3  │
+                    │  Node1  │ │  Node2  │ │  Node3  │
+                    │10.11.12.1│10.11.12.2│10.11.12.3│
+                    └────┬────┘ └────┬────┘ └────┬────┘
+                    LAN3 │ LAN4 LAN3 │ LAN4 LAN3 │ LAN4
+                         │           │           │
+                    ┌────┴───────────┴───────────┴────┐
+                    │    Switch A (All VLANs: 10,20,  │
+                    │        30,100,200) + Switch C   │
+                    │        (Mesh VLAN 100 only)     │
+                    └─────────────────────────────────┘
+                    + 2.4GHz wireless mesh backup (VLAN 100)
+                    + 5GHz unified client AP (802.11r roaming)
 ```
+
+**Network Segments:**
+
+| Network | VLAN | Subnet | Purpose |
+|---------|------|--------|---------|
+| Client | 200 | 10.11.12.0/24 | Main LAN, trusted devices |
+| Management | 10 | 10.11.10.0/24 | Admin access, Proxmox |
+| Guest | 20 | 10.11.20.0/24 | Isolated guest WiFi |
+| IoT | 30 | 10.11.30.0/24 | Smart home devices |
+| Mesh | 100 | - | Batman-adv backbone |
 
 ## Getting Started
 
-1. **[Quick Start](getting-started/quickstart.md)** - Deploy your first node in 30 minutes
-2. **[Architecture Overview](architecture/overview.md)** - Understand the design
-3. **[Philosophy](philosophy.md)** - Why decisions were made
+1. **[Quick Start](getting-started/quickstart.md)** - Deploy your first node in minutes
+2. **[Architecture Overview](architecture/overview.md)** - Understand the network design
+3. **[VLAN Architecture](architecture/vlan-architecture.md)** - Network segmentation details
+4. **[Switch Integration](architecture/switch-integration.md)** - Managed switch configuration
 
 ## Common Tasks
 
@@ -69,12 +88,14 @@ This project provides infrastructure-as-code for deploying a high-availability 3
 
 | Technology | Purpose |
 |------------|---------|
-| OpenWrt 24.10 | Router operating system |
-| Batman-adv BATMAN_V | Layer 2 mesh routing |
-| Ansible | Configuration automation |
-| D-Link DIR-1960 A1 | Hardware platform |
-| pytest | Test framework |
-| MkDocs Material | Documentation |
+| OpenWrt 24.10.4 | Router operating system |
+| Batman-adv BATMAN_V | Layer 2 mesh routing with BLA |
+| TP-Link TL-SG108E | Managed switches for VLAN trunking |
+| D-Link DIR-1960 A1 | Router hardware (3 nodes) |
+| Ansible 8+ | Configuration automation |
+| Docker + Semaphore | Web-based deployment interface |
+| pytest | Test framework (39 test files) |
+| MkDocs Material | Documentation site |
 
 ---
 

@@ -53,6 +53,111 @@ These instructions are **MANDATORY** and **MUST BE FOLLOWED** without exception:
 - **ALWAYS** use uv for python commands
 - **ALWAYS** discover and use the mcp server tools available to you
 
+## Docker MCP Gateway - Available MCP Servers
+
+The Docker MCP gateway provides access to **18 MCP servers**. Use these as **first choice** for relevant tasks:
+
+| Server | Use For | Priority |
+|--------|---------|----------|
+| **github-official** | GitHub API (issues, PRs, repos, actions) - OAuth enabled | HIGH |
+| **github** | Alternative GitHub tools | HIGH |
+| **brave** | Web search (pages, images, news, videos) | HIGH |
+| **duckduckgo** | Alternative web search | MEDIUM |
+| **fetch** | URL fetching and content extraction | HIGH |
+| **filesystem** | File ops in `/home/m` (read, write, search, tree) | MEDIUM |
+| **docker** | Docker CLI operations | HIGH |
+| **dockerhub** | Docker Hub registry interactions | MEDIUM |
+| **playwright** | Browser automation and testing | HIGH |
+| **terraform** | Infrastructure as code operations | HIGH |
+| **prometheus** | Prometheus metrics queries | MEDIUM |
+| **grafana** | Grafana dashboards/metrics | MEDIUM |
+| **arxiv-mcp-server** | Search/fetch academic papers | LOW |
+| **context7** | Up-to-date code documentation lookup | MEDIUM |
+| **memory** | Persistent knowledge graph memory | MEDIUM |
+| **sequentialthinking** | Complex multi-step reasoning | MEDIUM |
+| **simplechecklist** | Task/checklist management | LOW |
+| **time** | Time/timezone utilities | LOW |
+
+**Usage Priority:**
+
+- **GitHub operations** → Use `github-official` MCP (not `gh` CLI)
+- **Web searches** → Use `brave` or `duckduckgo` MCP
+- **Browser automation** → Use `playwright` MCP
+- **Infrastructure** → Use `terraform` MCP
+- **Docker operations** → Use `docker` MCP
+
+## 🧠 MANDATORY: Memory MCP Knowledge Graph
+
+### SESSION START PROTOCOL
+
+**IMMEDIATELY after the compliance acknowledgment**, you MUST:
+
+1. **LOAD** the existing knowledge graph using Memory MCP `read_graph` tool
+2. **SEARCH** for relevant context using `search_nodes` with query "mesh" or current task keywords
+3. **IF EMPTY**: Initialize from `.claude/memory-init.json` using `create_entities` and `create_relations`
+4. **ACKNOWLEDGE** what you remember about this project from previous sessions
+
+**Initial Graph Location**: `.claude/memory-init.json` contains 24 entities and 35 relations covering:
+
+- Project overview and status
+- Hardware nodes (3x D-Link DIR-1960)
+- Network segments (LAN, Management, Guest, IoT, Mesh backbone)
+- Ansible configuration structure
+- Key files and roles
+
+Example session start:
+
+```
+✅ CLAUDE.md COMPLIANCE CONFIRMED: [...]
+
+🧠 MEMORY LOADED:
+- Retrieved X entities from knowledge graph
+- Key context: [relevant findings about mesh project]
+- Last session notes: [any relevant observations]
+```
+
+### DURING SESSION
+
+**ALWAYS** update the knowledge graph when you:
+
+- Learn something new about the codebase architecture
+- Discover important file locations or patterns
+- Encounter and resolve issues/bugs
+- Make significant decisions about implementation
+- Complete major tasks or milestones
+
+Use these Memory MCP tools:
+
+- `create_entities` - Add new concepts (files, components, patterns)
+- `create_relations` - Link entities ("NodeConfig" → "depends_on" → "batman-adv")
+- `add_observations` - Attach facts to existing entities
+
+### ENTITY NAMING CONVENTIONS
+
+Use consistent naming for this project:
+
+- **Project**: `mesh-project`
+- **Components**: `mesh-node1`, `mesh-node2`, `mesh-node3`, `batman-adv`, `ansible-config`
+- **Files**: Use relative paths like `file:openwrt-mesh-ansible/group_vars/all.yml`
+- **Concepts**: `vlan-config`, `failover-logic`, `monitoring-stack`
+- **Issues**: `issue:description-slug`
+- **Decisions**: `decision:topic-slug`
+
+### SESSION END PROTOCOL
+
+Before ending a session or when completing significant work:
+
+1. **CREATE/UPDATE** entities for any new knowledge gained
+2. **ADD OBSERVATIONS** summarizing what was accomplished
+3. **CREATE RELATIONS** linking new knowledge to existing entities
+
+### WHY THIS MATTERS
+
+- **Continuity**: Future sessions start with full context
+- **Efficiency**: No re-discovery of previously learned information
+- **Accuracy**: Decisions and rationale are preserved
+- **Collaboration**: Knowledge persists across conversations
+
 ### COMPLIANCE ENFORCEMENT
 
 **CRITICAL**: If you fail to follow CLAUDE.md instructions:

@@ -4,6 +4,10 @@ This section covers configuration options and deployment procedures for the mesh
 
 ## Overview
 
+![Deployment Workflow](../assets/diagrams/deployment-workflow.svg)
+
+*Ansible deployment workflow showing configuration stages and verification steps.*
+
 Deployment is managed through Ansible automation with configuration stored in `group_vars/all.yml`.
 
 ## Section Contents

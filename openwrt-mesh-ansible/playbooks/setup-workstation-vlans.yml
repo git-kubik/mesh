@@ -1,0 +1,189 @@
+---
+# Setup workstation for multi-VLAN access via trunk port
+#
+# Configures eth2 with VLAN interfaces for all networks:
+#   - eth2 (untagged): Switch management (10.11.10.101/32)
+#   - eth2.10: Management network (10.11.10.100/24)
+#   - eth2.30: IoT network (10.11.30.100/24)
+#   - eth2.200: LAN/Client network (10.11.12.100/24)
+#
+# Prerequisites:
+#   - Workstation connected to Switch A Port 5 (trunk port)
+#   - Switch A configured with VLANs 10, 30, 200 tagged on Port 5
+#
+# Usage:
+#   ansible-playbook playbooks/setup-workstation-vlans.yml
+#   make setup-workstation-vlans
+
+- name: Setup workstation VLAN interfaces for trunk port access
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  become: true
+
+  vars:
+    interface: "{{ lookup('env', 'ETH_INTERFACE') | default('eth2', true) }}"
+    switch_mgmt_ip: "10.11.10.101"
+    switch_ips:
+      - { ip: "10.11.10.11", name: "Switch A" }
+      - { ip: "10.11.10.12", name: "Switch B" }
+      - { ip: "10.11.10.13", name: "Switch C" }
+    vlans:
+      - { id: 10, address: "10.11.10.100", netmask: 24, name: "Management", test_ip: "10.11.10.1" }
+      - { id: 30, address: "10.11.30.100", netmask: 24, name: "IoT", test_ip: "10.11.30.1" }
+      - { id: 200, address: "10.11.12.100", netmask: 24, name: "LAN/Client", test_ip: "10.11.12.1" }
+    node_ips:
+      - { ip: "10.11.10.1", name: "Node 1" }
+      - { ip: "10.11.10.2", name: "Node 2" }
+      - { ip: "10.11.10.3", name: "Node 3" }
+
+  tasks:
+    - name: Check if interface exists
+      ansible.builtin.command: ip link show {{ interface }}
+      register: interface_check
+      failed_when: false
+      changed_when: false
+
+    - name: Fail if interface does not exist
+      when: interface_check.rc != 0
+      block:
+        - name: Get available interfaces
+          ansible.builtin.command: ip -br link show
+          register: available_interfaces
+          changed_when: false
+
+        - name: Show error
+          ansible.builtin.fail:
+            msg: |
+              Error: Interface {{ interface }} does not exist
+
+              Available interfaces:
+              {{ available_interfaces.stdout }}
+
+              Set ETH_INTERFACE in .env to use a different interface
+
+    - name: Display current state
+      block:
+        - name: Get current interface config
+          ansible.builtin.shell: ip addr show {{ interface }} 2>/dev/null || echo "not configured"
+          register: current_config
+          changed_when: false
+
+        - name: Show current state
+          ansible.builtin.debug:
+            msg: |
+              Current {{ interface }} configuration:
+              {{ current_config.stdout }}
+
+    - name: Configure base interface for switch management
+      block:
+        - name: Bring up base interface
+          ansible.builtin.command: ip link set {{ interface }} up
+          changed_when: true
+
+        - name: Flush existing IPs on base interface
+          ansible.builtin.command: ip addr flush dev {{ interface }}
+          changed_when: true
+
+        - name: Add switch management IP (/32 for point-to-point)
+          ansible.builtin.command: ip addr add {{ switch_mgmt_ip }}/32 dev {{ interface }}
+          register: add_ip
+          failed_when: "add_ip.rc != 0 and 'RTNETLINK answers: File exists' not in add_ip.stderr"
+          changed_when: add_ip.rc == 0
+
+        - name: Add host routes for switches (they only respond on untagged)
+          ansible.builtin.command: ip route add {{ item.ip }}/32 dev {{ interface }}
+          loop: "{{ switch_ips }}"
+          register: add_route
+          failed_when: "add_route.rc != 0 and 'RTNETLINK answers: File exists' not in add_route.stderr"
+          changed_when: add_route.rc == 0
+
+    - name: Create and configure VLAN interfaces
+      block:
+        - name: Remove existing VLAN interface if present
+          ansible.builtin.command: ip link del {{ interface }}.{{ item.id }}
+          loop: "{{ vlans }}"
+          failed_when: false
+          changed_when: false
+
+        - name: Create VLAN interface
+          ansible.builtin.command: ip link add link {{ interface }} name {{ interface }}.{{ item.id }} type vlan id {{ item.id }}
+          loop: "{{ vlans }}"
+          register: create_vlan
+          failed_when: "create_vlan.rc != 0 and 'RTNETLINK answers: File exists' not in create_vlan.stderr"
+          changed_when: create_vlan.rc == 0
+
+        - name: Bring up VLAN interface
+          ansible.builtin.command: ip link set {{ interface }}.{{ item.id }} up
+          loop: "{{ vlans }}"
+          changed_when: true
+
+        - name: Add IP to VLAN interface
+          ansible.builtin.command: ip addr add {{ item.address }}/{{ item.netmask }} dev {{ interface }}.{{ item.id }}
+          loop: "{{ vlans }}"
+          register: add_vlan_ip
+          failed_when: "add_vlan_ip.rc != 0 and 'RTNETLINK answers: File exists' not in add_vlan_ip.stderr"
+          changed_when: add_vlan_ip.rc == 0
+
+    - name: Verify configuration
+      block:
+        - name: Get final interface configuration
+          ansible.builtin.shell: |
+            echo "=== Base Interface ==="
+            ip addr show {{ interface }} | grep -E "inet |state"
+            echo ""
+            echo "=== VLAN Interfaces ==="
+            for vid in 10 30 200; do
+              echo "{{ interface }}.$vid:"
+              ip addr show {{ interface }}.$vid 2>/dev/null | grep -E "inet |state" || echo "  not configured"
+            done
+          register: final_config
+          changed_when: false
+
+        - name: Display final configuration
+          ansible.builtin.debug:
+            msg: |
+              {{ final_config.stdout }}
+
+    - name: Test connectivity
+      block:
+        - name: Test switch connectivity (via untagged)
+          ansible.builtin.command: ping -c 1 -W 2 {{ item.ip }}
+          loop: "{{ switch_ips }}"
+          register: switch_ping
+          failed_when: false
+          changed_when: false
+
+        - name: Test node connectivity (via VLAN 10)
+          ansible.builtin.command: ping -c 1 -W 2 {{ item.ip }}
+          loop: "{{ node_ips }}"
+          register: node_ping
+          failed_when: false
+          changed_when: false
+
+        - name: Display connectivity results
+          ansible.builtin.debug:
+            msg: |
+              ═══════════════════════════════════════════════════════
+              Workstation VLAN Setup Complete
+              ═══════════════════════════════════════════════════════
+
+              Interface Configuration:
+                {{ interface }}      : {{ switch_mgmt_ip }}/32 (switch management)
+                {{ interface }}.10   : 10.11.10.100/24 (Management VLAN)
+                {{ interface }}.30   : 10.11.30.100/24 (IoT VLAN)
+                {{ interface }}.200  : 10.11.12.100/24 (LAN/Client VLAN)
+
+              Switch Connectivity (via {{ interface }} untagged):
+              {% for result in switch_ping.results %}
+                {{ result.item.name }} ({{ result.item.ip }}): {{ 'OK' if result.rc == 0 else 'FAIL' }}
+              {% endfor %}
+
+              Node Connectivity (via {{ interface }}.10 VLAN 10):
+              {% for result in node_ping.results %}
+                {{ result.item.name }} ({{ result.item.ip }}): {{ 'OK' if result.rc == 0 else 'FAIL' }}
+              {% endfor %}
+
+              ═══════════════════════════════════════════════════════
+              To tear down: make teardown-workstation-vlans
+              ═══════════════════════════════════════════════════════

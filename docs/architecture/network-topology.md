@@ -4,6 +4,10 @@ This document describes the physical and logical network topology of the mesh ne
 
 ## Overview
 
+![Network Topology](../assets/diagrams/network-topology.svg)
+
+*Complete network topology showing all three nodes, switches, VLANs, and device groups.*
+
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                    3-Node Mesh Network Topology                          │

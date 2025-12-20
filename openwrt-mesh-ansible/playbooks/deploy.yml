@@ -155,6 +155,17 @@
       tags: [packages, config]
 
     ###########################################################################
+    # Deploy batman-adv hosts file (must be before reboot)
+    ###########################################################################
+
+    - name: Deploy batman-adv hosts file
+      ansible.builtin.template:
+        src: ../roles/system_config/templates/bat-hosts.j2
+        dest: /etc/bat-hosts
+        mode: "0644"
+      tags: [system, bat-hosts]
+
+    ###########################################################################
     # FINAL STEP: Reboot to apply all configurations
     # NOTE: Network reload is SKIPPED to prevent connection loss
     # Reboot will cleanly apply all network/wireless/DHCP/firewall configs

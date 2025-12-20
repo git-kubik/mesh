@@ -36,7 +36,7 @@ This project adheres to a code of conduct. By participating, you are expected to
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/mesh.git
+git clone https://github.com/git-kubik/mesh.git
 cd mesh
 
 # Run automated setup script
@@ -57,7 +57,7 @@ The setup script will:
 1. **Clone the repository:**
 
    ```bash
-   git clone https://github.com/yourusername/mesh.git
+   git clone https://github.com/git-kubik/mesh.git
    cd mesh
    ```
 
@@ -140,7 +140,7 @@ For detailed structure, see `CLAUDE.md`.
 
 ### 1. Choose an Issue
 
-- Browse [open issues](https://github.com/yourusername/mesh/issues)
+- Browse [open issues](https://github.com/git-kubik/mesh/issues)
 - Look for issues tagged `good first issue` or `help wanted`
 - Comment on the issue to claim it and prevent duplicate work
 - If no issue exists for your work, create one first
@@ -451,8 +451,8 @@ Reviewers may use these prefixes:
 
 ### Getting Help
 
-- **Issues**: [GitHub Issues](https://github.com/yourusername/mesh/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/yourusername/mesh/discussions)
+- **Issues**: [GitHub Issues](https://github.com/git-kubik/mesh/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/git-kubik/mesh/discussions)
 - **Email**: <your.email@example.com>
 
 ### Project Skills

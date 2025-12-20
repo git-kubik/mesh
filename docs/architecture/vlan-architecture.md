@@ -2,6 +2,10 @@
 
 ## Overview
 
+![VLAN Architecture](../assets/diagrams/vlan-architecture.svg)
+
+*VLAN architecture showing network segments, bridges, and traffic flow through the mesh.*
+
 This mesh network now supports **multiple isolated networks** using VLANs and dual-SSID wireless configuration:
 
 - **2.4GHz Radio**: Mesh backhaul + Management AP
@@ -12,14 +16,19 @@ This mesh network now supports **multiple isolated networks** using VLANs and du
 
 ### Network Segments
 
-| Network | VLAN ID | Subnet | Wireless | Purpose | Isolation |
-|---------|---------|---------|----------|---------|-----------|
-| **Main LAN** | None | 10.11.12.0/24 | 5GHz (HA-Client) | Trusted internal devices | No |
-| **Management** | 10 | 10.11.10.0/24 | 2.4GHz (HA-Management) | Admin/management access | No (can access LAN) |
-| **IoT** | 30 | 10.11.30.0/24 | 2.4GHz (HA-IoT) | IoT devices | Yes (isolated from LAN) |
-| **Guest** | 20 | 10.11.20.0/24 | 5GHz (HA-Guest) | Guest WiFi | Yes (isolated from LAN) |
+| Network | VLAN ID | Subnet | Wireless | Wired | Purpose | Isolation |
+|---------|---------|---------|----------|-------|---------|-----------|
+| **Client (Main LAN)** | 200 | 10.11.12.0/24 | 5GHz (HA-Client) | LAN1, lan3.200 | Trusted internal devices | No |
+| **Management** | 10 | 10.11.10.0/24 | 2.4GHz (HA-Management) | lan3.10 | Admin/switch access | No (can access LAN) |
+| **Guest** | 20 | 10.11.20.0/24 | 5GHz (HA-Guest) | bat0.20 only | Guest WiFi | Yes (isolated) |
+| **IoT** | 30 | 10.11.30.0/24 | 2.4GHz (HA-IoT) | LAN2, lan3.30 | Smart home devices | Yes (limited access) |
+| **Mesh Backbone** | 100 | - | 2.4GHz (HA-Mesh) | lan3.100, lan4.100 | Batman-adv backbone | N/A |
 
 ### Wireless Configuration
+
+![WiFi Radio Layout](../assets/diagrams/wifi-radio-layout.svg)
+
+*Dual-radio wireless configuration showing SSIDs, VLANs, and network bridging.*
 
 #### 2.4GHz Radio (radio0) - Triple Purpose
 
@@ -333,14 +342,31 @@ All network passwords should be:
 - Expect 5-10% throughput reduction if both heavily used
 - Recommend guest for light use (web browsing, email)
 
+## Switch Integration
+
+VLANs are trunked through managed switches for wired connectivity:
+
+- **Switch A (LAN3)**: Carries ALL VLANs (10, 20, 30, 100, 200)
+- **Switch C (LAN4)**: Carries ONLY Mesh VLAN 100 (loop prevention)
+
+See [Switch Integration](switch-integration.md) for detailed configuration.
+
+### Bridge Loop Avoidance (BLA)
+
+**Critical for HA topology**: Multiple nodes bridge the same switch VLANs.
+
+- BLA detects when the same L2 frame arrives via mesh and switch
+- Prevents broadcast storms and MAC flapping
+- **Requirement**: Node interfaces MUST use static IPs (BLA doesn't protect node-originated traffic)
+
 ## Future Enhancements
 
 Potential additions:
 
-- **IoT VLAN**: Separate isolated network for smart home devices
 - **VoIP VLAN**: QoS-prioritized network for voice traffic
 - **Camera VLAN**: Isolated network for security cameras
 - **Per-VLAN bandwidth limits**: Rate limiting for guest network
+- **802.1X authentication**: RADIUS-based network access control
 
 ## References
 

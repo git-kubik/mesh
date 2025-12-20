@@ -2,6 +2,10 @@
 
 This document provides a deep dive into how batman-adv (Better Approach To Mobile Adhoc Networking - advanced) works and how it's configured in this mesh network.
 
+![Batman Mesh Flow](../assets/diagrams/batman-mesh-flow.svg)
+
+*Batman-adv mesh operation showing OGM propagation, multi-interface support, translation tables, and gateway selection.*
+
 ## What is Batman-adv?
 
 Batman-adv is a Layer 2 mesh routing protocol that operates at the Ethernet level. It creates a virtual network interface (`bat0`) that acts as a switch connecting all nodes in the mesh.
@@ -141,6 +145,10 @@ Both wired links fail:
 ```
 
 ## Gateway Selection
+
+![Gateway Failover](../assets/diagrams/gateway-failover.svg)
+
+*Automatic gateway failover: when Node1's WAN fails, clients automatically switch to Node3.*
 
 Batman-adv has built-in gateway selection for internet access.
 

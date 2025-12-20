@@ -59,10 +59,10 @@ docs = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/yourusername/mesh"
-Documentation = "https://yourusername.github.io/mesh/"
-Repository = "https://github.com/yourusername/mesh"
-Issues = "https://github.com/yourusername/mesh/issues"
+Homepage = "https://github.com/git-kubik/mesh"
+Documentation = "https://git-kubik.github.io/mesh/"
+Repository = "https://github.com/git-kubik/mesh"
+Issues = "https://github.com/git-kubik/mesh/issues"
 
 [tool.black]
 line-length = 100

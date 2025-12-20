@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1000">
+  <style>
+    .radio-box { fill: #37474f; stroke: #263238; stroke-width: 2; }
+    .interface-box { stroke-width: 2; rx: 6; }
+    .mesh { fill: #616161; stroke: #424242; }
+    .mgmt { fill: #1976d2; stroke: #0d47a1; }
+    .iot { fill: #f57c00; stroke: #e65100; }
+    .client { fill: #2e7d32; stroke: #1b5e20; }
+    .guest { fill: #7b1fa2; stroke: #4a148c; }
+    .label { fill: white; font-family: system-ui, sans-serif; }
+    .text-dark { fill: #212121; font-family: system-ui, sans-serif; }
+    .text-medium { fill: #424242; font-family: system-ui, sans-serif; }
+  </style>
+
+  <!-- Background for contrast -->
+  <rect width="1200" height="1000" fill="#fafafa"/>
+
+  <!-- Title -->
+  <text x="600" y="40" text-anchor="middle" class="text-dark" font-size="24" font-weight="bold">WiFi Radio Configuration</text>
+  <text x="600" y="70" text-anchor="middle" class="text-medium" font-size="14">D-Link DIR-1960 A1 - Dual Band Configuration</text>
+
+  <!-- 2.4GHz Radio -->
+  <g transform="translate(60, 100)">
+    <rect class="radio-box" width="500" height="380" rx="12"/>
+    <text x="250" y="40" text-anchor="middle" class="label" font-size="20" font-weight="bold">2.4GHz Radio (radio0)</text>
+    <text x="250" y="65" text-anchor="middle" fill="#90a4ae" font-family="system-ui, sans-serif" font-size="12">Channel 6 • HT40 • 20dBm</text>
+
+    <!-- Mesh interface -->
+    <g transform="translate(30, 90)">
+      <rect class="interface-box mesh" width="440" height="80"/>
+      <text x="220" y="25" text-anchor="middle" class="label" font-size="16" font-weight="bold">phy0-mesh0</text>
+      <text x="220" y="48" text-anchor="middle" class="label" font-size="13">HA-Mesh (hidden SSID)</text>
+      <text x="220" y="70" text-anchor="middle" fill="#bdbdbd" font-family="system-ui, sans-serif" font-size="11">Batman-adv hardif • SAE (WPA3) • mcast_rate=24000</text>
+    </g>
+
+    <!-- Management interface -->
+    <g transform="translate(30, 185)">
+      <rect class="interface-box mgmt" width="440" height="80"/>
+      <text x="220" y="25" text-anchor="middle" class="label" font-size="16" font-weight="bold">phy0-ap0</text>
+      <text x="220" y="48" text-anchor="middle" class="label" font-size="13">HA-Management</text>
+      <text x="220" y="70" text-anchor="middle" fill="#bbdefb" font-family="system-ui, sans-serif" font-size="11">VLAN 10 • br-mgmt • psk2+ccmp</text>
+    </g>
+
+    <!-- IoT interface -->
+    <g transform="translate(30, 280)">
+      <rect class="interface-box iot" width="440" height="80"/>
+      <text x="220" y="25" text-anchor="middle" class="label" font-size="16" font-weight="bold">phy0-ap1</text>
+      <text x="220" y="48" text-anchor="middle" class="label" font-size="13">HA-IoT</text>
+      <text x="220" y="70" text-anchor="middle" fill="#ffe0b2" font-family="system-ui, sans-serif" font-size="11">VLAN 30 • br-iot • psk2+ccmp • isolate=1</text>
+    </g>
+  </g>
+
+  <!-- 5GHz Radio -->
+  <g transform="translate(640, 100)">
+    <rect class="radio-box" width="500" height="380" rx="12"/>
+    <text x="250" y="40" text-anchor="middle" class="label" font-size="20" font-weight="bold">5GHz Radio (radio1)</text>
+    <text x="250" y="65" text-anchor="middle" fill="#90a4ae" font-family="system-ui, sans-serif" font-size="12">Channel 36 • VHT80 • 23dBm</text>
+
+    <!-- Client interface -->
+    <g transform="translate(30, 90)">
+      <rect class="interface-box client" width="440" height="80"/>
+      <text x="220" y="25" text-anchor="middle" class="label" font-size="16" font-weight="bold">phy1-ap0</text>
+      <text x="220" y="48" text-anchor="middle" class="label" font-size="13">HA-Client (Primary)</text>
+      <text x="220" y="70" text-anchor="middle" fill="#c8e6c9" font-family="system-ui, sans-serif" font-size="11">802.11r • ft_over_ds=1 • rsn_preauth=1 • br-lan</text>
+    </g>
+
+    <!-- Guest interface -->
+    <g transform="translate(30, 185)">
+      <rect class="interface-box guest" width="440" height="80"/>
+      <text x="220" y="25" text-anchor="middle" class="label" font-size="16" font-weight="bold">phy1-ap1</text>
+      <text x="220" y="48" text-anchor="middle" class="label" font-size="13">HA-Guest</text>
+      <text x="220" y="70" text-anchor="middle" fill="#e1bee7" font-family="system-ui, sans-serif" font-size="11">VLAN 20 • br-guest • isolate=1 • LAN blocked</text>
+    </g>
+
+    <!-- Empty slot indicator -->
+    <g transform="translate(30, 280)">
+      <rect width="440" height="80" rx="6" fill="none" stroke="#546e7a" stroke-width="2" stroke-dasharray="6,4"/>
+      <text x="220" y="45" text-anchor="middle" fill="#78909c" font-family="system-ui, sans-serif" font-size="12">(available for expansion)</text>
+    </g>
+  </g>
+
+  <!-- 802.11r Configuration Section -->
+  <g transform="translate(60, 520)">
+    <text x="0" y="0" class="text-dark" font-size="18" font-weight="bold">802.11r Fast Roaming Configuration</text>
+
+    <g transform="translate(0, 30)">
+      <!-- Mobility Domain -->
+      <rect x="0" y="0" width="250" height="100" rx="8" fill="#e3f2fd" stroke="#1976d2" stroke-width="2"/>
+      <text x="125" y="25" text-anchor="middle" fill="#1976d2" font-family="system-ui, sans-serif" font-size="14" font-weight="bold">Mobility Domain</text>
+      <text x="125" y="50" text-anchor="middle" class="text-dark" font-size="12">mobility_domain: 4f57</text>
+      <text x="125" y="70" text-anchor="middle" class="text-medium" font-size="11">Shared across all 3 nodes</text>
+      <text x="125" y="88" text-anchor="middle" class="text-medium" font-size="11">Enables seamless handoff</text>
+
+      <!-- FT Over DS -->
+      <rect x="280" y="0" width="250" height="100" rx="8" fill="#e8f5e9" stroke="#2e7d32" stroke-width="2"/>
+      <text x="405" y="25" text-anchor="middle" fill="#2e7d32" font-family="system-ui, sans-serif" font-size="14" font-weight="bold">FT Over DS</text>
+      <text x="405" y="50" text-anchor="middle" class="text-dark" font-size="12">ft_over_ds: 1</text>
+      <text x="405" y="70" text-anchor="middle" class="text-medium" font-size="11">Fast transition via mesh</text>
+      <text x="405" y="88" text-anchor="middle" class="text-medium" font-size="11">(faster than over-air)</text>
+
+      <!-- RSN Preauth -->
+      <rect x="560" y="0" width="250" height="100" rx="8" fill="#fff3e0" stroke="#f57c00" stroke-width="2"/>
+      <text x="685" y="25" text-anchor="middle" fill="#f57c00" font-family="system-ui, sans-serif" font-size="14" font-weight="bold">RSN Preauthentication</text>
+      <text x="685" y="50" text-anchor="middle" class="text-dark" font-size="12">rsn_preauth: 1</text>
+      <text x="685" y="70" text-anchor="middle" class="text-medium" font-size="11">Pre-authenticate before roam</text>
+      <text x="685" y="88" text-anchor="middle" class="text-medium" font-size="11">Reduces handoff delay</text>
+    </g>
+  </g>
+
+  <!-- Legend Section -->
+  <g transform="translate(60, 680)">
+    <text x="0" y="0" class="text-dark" font-size="16" font-weight="bold">Interface Legend</text>
+
+    <g transform="translate(0, 25)">
+      <rect x="0" y="0" width="20" height="20" rx="3" fill="#616161"/>
+      <text x="30" y="15" class="text-dark" font-size="12">Mesh Backbone</text>
+
+      <rect x="150" y="0" width="20" height="20" rx="3" fill="#1976d2"/>
+      <text x="180" y="15" class="text-dark" font-size="12">Management VLAN 10</text>
+
+      <rect x="340" y="0" width="20" height="20" rx="3" fill="#f57c00"/>
+      <text x="370" y="15" class="text-dark" font-size="12">IoT VLAN 30</text>
+
+      <rect x="500" y="0" width="20" height="20" rx="3" fill="#2e7d32"/>
+      <text x="530" y="15" class="text-dark" font-size="12">Client Network</text>
+
+      <rect x="660" y="0" width="20" height="20" rx="3" fill="#7b1fa2"/>
+      <text x="690" y="15" class="text-dark" font-size="12">Guest VLAN 20</text>
+    </g>
+  </g>
+
+  <!-- Footer -->
+  <text x="600" y="780" text-anchor="middle" fill="#757575" font-family="system-ui, sans-serif" font-size="11">mesh_fwding=0 and mesh_ttl=1 set on mesh interface for batman-adv control</text>
+</svg>

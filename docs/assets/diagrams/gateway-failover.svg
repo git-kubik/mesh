@@ -1,0 +1,294 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1000">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#444"/>
+    </marker>
+    <marker id="arrow-green" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#2e7d32"/>
+    </marker>
+    <marker id="arrow-red" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#c62828"/>
+    </marker>
+  </defs>
+
+  <style>
+    .node-box { fill: #4051b5; stroke: #303f9f; stroke-width: 2; }
+    .gw-active { fill: #2e7d32; stroke: #1b5e20; stroke-width: 3; }
+    .gw-standby { fill: #f57c00; stroke: #e65100; stroke-width: 2; }
+    .gw-failed { fill: #c62828; stroke: #b71c1c; stroke-width: 2; }
+    .cloud { fill: #e65100; stroke: #bf360c; stroke-width: 2; }
+    .client-box { fill: #1976d2; stroke: #0d47a1; stroke-width: 2; }
+    .label { fill: white; font-family: system-ui, sans-serif; }
+    .text-dark { fill: #212121; font-family: system-ui, sans-serif; }
+    .text-medium { fill: #424242; font-family: system-ui, sans-serif; }
+    .flow-active { stroke: #2e7d32; stroke-width: 3; }
+    .flow-failover { stroke: #f57c00; stroke-width: 3; stroke-dasharray: 8,4; }
+    .flow-blocked { stroke: #c62828; stroke-width: 3; }
+  </style>
+
+  <!-- Background -->
+  <rect width="1200" height="1000" fill="#fafafa"/>
+
+  <!-- Title -->
+  <text x="600" y="40" text-anchor="middle" class="text-dark" font-size="24" font-weight="bold">Gateway Failover Sequence</text>
+  <text x="600" y="68" text-anchor="middle" class="text-medium" font-size="14">Multi-WAN Redundancy with Batman-adv Gateway Selection</text>
+
+  <!-- Phase 1: Normal Operation -->
+  <g transform="translate(40, 100)">
+    <rect width="360" height="380" rx="10" fill="#e8f5e9" stroke="#2e7d32" stroke-width="2"/>
+    <text x="180" y="30" text-anchor="middle" fill="#2e7d32" font-size="16" font-weight="bold">Phase 1: Normal Operation</text>
+
+    <!-- Internet -->
+    <g transform="translate(130, 55)">
+      <path class="cloud" d="M25,30 Q0,30 0,18 Q0,5 25,5 Q32,-5 55,-5 Q78,-5 85,5 Q110,5 110,18 Q110,30 85,30 Z"/>
+      <text x="55" y="18" text-anchor="middle" class="label" font-size="10" font-weight="bold">Internet</text>
+    </g>
+
+    <!-- Nodes -->
+    <g transform="translate(40, 110)">
+      <rect class="gw-active" width="120" height="70" rx="6"/>
+      <text x="60" y="22" text-anchor="middle" class="label" font-size="12" font-weight="bold">Node 1</text>
+      <text x="60" y="40" text-anchor="middle" fill="#c8e6c9" font-size="10">PRIMARY GW</text>
+      <text x="60" y="55" text-anchor="middle" fill="#a5d6a7" font-size="9">TQ: 255</text>
+    </g>
+
+    <g transform="translate(200, 110)">
+      <rect class="gw-standby" width="120" height="70" rx="6"/>
+      <text x="60" y="22" text-anchor="middle" class="label" font-size="12" font-weight="bold">Node 3</text>
+      <text x="60" y="40" text-anchor="middle" fill="#ffe0b2" font-size="10">STANDBY GW</text>
+      <text x="60" y="55" text-anchor="middle" fill="#ffcc80" font-size="9">TQ: 220</text>
+    </g>
+
+    <!-- WAN connections -->
+    <line x1="100" y1="85" x2="165" y2="110" class="flow-active" marker-end="url(#arrow-green)"/>
+    <line x1="260" y1="85" x2="220" y2="110" stroke="#f57c00" stroke-width="2" stroke-dasharray="4,3"/>
+
+    <!-- Client -->
+    <g transform="translate(110, 220)">
+      <rect class="client-box" width="140" height="50" rx="6"/>
+      <text x="70" y="22" text-anchor="middle" class="label" font-size="12" font-weight="bold">Client Device</text>
+      <text x="70" y="40" text-anchor="middle" fill="#bbdefb" font-size="10">10.11.12.100</text>
+    </g>
+
+    <!-- Traffic flow -->
+    <path d="M180,220 L100,180" class="flow-active" fill="none" marker-end="url(#arrow-green)"/>
+
+    <!-- Status -->
+    <g transform="translate(20, 290)">
+      <text x="0" y="0" fill="#2e7d32" font-size="11" font-weight="bold">Status:</text>
+      <text x="0" y="18" class="text-medium" font-size="10">• Node 1 selected (highest TQ)</text>
+      <text x="0" y="34" class="text-medium" font-size="10">• Node 3 monitoring WAN</text>
+      <text x="0" y="50" class="text-medium" font-size="10">• All traffic via Node 1</text>
+      <text x="0" y="66" class="text-medium" font-size="10">• Latency: optimal</text>
+    </g>
+  </g>
+
+  <!-- Phase 2: Primary WAN Fails -->
+  <g transform="translate(420, 100)">
+    <rect width="360" height="380" rx="10" fill="#fff3e0" stroke="#f57c00" stroke-width="2"/>
+    <text x="180" y="30" text-anchor="middle" fill="#f57c00" font-size="16" font-weight="bold">Phase 2: Primary WAN Fails</text>
+
+    <!-- Internet -->
+    <g transform="translate(130, 55)">
+      <path class="cloud" d="M25,30 Q0,30 0,18 Q0,5 25,5 Q32,-5 55,-5 Q78,-5 85,5 Q110,5 110,18 Q110,30 85,30 Z"/>
+      <text x="55" y="18" text-anchor="middle" class="label" font-size="10" font-weight="bold">Internet</text>
+    </g>
+
+    <!-- Nodes -->
+    <g transform="translate(40, 110)">
+      <rect class="gw-failed" width="120" height="70" rx="6"/>
+      <text x="60" y="22" text-anchor="middle" class="label" font-size="12" font-weight="bold">Node 1</text>
+      <text x="60" y="40" text-anchor="middle" fill="#ffcdd2" font-size="10">WAN DOWN</text>
+      <text x="60" y="55" text-anchor="middle" fill="#ef9a9a" font-size="9">No gateway</text>
+    </g>
+
+    <g transform="translate(200, 110)">
+      <rect class="gw-active" width="120" height="70" rx="6"/>
+      <text x="60" y="22" text-anchor="middle" class="label" font-size="12" font-weight="bold">Node 3</text>
+      <text x="60" y="40" text-anchor="middle" fill="#c8e6c9" font-size="10">NEW PRIMARY</text>
+      <text x="60" y="55" text-anchor="middle" fill="#a5d6a7" font-size="9">TQ: 255</text>
+    </g>
+
+    <!-- WAN connections -->
+    <line x1="100" y1="85" x2="165" y2="110" class="flow-blocked"/>
+    <text x="110" y="95" fill="#c62828" font-size="18" font-weight="bold">✗</text>
+    <line x1="260" y1="85" x2="220" y2="110" class="flow-active" marker-end="url(#arrow-green)"/>
+
+    <!-- Client -->
+    <g transform="translate(110, 220)">
+      <rect class="client-box" width="140" height="50" rx="6"/>
+      <text x="70" y="22" text-anchor="middle" class="label" font-size="12" font-weight="bold">Client Device</text>
+      <text x="70" y="40" text-anchor="middle" fill="#bbdefb" font-size="10">10.11.12.100</text>
+    </g>
+
+    <!-- Traffic flow - rerouted -->
+    <path d="M180,220 L260,180" class="flow-failover" fill="none" marker-end="url(#arrow)"/>
+
+    <!-- Status -->
+    <g transform="translate(20, 290)">
+      <text x="0" y="0" fill="#f57c00" font-size="11" font-weight="bold">Failover Event:</text>
+      <text x="0" y="18" class="text-medium" font-size="10">• Node 1 stops advertising GW</text>
+      <text x="0" y="34" class="text-medium" font-size="10">• Clients detect via OGM timeout</text>
+      <text x="0" y="50" class="text-medium" font-size="10">• Node 3 becomes primary</text>
+      <text x="0" y="66" class="text-medium" font-size="10">• Convergence: 1-3 seconds</text>
+    </g>
+  </g>
+
+  <!-- Phase 3: Recovery -->
+  <g transform="translate(800, 100)">
+    <rect width="360" height="380" rx="10" fill="#e3f2fd" stroke="#1976d2" stroke-width="2"/>
+    <text x="180" y="30" text-anchor="middle" fill="#1976d2" font-size="16" font-weight="bold">Phase 3: Recovery</text>
+
+    <!-- Internet -->
+    <g transform="translate(130, 55)">
+      <path class="cloud" d="M25,30 Q0,30 0,18 Q0,5 25,5 Q32,-5 55,-5 Q78,-5 85,5 Q110,5 110,18 Q110,30 85,30 Z"/>
+      <text x="55" y="18" text-anchor="middle" class="label" font-size="10" font-weight="bold">Internet</text>
+    </g>
+
+    <!-- Nodes -->
+    <g transform="translate(40, 110)">
+      <rect class="gw-active" width="120" height="70" rx="6"/>
+      <text x="60" y="22" text-anchor="middle" class="label" font-size="12" font-weight="bold">Node 1</text>
+      <text x="60" y="40" text-anchor="middle" fill="#c8e6c9" font-size="10">RESTORED</text>
+      <text x="60" y="55" text-anchor="middle" fill="#a5d6a7" font-size="9">TQ: 255</text>
+    </g>
+
+    <g transform="translate(200, 110)">
+      <rect class="gw-standby" width="120" height="70" rx="6"/>
+      <text x="60" y="22" text-anchor="middle" class="label" font-size="12" font-weight="bold">Node 3</text>
+      <text x="60" y="40" text-anchor="middle" fill="#ffe0b2" font-size="10">STANDBY</text>
+      <text x="60" y="55" text-anchor="middle" fill="#ffcc80" font-size="9">TQ: 220</text>
+    </g>
+
+    <!-- WAN connections -->
+    <line x1="100" y1="85" x2="165" y2="110" class="flow-active" marker-end="url(#arrow-green)"/>
+    <line x1="260" y1="85" x2="220" y2="110" stroke="#f57c00" stroke-width="2" stroke-dasharray="4,3"/>
+
+    <!-- Client -->
+    <g transform="translate(110, 220)">
+      <rect class="client-box" width="140" height="50" rx="6"/>
+      <text x="70" y="22" text-anchor="middle" class="label" font-size="12" font-weight="bold">Client Device</text>
+      <text x="70" y="40" text-anchor="middle" fill="#bbdefb" font-size="10">10.11.12.100</text>
+    </g>
+
+    <!-- Traffic flow - back to primary -->
+    <path d="M180,220 L100,180" class="flow-active" fill="none" marker-end="url(#arrow-green)"/>
+
+    <!-- Status -->
+    <g transform="translate(20, 290)">
+      <text x="0" y="0" fill="#1976d2" font-size="11" font-weight="bold">Recovery Complete:</text>
+      <text x="0" y="18" class="text-medium" font-size="10">• Node 1 WAN restored</text>
+      <text x="0" y="34" class="text-medium" font-size="10">• Resumes GW advertisement</text>
+      <text x="0" y="50" class="text-medium" font-size="10">• Higher TQ wins selection</text>
+      <text x="0" y="66" class="text-medium" font-size="10">• Traffic returns to Node 1</text>
+    </g>
+  </g>
+
+  <!-- Timeline -->
+  <g transform="translate(40, 520)">
+    <text x="560" y="0" text-anchor="middle" class="text-dark" font-size="18" font-weight="bold">Failover Timeline</text>
+
+    <!-- Timeline bar -->
+    <rect x="60" y="30" width="1040" height="8" rx="4" fill="#e0e0e0"/>
+
+    <!-- Timeline events -->
+    <g transform="translate(60, 25)">
+      <circle cx="0" cy="8" r="12" fill="#2e7d32"/>
+      <text x="0" y="50" text-anchor="middle" class="text-dark" font-size="10" font-weight="bold">T=0</text>
+      <text x="0" y="65" text-anchor="middle" class="text-medium" font-size="9">Normal</text>
+    </g>
+
+    <g transform="translate(320, 25)">
+      <circle cx="0" cy="8" r="12" fill="#c62828"/>
+      <text x="0" y="50" text-anchor="middle" class="text-dark" font-size="10" font-weight="bold">T=0s</text>
+      <text x="0" y="65" text-anchor="middle" class="text-medium" font-size="9">WAN Fails</text>
+    </g>
+
+    <g transform="translate(520, 25)">
+      <circle cx="0" cy="8" r="12" fill="#f57c00"/>
+      <text x="0" y="50" text-anchor="middle" class="text-dark" font-size="10" font-weight="bold">T=1-3s</text>
+      <text x="0" y="65" text-anchor="middle" class="text-medium" font-size="9">Detection</text>
+    </g>
+
+    <g transform="translate(720, 25)">
+      <circle cx="0" cy="8" r="12" fill="#f57c00"/>
+      <text x="0" y="50" text-anchor="middle" class="text-dark" font-size="10" font-weight="bold">T=3-5s</text>
+      <text x="0" y="65" text-anchor="middle" class="text-medium" font-size="9">Switchover</text>
+    </g>
+
+    <g transform="translate(920, 25)">
+      <circle cx="0" cy="8" r="12" fill="#2e7d32"/>
+      <text x="0" y="50" text-anchor="middle" class="text-dark" font-size="10" font-weight="bold">T=5s+</text>
+      <text x="0" y="65" text-anchor="middle" class="text-medium" font-size="9">Stable</text>
+    </g>
+
+    <g transform="translate(1100, 25)">
+      <circle cx="0" cy="8" r="12" fill="#1976d2"/>
+      <text x="0" y="50" text-anchor="middle" class="text-dark" font-size="10" font-weight="bold">T=?</text>
+      <text x="0" y="65" text-anchor="middle" class="text-medium" font-size="9">Recovery</text>
+    </g>
+  </g>
+
+  <!-- Gateway Selection Algorithm -->
+  <g transform="translate(40, 650)">
+    <rect width="550" height="180" rx="10" fill="#f5f5f5" stroke="#e0e0e0" stroke-width="1"/>
+    <text x="275" y="30" text-anchor="middle" class="text-dark" font-size="14" font-weight="bold">Gateway Selection Algorithm</text>
+
+    <g transform="translate(20, 50)">
+      <text x="0" y="0" class="text-dark" font-size="12" font-weight="bold">Score Calculation:</text>
+      <text x="0" y="25" class="text-medium" font-size="11">score = advertised_bandwidth × TQ_to_gateway</text>
+
+      <text x="0" y="55" class="text-dark" font-size="12" font-weight="bold">Example:</text>
+      <text x="0" y="75" class="text-medium" font-size="10">Node 1: 100Mbps × 255 = 25,500 (direct link)</text>
+      <text x="0" y="92" class="text-medium" font-size="10">Node 3: 100Mbps × 220 = 22,000 (1 hop away)</text>
+
+      <text x="280" y="0" class="text-dark" font-size="12" font-weight="bold">TQ Values:</text>
+      <text x="280" y="20" class="text-medium" font-size="10">255 = Perfect (direct)</text>
+      <text x="280" y="37" class="text-medium" font-size="10">200-254 = Excellent</text>
+      <text x="280" y="54" class="text-medium" font-size="10">150-199 = Good</text>
+      <text x="280" y="71" class="text-medium" font-size="10">&lt;150 = Degraded</text>
+      <text x="280" y="88" class="text-medium" font-size="10">0 = Unreachable</text>
+    </g>
+  </g>
+
+  <!-- Configuration -->
+  <g transform="translate(610, 650)">
+    <rect width="550" height="180" rx="10" fill="#f5f5f5" stroke="#e0e0e0" stroke-width="1"/>
+    <text x="275" y="30" text-anchor="middle" class="text-dark" font-size="14" font-weight="bold">Configuration</text>
+
+    <g transform="translate(20, 50)">
+      <text x="0" y="0" class="text-dark" font-size="11" font-weight="bold">Gateway Mode (all nodes):</text>
+      <text x="0" y="18" font-family="monospace" fill="#616161" font-size="10">uci set network.bat0.gw_mode='server'</text>
+
+      <text x="0" y="45" class="text-dark" font-size="11" font-weight="bold">Bandwidth Advertisement:</text>
+      <text x="0" y="63" font-family="monospace" fill="#616161" font-size="10">uci set network.bat0.gw_bandwidth='100000/100000'</text>
+
+      <text x="0" y="90" class="text-dark" font-size="11" font-weight="bold">OGM Interval (affects convergence):</text>
+      <text x="0" y="108" font-family="monospace" fill="#616161" font-size="10">uci set network.bat0.orig_interval='1000'  # 1 second</text>
+    </g>
+  </g>
+
+  <!-- Legend -->
+  <g transform="translate(40, 860)">
+    <rect width="1120" height="60" rx="8" fill="#f5f5f5" stroke="#e0e0e0" stroke-width="1"/>
+    <text x="560" y="20" text-anchor="middle" class="text-dark" font-size="12" font-weight="bold">Legend</text>
+
+    <rect x="50" y="32" width="20" height="20" rx="3" fill="#2e7d32"/>
+    <text x="80" y="46" class="text-dark" font-size="10">Active Gateway</text>
+
+    <rect x="200" y="32" width="20" height="20" rx="3" fill="#f57c00"/>
+    <text x="230" y="46" class="text-dark" font-size="10">Standby Gateway</text>
+
+    <rect x="370" y="32" width="20" height="20" rx="3" fill="#c62828"/>
+    <text x="400" y="46" class="text-dark" font-size="10">Failed/Offline</text>
+
+    <line x1="520" y1="42" x2="570" y2="42" class="flow-active"/>
+    <text x="580" y="46" class="text-dark" font-size="10">Active Traffic</text>
+
+    <line x1="700" y1="42" x2="750" y2="42" class="flow-failover"/>
+    <text x="760" y="46" class="text-dark" font-size="10">Failover Path</text>
+
+    <text x="920" y="46" class="text-medium" font-size="10">Convergence: 1-5 seconds typical</text>
+  </g>
+</svg>

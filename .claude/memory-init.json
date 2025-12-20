@@ -1,0 +1,286 @@
+{
+  "entities": [
+    {
+      "name": "mesh-project",
+      "entityType": "project",
+      "observations": [
+        "OpenWrt mesh network infrastructure-as-code project",
+        "Uses Ansible in Docker for deployment automation",
+        "3-node mesh network on D-Link DIR-1960 A1 hardware",
+        "Network range: 10.11.12.0/24 (Node1: .1, Node2: .2, Node3: .3)",
+        "Stack: OpenWrt + Batman-adv + Ansible + Docker + pytest",
+        "Repository: https://github.com/git-kubik/mesh",
+        "Project status: 67% complete (8 of 12 phases done)",
+        "133 tests implemented, 36 unit tests passing"
+      ]
+    },
+    {
+      "name": "mesh-node1",
+      "entityType": "hardware",
+      "observations": [
+        "D-Link DIR-1960 A1 router",
+        "IP: 10.11.12.1",
+        "Role: Primary Gateway (has WAN connection)",
+        "Batman-adv gw_mode: server",
+        "Mesh ports: LAN3 -> node2, LAN4 -> node3"
+      ]
+    },
+    {
+      "name": "mesh-node2",
+      "entityType": "hardware",
+      "observations": [
+        "D-Link DIR-1960 A1 router",
+        "IP: 10.11.12.2",
+        "Role: Mesh Node (no WAN - relay only)",
+        "Batman-adv gw_mode: client",
+        "Mesh ports: LAN3 -> node1, LAN4 -> node3"
+      ]
+    },
+    {
+      "name": "mesh-node3",
+      "entityType": "hardware",
+      "observations": [
+        "D-Link DIR-1960 A1 router",
+        "IP: 10.11.12.3",
+        "Role: Secondary Gateway (has WAN connection)",
+        "Batman-adv gw_mode: server",
+        "Mesh ports: LAN3 -> node2, LAN4 -> node1"
+      ]
+    },
+    {
+      "name": "batman-adv",
+      "entityType": "technology",
+      "observations": [
+        "Layer 2 mesh routing protocol",
+        "Routing algorithm: BATMAN_V",
+        "Provides automatic gateway selection and failover",
+        "Hop penalty: wired=5, wireless=30 (prevents flapping)",
+        "Origin interval: 500ms",
+        "Key commands: batctl o (originators), batctl gwl (gateway list)"
+      ]
+    },
+    {
+      "name": "ansible-config",
+      "entityType": "component",
+      "observations": [
+        "Located at: openwrt-mesh-ansible/",
+        "Main config: group_vars/all.yml (environment-driven)",
+        "Inventory: inventory/hosts.yml (production nodes)",
+        "Uses SSH key auth (not password)",
+        "Key roles: network_config, wireless_config, dhcp_config, firewall_config"
+      ]
+    },
+    {
+      "name": "docker-infrastructure",
+      "entityType": "component",
+      "observations": [
+        "Located at: docker/",
+        "3 containers: mesh_ansible, mesh_postgres, mesh_semaphore",
+        "Semaphore UI on port 3000 for web-based deployment",
+        "Resource usage: ~54MB RAM total",
+        "All containers healthy and stable"
+      ]
+    },
+    {
+      "name": "test-suite",
+      "entityType": "component",
+      "observations": [
+        "Located at: tests/",
+        "133 total tests across 5 categories",
+        "Categories: unit (36), integration (17), functional (27), performance (24), failover (29)",
+        "Unit tests: 100% passing",
+        "Integration/functional/performance/failover: blocked pending hardware deployment",
+        "Uses pytest with fixtures in conftest.py"
+      ]
+    },
+    {
+      "name": "network-lan",
+      "entityType": "network",
+      "observations": [
+        "Primary client network",
+        "Range: 10.11.12.0/24",
+        "DHCP pools per node: node1=100-149, node2=150-199, node3=200-249",
+        "WiFi SSID: HA-Client (5GHz, VHT80, channel 36)",
+        "Encryption: psk2+ccmp"
+      ]
+    },
+    {
+      "name": "network-management",
+      "entityType": "network",
+      "observations": [
+        "VLAN 10",
+        "Range: 10.11.10.0/24",
+        "WiFi SSID: HA-Management (2.4GHz)",
+        "Used for admin access and infrastructure devices"
+      ]
+    },
+    {
+      "name": "network-guest",
+      "entityType": "network",
+      "observations": [
+        "VLAN 20",
+        "Range: 10.11.20.0/24",
+        "WiFi SSID: HA-Guest (5GHz)",
+        "LAN isolation enabled"
+      ]
+    },
+    {
+      "name": "network-iot",
+      "entityType": "network",
+      "observations": [
+        "VLAN 30",
+        "Range: 10.11.30.0/24",
+        "WiFi SSID: HA-IoT",
+        "For IoT devices, Proxmox servers, Home Assistant"
+      ]
+    },
+    {
+      "name": "network-mesh-backbone",
+      "entityType": "network",
+      "observations": [
+        "2.4GHz wireless mesh backbone",
+        "SSID: HA-Mesh",
+        "Encryption: SAE (WPA3)",
+        "Channel: 6, HT40 mode",
+        "Multicast rate: 24000 (filters weak links)",
+        "Also uses wired links on LAN3/LAN4 ports"
+      ]
+    },
+    {
+      "name": "file:group_vars/all.yml",
+      "entityType": "config-file",
+      "observations": [
+        "Master configuration file for all variables",
+        "All values from environment variables via .env file",
+        "Contains: network, wireless, batman, DHCP, VLAN settings",
+        "MUST CHANGE before deployment: mesh_password, client_password, batman_gw_bandwidth"
+      ]
+    },
+    {
+      "name": "file:inventory/hosts.yml",
+      "entityType": "config-file",
+      "observations": [
+        "Production inventory defining all 3 nodes",
+        "Groups: gateway_primary (node1), gateway_secondary (node2, node3)",
+        "Uses SSH key authentication",
+        "For initial setup use: inventory/hosts-initial.yml"
+      ]
+    },
+    {
+      "name": "file:playbooks/deploy.yml",
+      "entityType": "playbook",
+      "observations": [
+        "Main deployment playbook",
+        "Applies all roles to configure mesh network",
+        "Run via: ansible-playbook playbooks/deploy.yml"
+      ]
+    },
+    {
+      "name": "file:playbooks/verify.yml",
+      "entityType": "playbook",
+      "observations": [
+        "Verification playbook to check mesh status",
+        "Validates connectivity, batman-adv status, gateway selection",
+        "Run after deployment to confirm success"
+      ]
+    },
+    {
+      "name": "role:network_config",
+      "entityType": "ansible-role",
+      "observations": [
+        "Configures OpenWrt network interfaces",
+        "Sets up batman-adv mesh interfaces",
+        "Configures VLAN trunking",
+        "Template: templates/network.j2"
+      ]
+    },
+    {
+      "name": "role:wireless_config",
+      "entityType": "ansible-role",
+      "observations": [
+        "Configures wireless radios and SSIDs",
+        "2.4GHz: mesh backbone + management AP",
+        "5GHz: client AP + guest AP + IoT AP",
+        "Enables 802.11r fast roaming"
+      ]
+    },
+    {
+      "name": "role:dhcp_config",
+      "entityType": "ansible-role",
+      "observations": [
+        "Configures dnsmasq for DHCP",
+        "Per-node DHCP pools to avoid conflicts",
+        "Static host reservations supported"
+      ]
+    },
+    {
+      "name": "role:firewall_config",
+      "entityType": "ansible-role",
+      "observations": [
+        "Configures OpenWrt firewall zones",
+        "Zones: lan, wan, guest (isolated), iot",
+        "Inter-zone forwarding rules"
+      ]
+    },
+    {
+      "name": "tp-link-switches",
+      "entityType": "hardware",
+      "observations": [
+        "Dual TP-Link TL-SG108E managed switches",
+        "Switch A: 10.11.10.11, Switch B: 10.11.10.12",
+        "VLAN trunking for mesh redundancy",
+        "Mesh VLAN: 100, Client VLAN: 200",
+        "Config backups in: switches/"
+      ]
+    },
+    {
+      "name": "phase-status",
+      "entityType": "project-tracking",
+      "observations": [
+        "Phase 1-4: Docker/Semaphore infrastructure - COMPLETE",
+        "Phase 5-7: Test suite structure and unit tests - COMPLETE",
+        "Phase 8-9: Integration/functional tests - BLOCKED (needs hardware)",
+        "Phase 10: CI/CD pipeline - COMPLETE",
+        "Phase 11: Monitoring (Prometheus/Grafana) - NOT STARTED (optional)",
+        "Phase 12: Documentation - 40% complete"
+      ]
+    }
+  ],
+  "relations": [
+    {"from": "mesh-project", "to": "mesh-node1", "relationType": "contains"},
+    {"from": "mesh-project", "to": "mesh-node2", "relationType": "contains"},
+    {"from": "mesh-project", "to": "mesh-node3", "relationType": "contains"},
+    {"from": "mesh-project", "to": "ansible-config", "relationType": "uses"},
+    {"from": "mesh-project", "to": "docker-infrastructure", "relationType": "uses"},
+    {"from": "mesh-project", "to": "test-suite", "relationType": "contains"},
+    {"from": "mesh-node1", "to": "mesh-node2", "relationType": "connects_to"},
+    {"from": "mesh-node1", "to": "mesh-node3", "relationType": "connects_to"},
+    {"from": "mesh-node2", "to": "mesh-node3", "relationType": "connects_to"},
+    {"from": "mesh-node1", "to": "batman-adv", "relationType": "runs"},
+    {"from": "mesh-node2", "to": "batman-adv", "relationType": "runs"},
+    {"from": "mesh-node3", "to": "batman-adv", "relationType": "runs"},
+    {"from": "mesh-node1", "to": "network-lan", "relationType": "provides"},
+    {"from": "mesh-node2", "to": "network-lan", "relationType": "provides"},
+    {"from": "mesh-node3", "to": "network-lan", "relationType": "provides"},
+    {"from": "mesh-node1", "to": "network-mesh-backbone", "relationType": "participates_in"},
+    {"from": "mesh-node2", "to": "network-mesh-backbone", "relationType": "participates_in"},
+    {"from": "mesh-node3", "to": "network-mesh-backbone", "relationType": "participates_in"},
+    {"from": "ansible-config", "to": "file:group_vars/all.yml", "relationType": "contains"},
+    {"from": "ansible-config", "to": "file:inventory/hosts.yml", "relationType": "contains"},
+    {"from": "ansible-config", "to": "file:playbooks/deploy.yml", "relationType": "contains"},
+    {"from": "ansible-config", "to": "file:playbooks/verify.yml", "relationType": "contains"},
+    {"from": "ansible-config", "to": "role:network_config", "relationType": "uses"},
+    {"from": "ansible-config", "to": "role:wireless_config", "relationType": "uses"},
+    {"from": "ansible-config", "to": "role:dhcp_config", "relationType": "uses"},
+    {"from": "ansible-config", "to": "role:firewall_config", "relationType": "uses"},
+    {"from": "role:network_config", "to": "batman-adv", "relationType": "configures"},
+    {"from": "role:wireless_config", "to": "network-mesh-backbone", "relationType": "configures"},
+    {"from": "role:wireless_config", "to": "network-lan", "relationType": "configures"},
+    {"from": "role:dhcp_config", "to": "network-lan", "relationType": "configures"},
+    {"from": "role:firewall_config", "to": "network-guest", "relationType": "isolates"},
+    {"from": "tp-link-switches", "to": "mesh-node1", "relationType": "connects"},
+    {"from": "tp-link-switches", "to": "mesh-node2", "relationType": "connects"},
+    {"from": "tp-link-switches", "to": "mesh-node3", "relationType": "connects"},
+    {"from": "mesh-project", "to": "phase-status", "relationType": "tracked_by"}
+  ]
+}

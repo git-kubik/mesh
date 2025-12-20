@@ -129,6 +129,6 @@ test(unit): add template rendering tests
 
 ## Related Documentation
 
-- [Philosophy](../philosophy.md) - Design decisions and rationale
+- [Architecture Overview](../architecture/index.md) - Design decisions and network topology
 - [Reference](../reference/index.md) - Command and API reference
 - [Troubleshooting](../troubleshooting/index.md) - Debugging guide

@@ -4,6 +4,10 @@ This document describes the lightweight monitoring solution for OpenWrt mesh nod
 
 ## Overview
 
+![Monitoring Stack](../assets/diagrams/monitoring-stack.svg)
+
+*Monitoring architecture showing data collection, storage, and access paths.*
+
 The monitoring solution provides:
 
 - **Collectd**: Metrics collection (CPU, memory, disk, network, wireless)

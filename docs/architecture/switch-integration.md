@@ -1,1081 +1,831 @@
-# TP-Link TL-SG108E Switch Integration Guide
+# TP-Link Switch Integration Guide
 
-This guide covers the integration of three TP-Link TL-SG108E 8-port smart switches into the mesh network for enhanced redundancy, expanded client capacity, and infrastructure support.
+This guide covers the integration of TP-Link switches into the mesh network for enhanced redundancy, expanded client capacity, and infrastructure support.
+
+![Switch Port Mapping](../assets/diagrams/switch-port-mapping.svg)
+
+*Switch topology showing port assignments, VLAN tags, and device connections across all three switches.*
+
+!!! warning "Switch Limitations - No STP Support"
+    The TL-SG108E and TL-SG108PE are "Easy Smart" switches that do **NOT** support STP/RSTP. To avoid L2 loops:
+
+    - **Switch A** carries ALL user VLANs (10, 30, 100, 200) - bridged to mesh via bat0
+    - **Switch C** carries ONLY mesh backbone (VLAN 100) - no user VLANs
+
+    Batman-adv Bridge Loop Avoidance (BLA) prevents loops between Switch A and the mesh.
+    **Switch C management** requires out-of-band access - it is NOT reachable via the mesh network.
 
 ## Architecture Overview
 
 ```
-                              ┌─────────────────┐
-                              │     Node 1      │
-                              │   10.11.12.1    │
-                              │  LAN3    LAN4   │
-                              └───┬────────┬────┘
-                                  │        │
-                  ┌───────────────┘        └───────────────┐
-                  │                                        │
-                  ▼                                        ▼
-      ┌───────────────────┐                    ┌───────────────────┐
-      │    SWITCH A       │                    │    SWITCH B       │
-      │   10.11.10.11     │                    │   10.11.10.12     │
-      ├───────────────────┤                    ├───────────────────┤
-      │ P1: Node1 LAN3    │                    │ P1: Node1 LAN4    │
-      │ P2: Node2 LAN3    │                    │ P2: Node2 LAN4    │
-      │ P3: Node3 LAN3    │                    │ P3: Node3 LAN4    │
-      │ P4: Management    │                    │ P4: Management    │
-      │ P5: Switch C      │                    │ P5: Switch C      │
-      │ P6-P7: Clients    │                    │ P6-P7: Clients    │
-      │ P8 ◄──────────────┼──(inter-switch)────┼──────────────► P8 │
-      └─────────┬─────────┘                    └─────────┬─────────┘
-                │                                        │
-                │         ┌─────────────────┐            │
-                └─────────┤     Node 2      ├────────────┘
-                          │   10.11.12.2    │
-                          └───┬────────┬────┘
-                              │        │
-              ┌───────────────┘        └───────────────┐
-              │         ┌─────────────────┐            │
-              └─────────┤     Node 3      ├────────────┘
-                        │   10.11.12.3    │
-                        └─────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              NETWORK TOPOLOGY                               │
+│            (HA Design with BLA Loop Prevention on Switch A)                 │
+└─────────────────────────────────────────────────────────────────────────────┘
 
-      ┌───────────────────┐                    ┌───────────────────┐
-      │    SWITCH A       │                    │    SWITCH B       │
-      │      P5           │                    │       P5          │
-      └─────────┬─────────┘                    └─────────┬─────────┘
-                │                                        │
-                │            ┌───────────────┐           │
-                │            │   SWITCH C    │           │
-                │            │  10.11.10.13  │           │
-                │            ├───────────────┤           │
-                └───────────►│ P1: LAG (SwA) │◄──────────┘
-                             │ P2: LAG (SwB) │
-                             │ P3: RPi       │
-                             │ P4: Proxmox1  │
-                             │ P5: Proxmox2  │
-                             │ P6-8: IoT     │
-                             └───────┬───────┘
-                                     │
-                    ┌────────────────┼────────────────┐
-                    │                │                │
-                    ▼                ▼                ▼
-             ┌──────────┐     ┌──────────┐     ┌──────────┐
-             │   RPi    │     │ Proxmox1 │     │ Proxmox2 │
-             │ QDevice  │     │10.11.10.21    │10.11.10.22│
-             │10.11.10.20    └──────────┘     └──────────┘
-             │ (Docker) │           │                │
-             └──────────┘           └───(Storage)────┘
-                                      10.11.50.0/30
+                              ┌─────────────┐
+                        WAN───┤   Node 1    │
+                              │ 10.11.12.1  │
+                              │  GW Primary │
+                              └──┬───────┬──┘
+                            LAN3 │       │ LAN4
+                                 │       │
+                                 ▼       ▼
+┌────────────────────────────────┐       ┌────────────────────────────────────┐
+│      SWITCH A (TL-SG108E)      │       │       SWITCH C (TL-SG108E)         │
+│  Main Distribution - All VLANs │       │   Mesh Backbone + Mgmt Link        │
+│         10.11.10.11            │       │          10.11.10.13               │
+├────────────────────────────────┤       ├────────────────────────────────────┤
+│ P1: Node1 LAN3 (10,30,100,200) │       │ P1: Node1 LAN4 (100 only)          │
+│ P2: Node2 LAN3 (10,30,100,200) │       │ P2: Node2 LAN4 (100 only)          │
+│ P3: Node3 LAN3 (10,30,100,200) │       │ P3: Node3 LAN4 (100 only)          │
+│ P4: Switch B   (10,30 tagged)  │       │ P4: Switch A   (10 tagged) ◄───────┼──┐
+│ P5: Mgmt WS    (All VLANs)     │       │ P5: spare                          │  │
+│ P6: Switch C   (10 tagged) ────┼───────┼──────────────────────────────────────┘ │
+│ P7: Client     (200 untagged)  │       │ P6: spare                          │
+│ P8: Client     (200 untagged)  │       │ P7: spare                          │
+└───────────┬────────────────────┘       │ P8: spare                          │
+                                         └────────────────────────────────────┘
+            │ P4
+            ▼
+┌────────────────────────────────┐
+│      SWITCH B (TL-SG108PE)     │
+│  Infrastructure + PoE - 10,30  │
+│         10.11.10.12            │
+├────────────────────────────────┤
+│ P1: Switch A   (10,30 tagged)  │
+│ P2: Infra      (10 untagged)   │
+│ P3: Infra      (10 untagged)   │
+│ P4: Infra      (10 untagged)   │
+│ P5: IoT PoE    (30 untagged)   │
+│ P6: IoT PoE    (30 untagged)   │
+│ P7: IoT PoE    (30 untagged)   │
+│ P8: IoT PoE    (30 untagged)   │
+└────────────────────────────────┘
 ```
+
+## Physical Connections
+
+| From | To | Cable | VLANs |
+|------|-----|-------|-------|
+| Node 1 LAN3 | Switch A P1 | Ethernet | 10, 30, 100, 200 (tagged) |
+| Node 1 LAN4 | Switch C P1 | Ethernet | 100 only (tagged) |
+| Node 2 LAN3 | Switch A P2 | Ethernet | 10, 30, 100, 200 (tagged) |
+| Node 2 LAN4 | Switch C P2 | Ethernet | 100 only (tagged) |
+| Node 3 LAN3 | Switch A P3 | Ethernet | 10, 30, 100, 200 (tagged) |
+| Node 3 LAN4 | Switch C P3 | Ethernet | 100 only (tagged) |
+| Switch A P4 | Switch B P1 | Ethernet | 10, 30 (tagged) |
+| **Switch A P6** | **Switch C P4** | **Ethernet** | **1 (untagged) - Management link** |
 
 ## VLAN Design
 
-| VLAN | Name | Purpose | Network |
-|------|------|---------|---------|
-| 10 | management | Switch/node management, Proxmox, VMs | 10.11.10.0/24 |
-| 30 | iot | IoT devices (isolated) | 10.11.30.0/24 |
-| 100 | mesh_backbone | Batman-adv mesh traffic | L2 only |
-| 200 | clients | Client device access | 10.11.12.0/24 |
+| VLAN | Name | Purpose | Network | Switch A | Switch B | Switch C |
+|------|------|---------|---------|----------|----------|----------|
+| 1 | default | Switch management | - | ✓ | ✓ | ✓ (via SwA link) |
+| 10 | management | Node management, Proxmox, VMs | 10.11.10.0/24 | ✓ | ✓ | ✗ |
+| 30 | iot | IoT devices (isolated) | 10.11.30.0/24 | ✓ | ✓ | ✗ |
+| 100 | mesh_backbone | Batman-adv mesh traffic | L2 only | ✓ | ✗ | ✓ |
+| 200 | clients | Client device access | 10.11.12.0/24 | ✓ | ✗ | ✗ |
+
+*Switch C receives VLAN 1 via direct link from Switch A (P6→P4) for management access.*
+
+!!! info "Loop Prevention Design"
+    **Switch A** carries all user VLANs (10, 30, 200) which are bridged to the mesh (bat0.X).
+    Batman-adv BLA (Bridge Loop Avoidance) prevents loops between Switch A paths and mesh paths.
+
+    **Switch C** carries:
+
+    - VLAN 100 (mesh backbone) on ports 1-3 from mesh nodes
+    - VLAN 1 (default/management) on port 4 from Switch A (direct link)
+
+    The TL-SG108E "Easy Smart" switches only respond to management on **untagged** traffic.
+    All three switches use VLAN 1 (untagged) for management access.
+
+    **Never add VLAN 10, 30, or 200 to Switch C** - these would create L2 loops.
 
 ## Node Port Assignment
 
-| Port | Purpose | VLAN |
-|------|---------|------|
-| LAN1 | Client devices | Bridged to bat0 |
-| LAN2 | IoT/Infrastructure | 30 (isolated) |
-| LAN3 | Switch A trunk | 10, 30, 100, 200 (tagged) |
-| LAN4 | Switch B trunk | 10, 30, 100, 200 (tagged) |
+| Port | Purpose | VLANs | Bridged to |
+|------|---------|-------|------------|
+| LAN1 | Client devices | untagged | br-lan (bat0) |
+| LAN2 | IoT/Infrastructure | untagged | br-iot (bat0.30) |
+| LAN3 | Switch A trunk | 10, 30, 100, 200 (tagged) | br-mgmt, br-iot, br-lan (via VLANs) |
+| LAN4 | Switch C trunk | 100 only (tagged) | lan4.100 → bat0 hardif |
+
+!!! info "Switch C Management Path"
+    LAN4 only has `lan4.100` configured. There is NO `lan4.10` on mesh nodes.
+    Switch C receives VLAN 10 via **direct link from Switch A** (P6→P4).
+    This provides management access without creating L2 loops through the mesh.
 
 ---
 
-## Switch Configuration Prerequisites
+## Switch A Configuration (TL-SG108E)
 
-- 3x TP-Link TL-SG108E switches
-- Ethernet cables for connections
-- Computer with web browser for configuration
-- Use `make switch-to-switch-network` to configure your workstation for factory switch access
-
-### Web GUI Menu Structure
-
-The TL-SG108E web interface has these main menus (left sidebar):
-
-```
-System
-├── System Info
-├── IP Setting
-├── User Account
-└── System Tools
-
-Switching
-├── Port Setting
-├── IGMP Snooping
-└── LAG
-
-Monitoring
-├── Port Statistics
-├── Port Mirror
-└── Cable Test
-
-VLAN
-├── MTU VLAN
-├── Port Based VLAN
-├── 802.1Q VLAN
-└── 802.1Q PVID Setting
-
-QoS
-├── Basic
-└── Bandwidth Control
-
-Save Config
-
-Logout
-```
-
----
-
-## Switch A Configuration
+Switch A is the **main distribution switch** carrying all VLANs.
 
 ### Step 1: Factory Reset (if needed)
 
-1. Locate the **Reset** button (small hole on the side of the switch)
-2. With the switch powered on, press and hold the reset button for **5+ seconds** using a paperclip
-3. Release when all port LEDs blink simultaneously
-4. Wait 30 seconds for the switch to restart
+1. Locate the **Reset** button (small hole on the side)
+2. With switch powered on, press and hold for **5+ seconds**
+3. Release when all port LEDs blink
+4. Wait 30 seconds for restart
 
-### Step 2: Connect to Factory Default Switch
+### Step 2: Initial Access
 
-1. Connect your computer to **any port (1-8)** on Switch A with an ethernet cable
-   - Factory default: all ports are in VLAN 1, any port works
-2. Configure your computer's IP:
+1. Connect your computer to any port
+2. Configure IP: `192.168.0.2/24`
 
    ```bash
-   # Using the provided playbook:
    make switch-to-switch-network
-
-   # Or manually set IP to 192.168.0.2/24
    ```
 
-3. Open a web browser and navigate to: `http://192.168.0.1`
-4. Login with default credentials:
-   - **Username:** `admin`
-   - **Password:** `admin`
+3. Browse to `http://192.168.0.1`
+4. Login: `admin` / `admin`
 
-> **After VLAN configuration:** Use **Port 4** (dedicated management port) for configuration access. Ports 6-7 are client-only (VLAN 200) and cannot reach the switch management interface.
+### Step 3: Set Management IP
 
-### Step 3: Set Management IP Address
+1. Go to **System → IP Setting**
+2. Configure:
+   - DHCP Setting: `Disable`
+   - IP Address: `10.11.10.11`
+   - Subnet Mask: `255.255.255.0`
+   - Default Gateway: `10.11.10.1`
+3. Click **Apply**
+4. Reconnect using:
 
-1. In the left sidebar, click **System**
-2. Click **IP Setting**
-3. You will see the IP Setting page with these fields:
-   - **DHCP Setting:** Set to `Disable`
-   - **IP Address:** Enter `10.11.10.11`
-   - **Subnet Mask:** Enter `255.255.255.0`
-   - **Default Gateway:** Enter `10.11.10.1`
-4. Click the **Apply** button at the bottom
+   ```bash
+   make switch-to-mgmt-network
+   ```
 
-> **Note:** After applying, you will lose connection. To reconnect:
->
-> 1. Stay connected to the same port (any port still works at this stage)
-> 2. Run `make switch-to-mgmt-network` to switch your computer to 10.11.10.100/24
-> 3. Access the switch at `http://10.11.10.11`
+5. Access at `http://10.11.10.11`
 
-### Step 4: Enable 802.1Q VLAN Mode
+### Step 4: Enable 802.1Q VLAN
 
-1. In the left sidebar, click **VLAN**
-2. Click **802.1Q VLAN**
-3. You will see the 802.1Q VLAN Configuration page
-4. Find the **802.1Q VLAN** dropdown at the top
-5. Change from `Disable` to **`Enable`**
-6. Click **Apply**
-7. The page will refresh and show additional VLAN configuration options
+1. Go to **VLAN → 802.1Q VLAN**
+2. Set 802.1Q VLAN to **Enable**
+3. Click **Apply**
 
 ### Step 5: Configure VLAN 100 (Mesh Backbone)
 
-1. Stay on the **VLAN → 802.1Q VLAN** page
-2. In the **VLAN ID** field, enter: `100`
-3. For each port, select the radio button in the appropriate column:
+1. VLAN ID: `100`
+2. VLAN Name: `MeshBackbone`
+3. Port configuration:
 
-| Port | Untagged | Tagged | Not Member |
-|------|----------|--------|------------|
-| Port 1 | ○ | ● | ○ |
-| Port 2 | ○ | ● | ○ |
-| Port 3 | ○ | ● | ○ |
-| Port 4 | ○ | ○ | ● |
-| Port 5 | ○ | ○ | ● |
-| Port 6 | ○ | ○ | ● |
-| Port 7 | ○ | ○ | ● |
-| Port 8 | ○ | ● | ○ |
+| Port | Untagged | Tagged | Not Member | Purpose |
+|------|:--------:|:------:|:----------:|---------|
+| 1 | | ● | | Node 1 trunk |
+| 2 | | ● | | Node 2 trunk |
+| 3 | | ● | | Node 3 trunk |
+| 4 | | | ● | Switch B |
+| 5 | | ● | | Mgmt workstation |
+| 6 | | | ● | Switch C link |
+| 7 | | | ● | Client |
+| 8 | | | ● | Client |
 
 4. Click **Add/Modify**
 
-### Step 6: Configure VLAN 200 (Client Traffic)
+### Step 6: Configure VLAN 200 (Clients)
 
-1. Stay on the **VLAN → 802.1Q VLAN** page
-2. In the **VLAN ID** field, enter: `200`
-3. For each port, select the radio button in the appropriate column:
+1. VLAN ID: `200`
+2. VLAN Name: `Clients`
+3. Port configuration:
 
-| Port | Untagged | Tagged | Not Member |
-|------|----------|--------|------------|
-| Port 1 | ○ | ● | ○ |
-| Port 2 | ○ | ● | ○ |
-| Port 3 | ○ | ● | ○ |
-| Port 4 | ○ | ○ | ● |
-| Port 5 | ○ | ○ | ● |
-| Port 6 | ● | ○ | ○ |
-| Port 7 | ● | ○ | ○ |
-| Port 8 | ○ | ○ | ● |
-
-!!! warning "Critical: Port 8 Must NOT Be Member of VLAN 200"
-    Do NOT add Port 8 to VLAN 200. Client traffic must traverse the mesh (bat0) to reach clients on the other switch. Adding VLAN 200 to Port 8 creates a Layer 2 loop with duplicate traffic paths.
+| Port | Untagged | Tagged | Not Member | Purpose |
+|------|:--------:|:------:|:----------:|---------|
+| 1 | | ● | | Node 1 trunk |
+| 2 | | ● | | Node 2 trunk |
+| 3 | | ● | | Node 3 trunk |
+| 4 | | | ● | Switch B |
+| 5 | | ● | | Mgmt workstation |
+| 6 | | | ● | Switch C link |
+| 7 | ● | | | Client |
+| 8 | ● | | | Client |
 
 4. Click **Add/Modify**
 
 ### Step 7: Configure VLAN 10 (Management)
 
-1. Stay on the **VLAN → 802.1Q VLAN** page
-2. In the **VLAN ID** field, enter: `10`
-3. For each port, select the radio button in the appropriate column:
+1. VLAN ID: `10`
+2. VLAN Name: `MgmtInfra`
+3. Port configuration:
 
-| Port | Untagged | Tagged | Not Member |
-|------|----------|--------|------------|
-| Port 1 | ○ | ● | ○ |
-| Port 2 | ○ | ● | ○ |
-| Port 3 | ○ | ● | ○ |
-| Port 4 | ● | ○ | ○ |
-| Port 5 | ○ | ● | ○ |
-| Port 6 | ○ | ○ | ● |
-| Port 7 | ○ | ○ | ● |
-| Port 8 | ○ | ● | ○ |
+| Port | Untagged | Tagged | Not Member | Purpose |
+|------|:--------:|:------:|:----------:|---------|
+| 1 | | ● | | Node 1 trunk |
+| 2 | | ● | | Node 2 trunk |
+| 3 | | ● | | Node 3 trunk |
+| 4 | | ● | | Switch B uplink |
+| 5 | | ● | | Mgmt workstation |
+| 6 | | | ● | Switch C link |
+| 7 | | | ● | Client |
+| 8 | | | ● | Client |
 
 4. Click **Add/Modify**
 
 ### Step 8: Configure VLAN 30 (IoT)
 
-1. Stay on the **VLAN → 802.1Q VLAN** page
-2. In the **VLAN ID** field, enter: `30`
-3. For each port, select the radio button in the appropriate column:
+1. VLAN ID: `30`
+2. VLAN Name: `IoT`
+3. Port configuration:
 
-| Port | Untagged | Tagged | Not Member |
-|------|----------|--------|------------|
-| Port 1 | ○ | ● | ○ |
-| Port 2 | ○ | ● | ○ |
-| Port 3 | ○ | ● | ○ |
-| Port 4 | ○ | ○ | ● |
-| Port 5 | ○ | ● | ○ |
-| Port 6 | ○ | ○ | ● |
-| Port 7 | ○ | ○ | ● |
-| Port 8 | ○ | ● | ○ |
+| Port | Untagged | Tagged | Not Member | Purpose |
+|------|:--------:|:------:|:----------:|---------|
+| 1 | | ● | | Node 1 trunk |
+| 2 | | ● | | Node 2 trunk |
+| 3 | | ● | | Node 3 trunk |
+| 4 | | ● | | Switch B uplink |
+| 5 | | ● | | Mgmt workstation |
+| 6 | | | ● | Switch C link |
+| 7 | | | ● | Client |
+| 8 | | | ● | Client |
 
 4. Click **Add/Modify**
 
 ### Step 9: Configure PVID Settings
 
-The PVID (Port VLAN ID) determines which VLAN untagged incoming frames are assigned to.
+Go to **VLAN → 802.1Q PVID Setting**:
 
-1. In the left sidebar, click **VLAN**
-2. Click **802.1Q PVID Setting**
-3. You will see a table of all 8 ports with PVID fields
-4. Configure PVIDs as follows:
-
-| Port | PVID Value |
-|------|------------|
-| Port 1 | `1` (default) |
-| Port 2 | `1` (default) |
-| Port 3 | `1` (default) |
-| Port 4 | `10` |
-| Port 5 | `1` (default) |
-| Port 6 | `200` |
-| Port 7 | `200` |
-| Port 8 | `1` (default) |
-
-5. For each port you need to change:
-   - Click on the port row or select it
-   - Enter the PVID value
-   - Click **Apply**
+| Port | PVID | Purpose |
+|------|------|---------|
+| P1 | 1 | Node trunk |
+| P2 | 1 | Node trunk |
+| P3 | 1 | Node trunk |
+| P4 | 1 | Switch B uplink |
+| P5 | 1 | Mgmt workstation trunk |
+| P6 | 1 | Switch C link |
+| P7 | 200 | Client |
+| P8 | 200 | Client |
 
 ### Step 10: Enable IGMP Snooping
 
-1. In the left sidebar, click **Switching**
-2. Click **IGMP Snooping**
-3. You will see the IGMP Snooping page
-4. Find the **IGMP Snooping** dropdown/checkbox
-5. Set to **Enable**
-6. Click **Apply**
+1. Go to **Switching → IGMP Snooping**
+2. Set to **Enable**
+3. Click **Apply**
 
-### Step 11: Verify Configuration Saved
-
-On firmware 1.0.0 Build 20191021 and later, configuration is **automatically saved** when you click **Apply** or **Add/Modify**. No separate save step is required.
-
-To verify your configuration persists:
-
-1. Power cycle the switch (unplug and replug power)
-2. Log back in and check that your VLAN settings are still present
-
-> **Note:** Older firmware versions may require a separate "Save Config" step. If your settings don't persist after power cycle, check for firmware updates at [TP-Link Support](https://www.tp-link.com/support/).
-
-### Step 12: Backup Configuration
-
-After configuration is complete, export a backup:
-
-1. In the left sidebar, click **System**
-2. Click **System Tools**
-3. Click **Config Backup**
-4. Click **Backup Config** to download the `.cfg` file
-5. Save the file as `switchA.cfg`
-
-Reference backup files are stored in `openwrt-mesh-ansible/switches/`:
-
-- `switchA.cfg` - Switch A (10.11.10.11) configuration
-- `switchB.cfg` - Switch B (10.11.10.12) configuration
-- `switchC.cfg` - Switch C (10.11.10.13) configuration
-
-### Switch A Port Summary
+### Switch A VLAN Summary (After Configuration)
 
 | Port | Purpose | VLAN 1 | VLAN 10 | VLAN 30 | VLAN 100 | VLAN 200 | PVID |
-|------|---------|--------|---------|---------|----------|----------|------|
-| 1 | Node 1 trunk | U | T | T | T | T | 1 |
-| 2 | Node 2 trunk | U | T | T | T | T | 1 |
-| 3 | Node 3 trunk | U | T | T | T | T | 1 |
-| 4 | Mgmt access | U | **U** | - | - | - | 10 |
-| 5 | Switch C uplink | U | T | T | - | - | 1 |
-| 6 | Client | U | - | - | - | U | 200 |
-| 7 | Client | U | - | - | - | U | 200 |
-| 8 | Inter-switch | U | T | T | T | **-** | 1 |
+|------|---------|:------:|:-------:|:-------:|:--------:|:--------:|:----:|
+| 1 | Node 1 | ●U | ●T | ●T | ●T | ●T | 1 |
+| 2 | Node 2 | ●U | ●T | ●T | ●T | ●T | 1 |
+| 3 | Node 3 | ●U | ●T | ●T | ●T | ●T | 1 |
+| 4 | Switch B | ●U | ●T | ●T | | | 1 |
+| 5 | Mgmt WS | ●U | ●T | ●T | ●T | ●T | 1 |
+| 6 | **Switch C** | ●U | **●U** | | | | 1 |
+| 7 | Client | | | | | ●U | 200 |
+| 8 | Client | | | | | ●U | 200 |
 
-**Legend:** U = Untagged, T = Tagged, - = Not Member
-
----
-
-## Switch B Configuration
-
-Repeat **all steps** from Switch A configuration with these changes:
-
-| Setting | Switch A | Switch B |
-|---------|----------|----------|
-| Management IP | `10.11.10.11` | `10.11.10.12` |
-| Backup filename | `switchA.cfg` | `switchB.cfg` |
-| All VLAN settings | Same | Same |
-| All PVID settings | Same | Same |
+**Legend:** ●T = Tagged, ●U = Untagged, (empty) = Not Member
 
 ---
 
-## Switch C Configuration (Infrastructure Switch)
+## Switch B Configuration (TL-SG108PE)
 
-Switch C is the downstream infrastructure switch that provides:
+Switch B is the **infrastructure switch** for Proxmox, RPi, and IoT devices with **PoE support**.
 
-- **Dual uplinks** to Switch A and Switch B for redundancy
-- **Ports for Proxmox infrastructure** (VLAN 10 - Management)
-- **Ports for IoT devices** (VLAN 30 - IoT)
+### Step 1-4: Initial Setup
 
-### Switch C Architecture Diagram
+Same as Switch A, but use:
 
-```
-                    ┌───────────────────┐     ┌───────────────────┐
-                    │     SWITCH A      │     │     SWITCH B      │
-                    │    10.11.10.11    │     │    10.11.10.12    │
-                    └─────────┬─────────┘     └─────────┬─────────┘
-                              │ Port 5                  │ Port 5
-                              │                         │
-                              │   (dual uplinks for     │
-                              │      redundancy)        │
-                              ▼                         ▼
-                    ┌─────────────────────────────────────────────┐
-                    │              SWITCH C                       │
-                    │             10.11.10.13                     │
-                    ├─────────────────────────────────────────────┤
-                    │                                             │
-                    │  ┌─────┐ ┌─────┐ ┌─────┐ ┌─────┐ ┌─────┐   │
-                    │  │ P1  │ │ P2  │ │ P3  │ │ P4  │ │ P5  │   │
-                    │  │ SwA │ │ SwB │ │ RPi │ │ PVE1│ │ PVE2│   │
-                    │  └──┬──┘ └──┬──┘ └──┬──┘ └──┬──┘ └──┬──┘   │
-                    │     │      │      │      │      │         │
-                    │  ┌─────┐ ┌─────┐ ┌─────┐                   │
-                    │  │ P6  │ │ P7  │ │ P8  │   IoT Ports       │
-                    │  │ IoT │ │ IoT │ │ IoT │   (VLAN 30)       │
-                    │  └──┬──┘ └──┬──┘ └──┬──┘                   │
-                    │     │      │      │                        │
-                    └─────┼──────┼──────┼────────────────────────┘
-                          │      │      │
-                          ▼      ▼      ▼
-                    IoT Devices (10.11.30.x)
+- IP Address: `10.11.10.12`
 
-    ┌──────────────────────────────────────────────────────────────┐
-    │                   INFRASTRUCTURE DEVICES                      │
-    ├──────────────────────────────────────────────────────────────┤
-    │                                                              │
-    │  Port 3              Port 4              Port 5              │
-    │    │                   │                   │                 │
-    │    ▼                   ▼                   ▼                 │
-    │ ┌──────────┐      ┌──────────┐      ┌──────────┐            │
-    │ │   RPi    │      │ Proxmox1 │      │ Proxmox2 │            │
-    │ │ QDevice  │      │          │      │          │            │
-    │ │10.11.10.20│     │10.11.10.21│     │10.11.10.22│           │
-    │ │          │      │          │      │          │            │
-    │ │ Docker   │      │   eth0   │      │   eth0   │            │
-    │ │ Container│      │ (mgmt)   │      │ (mgmt)   │            │
-    │ └──────────┘      │          │      │          │            │
-    │                   │   eth2 ──┼──────┼── eth2   │            │
-    │                   │ Storage  │      │ Storage  │            │
-    │                   │10.11.50.1│      │10.11.50.2│            │
-    │                   └──────────┘      └──────────┘            │
-    │                         │                │                   │
-    │                         └─── Crossover ──┘                   │
-    │                           10.11.50.0/30                      │
-    └──────────────────────────────────────────────────────────────┘
-```
+### Step 5: Configure VLAN 10 (Management)
 
-### Switch C VLAN Design
+1. VLAN ID: `10`
+2. VLAN Name: `MgmtInfra`
+3. Port configuration:
 
-| VLAN | ID | Purpose | Ports |
-|------|----|---------|-------|
-| Management | 10 | RPi QDevice, Proxmox hosts, VMs | P1-2 (tagged), P3-5 (untagged) |
-| IoT | 30 | IoT devices (isolated) | P1-2 (tagged), P6-8 (untagged) |
+| Port | Untagged | Tagged | Not Member | Purpose |
+|------|:--------:|:------:|:----------:|---------|
+| 1 | | ● | | Uplink to Switch A |
+| 2 | ● | | | Infrastructure |
+| 3 | ● | | | Infrastructure |
+| 4 | ● | | | Infrastructure |
+| 5 | | | ● | IoT PoE |
+| 6 | | | ● | IoT PoE |
+| 7 | | | ● | IoT PoE |
+| 8 | | | ● | IoT PoE |
 
-### Switch C Port Assignment
+4. Click **Add/Modify**
 
-| Port | Purpose | VLAN 10 (Mgmt) | VLAN 30 (IoT) | PVID |
-|------|---------|----------------|---------------|------|
-| 1 | Uplink to Switch A | Tagged | Tagged | 1 |
-| 2 | Uplink to Switch B | Tagged | Tagged | 1 |
-| 3 | RPi QDevice | **Untagged** | - | 10 |
-| 4 | Proxmox Node 1 | **Untagged** | - | 10 |
-| 5 | Proxmox Node 2 | **Untagged** | - | 10 |
-| 6 | IoT Device | - | **Untagged** | 30 |
-| 7 | IoT Device | - | **Untagged** | 30 |
-| 8 | IoT Device | - | **Untagged** | 30 |
+### Step 6: Configure VLAN 30 (IoT)
+
+1. VLAN ID: `30`
+2. VLAN Name: `IoT`
+3. Port configuration:
+
+| Port | Untagged | Tagged | Not Member | Purpose |
+|------|:--------:|:------:|:----------:|---------|
+| 1 | | ● | | Uplink to Switch A |
+| 2 | | | ● | Infrastructure |
+| 3 | | | ● | Infrastructure |
+| 4 | | | ● | Infrastructure |
+| 5 | ● | | | IoT PoE |
+| 6 | ● | | | IoT PoE |
+| 7 | ● | | | IoT PoE |
+| 8 | ● | | | IoT PoE |
+
+4. Click **Add/Modify**
+
+### Step 7: Configure PVID Settings
+
+| Port | PVID | Purpose |
+|------|------|---------|
+| P1 | 1 | Uplink trunk |
+| P2 | 10 | Infrastructure |
+| P3 | 10 | Infrastructure |
+| P4 | 10 | Infrastructure |
+| P5 | 30 | IoT PoE |
+| P6 | 30 | IoT PoE |
+| P7 | 30 | IoT PoE |
+| P8 | 30 | IoT PoE |
+
+### Switch B VLAN Summary (After Configuration)
+
+| Port | Purpose | VLAN 1 | VLAN 10 | VLAN 30 | PVID | PoE |
+|------|---------|:------:|:-------:|:-------:|:----:|:---:|
+| 1 | Uplink (SwA) | ●U | ●T | ●T | 1 | |
+| 2 | Infrastructure | ●U | ●U | | 10 | |
+| 3 | Infrastructure | ●U | ●U | | 10 | |
+| 4 | Infrastructure | ●U | ●U | | 10 | ✓ |
+| 5 | IoT PoE | ●U | | ●U | 30 | ✓ |
+| 6 | IoT PoE | ●U | | ●U | 30 | ✓ |
+| 7 | IoT PoE | ●U | | ●U | 30 | ✓ |
+| 8 | IoT PoE | ●U | | ●U | 30 | |
+
+**Legend:** ●T = Tagged, ●U = Untagged, (empty) = Not Member
+
+!!! note "PoE Ports"
+    Switch B (TL-SG108PE) has PoE+ on ports 4-7. Use these for PoE-powered IoT devices like cameras, sensors, or access points. Port 8 is non-PoE IoT.
 
 ---
 
-### Switch C Step 1: Factory Reset
+## Switch C Configuration (TL-SG108E)
 
-1. Locate the **Reset** button (small hole on the side of the switch)
-2. With the switch powered on, press and hold the reset button for **5+ seconds** using a paperclip
-3. Release when all port LEDs blink simultaneously
-4. Wait 30 seconds for the switch to restart
+Switch C carries **mesh backbone (VLAN 100)** for wired mesh redundancy and receives **VLAN 10 (management)** via direct link from Switch A.
 
-### Switch C Step 2: Connect to Factory Default Switch
+!!! info "Switch C Management via Switch A Link"
+    Switch C receives VLAN 10 via a **direct cable from Switch A** (P6 → P4).
+    TL-SG108E switches only respond to management on **untagged** traffic.
 
-1. Connect your computer to **any port (1-8)** on Switch C with an ethernet cable
-2. Configure your computer's IP:
+    - Mesh nodes have only `lan4.100` - no other VLANs on LAN4
+    - VLAN 10 travels: Workstation → Switch A (P5) → Switch A (P6) → Switch C (P4)
+    - No L2 loops because this path doesn't go through the mesh
+
+    **Never add VLAN 30 or 200 to Switch C** - these would create broadcast storms.
+
+### Step 1: Factory Reset (if needed)
+
+1. Locate the **Reset** button (small hole on the side)
+2. With switch powered on, press and hold for **5+ seconds**
+3. Release when all port LEDs blink
+4. Wait 30 seconds for restart
+
+### Step 2: Initial Access (Direct Connection Required)
+
+!!! note "Why Direct Connection?"
+    Switch C connects to node LAN4 ports, which only carry VLAN 100 (tagged).
+    You must connect directly to a spare port (P4-P8) for configuration.
+
+1. Connect your computer directly to Switch C **Port 4, 5, 6, 7, or 8**
+2. Configure IP: `192.168.0.2/24`
 
    ```bash
-   # Using the provided playbook:
    make switch-to-switch-network
-
-   # Or manually set IP to 192.168.0.2/24
    ```
 
-3. Open a web browser and navigate to: `http://192.168.0.1`
-4. Login with default credentials:
-   - **Username:** `admin`
-   - **Password:** `admin`
+3. Browse to `http://192.168.0.1`
+4. Login: `admin` / `admin`
 
-### Switch C Step 3: Set Management IP Address
+### Step 3: Enable 802.1Q VLAN First
 
-1. In the left sidebar, click **System**
-2. Click **IP Setting**
-3. Configure the following fields:
-   - **DHCP Setting:** Set to `Disable`
-   - **IP Address:** Enter `10.11.10.13`
-   - **Subnet Mask:** Enter `255.255.255.0`
-   - **Default Gateway:** Enter `10.11.10.1`
-4. Click the **Apply** button
+1. Go to **VLAN → 802.1Q VLAN**
+2. Set 802.1Q VLAN to **Enable**
+3. Click **Apply**
 
-> **Note:** After applying, you will lose connection. To reconnect:
->
-> 1. Run `make switch-to-mgmt-network` to switch your computer to 10.11.10.100/24
-> 2. Access the switch at `http://10.11.10.13`
+### Step 4: Configure VLAN 100 (Mesh)
 
-### Switch C Step 4: Enable 802.1Q VLAN Mode
-
-1. In the left sidebar, click **VLAN**
-2. Click **802.1Q VLAN**
-3. Find the **802.1Q VLAN** dropdown at the top
-4. Change from `Disable` to **`Enable`**
-5. Click **Apply**
-6. The page will refresh and show additional VLAN configuration options
-
-### Switch C Step 5: Configure VLAN 10 (Management/Infrastructure)
-
-This VLAN carries traffic for:
-
-- RPi QDevice (Proxmox quorum)
-- Proxmox Node 1 and Node 2
-- VMs running on Proxmox (Home Assistant, MQTT broker, etc.)
-
-1. Stay on the **VLAN → 802.1Q VLAN** page
-2. In the **VLAN ID** field, enter: `10`
-3. For each port, select the radio button in the appropriate column:
+1. VLAN ID: `100`
+2. VLAN Name: `Mesh`
+3. Port configuration:
 
 | Port | Untagged | Tagged | Not Member | Purpose |
-|------|----------|--------|------------|---------|
-| Port 1 | ○ | ● | ○ | Uplink to Switch A (tagged) |
-| Port 2 | ○ | ● | ○ | Uplink to Switch B (tagged) |
-| Port 3 | ● | ○ | ○ | RPi QDevice (untagged) |
-| Port 4 | ● | ○ | ○ | Proxmox 1 (untagged) |
-| Port 5 | ● | ○ | ○ | Proxmox 2 (untagged) |
-| Port 6 | ○ | ○ | ● | IoT only |
-| Port 7 | ○ | ○ | ● | IoT only |
-| Port 8 | ○ | ○ | ● | IoT only |
+|------|:--------:|:------:|:----------:|---------|
+| 1 | | ● | | Node 1 LAN4 |
+| 2 | | ● | | Node 2 LAN4 |
+| 3 | | ● | | Node 3 LAN4 |
+| 4 | | | ● | Switch A link |
+| 5 | | | ● | spare |
+| 6 | | | ● | spare |
+| 7 | | | ● | spare |
+| 8 | | | ● | spare |
 
 4. Click **Add/Modify**
 
-### Switch C Step 6: Configure VLAN 30 (IoT)
+### Step 5: Configure VLAN 10 (AlinkC - Switch A Link)
 
-This VLAN carries traffic for IoT devices that need to reach:
-
-- Home Assistant (via firewall rules to VLAN 10)
-- MQTT broker (via firewall rules to VLAN 10)
-- Internet (via mesh nodes)
-
-1. Stay on the **VLAN → 802.1Q VLAN** page
-2. In the **VLAN ID** field, enter: `30`
-3. For each port, select the radio button in the appropriate column:
+1. VLAN ID: `10`
+2. VLAN Name: `AlinkC`
+3. Port configuration:
 
 | Port | Untagged | Tagged | Not Member | Purpose |
-|------|----------|--------|------------|---------|
-| Port 1 | ○ | ● | ○ | Uplink to Switch A (tagged) |
-| Port 2 | ○ | ● | ○ | Uplink to Switch B (tagged) |
-| Port 3 | ○ | ○ | ● | Infrastructure only |
-| Port 4 | ○ | ○ | ● | Infrastructure only |
-| Port 5 | ○ | ○ | ● | Infrastructure only |
-| Port 6 | ● | ○ | ○ | IoT device (untagged) |
-| Port 7 | ● | ○ | ○ | IoT device (untagged) |
-| Port 8 | ● | ○ | ○ | IoT device (untagged) |
+|------|:--------:|:------:|:----------:|---------|
+| 1 | | | ● | Node 1 LAN4 |
+| 2 | | | ● | Node 2 LAN4 |
+| 3 | | | ● | Node 3 LAN4 |
+| 4 | ● | | | **Switch A link** |
+| 5 | | | ● | spare |
+| 6 | | | ● | spare |
+| 7 | | | ● | spare |
+| 8 | | | ● | spare |
 
 4. Click **Add/Modify**
 
-### Switch C Step 7: Configure PVID Settings
+### Step 6: Verify VLAN 1 (Default)
 
-The PVID determines which VLAN untagged incoming frames are assigned to.
+VLAN 1 should already have all ports as untagged members by default. Verify:
 
-1. In the left sidebar, click **VLAN**
-2. Click **802.1Q PVID Setting**
-3. Configure PVIDs as follows:
+| Port | Untagged | Tagged | Not Member | Purpose |
+|------|:--------:|:------:|:----------:|---------|
+| 1 | ● | | | Node 1 LAN4 |
+| 2 | ● | | | Node 2 LAN4 |
+| 3 | ● | | | Node 3 LAN4 |
+| 4 | ● | | | Switch A link |
+| 5 | ● | | | spare |
+| 6 | ● | | | spare |
+| 7 | ● | | | spare |
+| 8 | ● | | | spare |
 
-| Port | PVID Value | Reason |
-|------|------------|--------|
-| Port 1 | `1` | Uplink trunk - uses tagged VLANs |
-| Port 2 | `1` | Uplink trunk - uses tagged VLANs |
-| Port 3 | `10` | RPi connects untagged, needs VLAN 10 |
-| Port 4 | `10` | Proxmox 1 connects untagged, needs VLAN 10 |
-| Port 5 | `10` | Proxmox 2 connects untagged, needs VLAN 10 |
-| Port 6 | `30` | IoT device connects untagged, needs VLAN 30 |
-| Port 7 | `30` | IoT device connects untagged, needs VLAN 30 |
-| Port 8 | `30` | IoT device connects untagged, needs VLAN 30 |
+### Step 7: Set Management IP
 
-4. For each port:
-   - Click on the port row or select it
-   - Enter the PVID value in the field
-   - Click **Apply**
-5. Repeat for all ports that need PVID changes (Ports 3-8)
+1. Go to **System → IP Setting**
+2. Configure:
+   - DHCP Setting: `Disable`
+   - IP Address: `10.11.10.13`
+   - Subnet Mask: `255.255.255.0`
+   - Default Gateway: `10.11.10.1`
+3. Click **Apply**
+4. You will lose connection via direct access
+5. Connect the Switch A → Switch C cable (P6 → P4)
+6. Verify from management network:
 
-### Switch C Step 8: Verify No LAG Configuration
+   ```bash
+   ping 10.11.10.13
+   ```
 
-!!! warning "Do NOT Configure LAG on Switch C"
-    LAG (Link Aggregation) requires all member ports to connect to the **same remote switch**. Since Port 1 connects to Switch A and Port 2 connects to Switch B, LAG cannot be used here.
+### Step 8: Verify PVID Settings
 
-    If you accidentally configured LAG, both ports will flash on/off simultaneously (~1 second interval) indicating a loop detection or negotiation failure.
+All ports should have PVID 1 (default). No changes needed.
 
-**To remove accidental LAG configuration:**
+### Switch C VLAN Summary (After Configuration)
 
-1. In the left sidebar, click **Switching**
-2. Click **LAG**
-3. Ensure Ports 1 and 2 are **NOT** members of any LAG group
-4. If they are in a LAG group, remove them and click **Apply**
+| Port | Purpose | VLAN 1 | VLAN 10 | VLAN 100 | PVID |
+|------|---------|:------:|:-------:|:--------:|:----:|
+| 1 | Node 1 LAN4 | ●U | | ●T | 1 |
+| 2 | Node 2 LAN4 | ●U | | ●T | 1 |
+| 3 | Node 3 LAN4 | ●U | | ●T | 1 |
+| 4 | **Switch A link** | ●U | **●U** | | 1 |
+| 5 | spare | ●U | | | 1 |
+| 6 | spare | ●U | | | 1 |
+| 7 | spare | ●U | | | 1 |
+| 8 | spare | ●U | | | 1 |
 
-The dual uplinks provide redundancy through the VLAN configuration - if one uplink fails, traffic continues via the other uplink through the inter-switch connection (Switch A Port 8 ↔ Switch B Port 8).
+**Legend:** ●T = Tagged, ●U = Untagged, (empty) = Not Member
 
-### Switch C Step 9: Enable IGMP Snooping
+### Switch C Verification Checklist
 
-1. In the left sidebar, click **Switching**
-2. Click **IGMP Snooping**
-3. Find the **IGMP Snooping** dropdown/checkbox
-4. Set to **Enable**
-5. Click **Apply**
+**From the management workstation (connected to Switch A Port 5):**
 
-### Switch C Step 10: Verify and Save Configuration
+```bash
+# Ping Switch C
+ping -c 2 10.11.10.13
+# Expected: 2 packets received
 
-1. Verify your VLAN settings:
-   - Go to **VLAN → 802.1Q VLAN**
-   - Check that VLANs 10 and 30 appear in the list
-   - Verify port memberships match the tables above
+# Access web interface
+firefox http://10.11.10.13
+```
 
-2. Verify your PVID settings:
-   - Go to **VLAN → 802.1Q PVID Setting**
-   - Confirm Ports 3-5 have PVID 10
-   - Confirm Ports 6-8 have PVID 30
+**From any mesh node:**
 
-3. Verify NO LAG configuration:
-   - Go to **Switching → LAG**
-   - Confirm Ports 1 and 2 are NOT in any LAG group
+```bash
+ssh root@10.11.12.1
 
-4. Power cycle the switch to confirm settings persist
+# 1. Check LAN4 physical link
+echo "LAN4 carrier: $(cat /sys/class/net/lan4/carrier)"
+# Expected: 1
 
-### Switch C Step 11: Backup Configuration
+# 2. Verify mesh backbone via Switch C
+batctl o | grep lan4.100 | head -3
+# Expected: Shows originators (mesh working via Switch C)
+```
 
-1. In the left sidebar, click **System**
-2. Click **System Tools**
-3. Click **Config Backup**
-4. Click **Backup Config** to download the `.cfg` file
-5. Save the file as `switchC.cfg`
+**Expected Results Summary:**
 
-Store in `openwrt-mesh-ansible/switches/switchC.cfg`
+| Check | From | Expected |
+|-------|------|----------|
+| Physical link | Mesh node | `cat /sys/class/net/lan4/carrier` = `1` |
+| Mesh traffic | Mesh node | `batctl o \| grep lan4.100` shows entries |
+| Management ping | Mgmt workstation | `ping 10.11.10.13` success |
+| Web access | Mgmt workstation | http://10.11.10.13 loads |
 
-### Switch C Port Summary Table
+!!! success "All Checks Pass?"
+    If all checks pass, Switch C is correctly configured with:
 
-| Port | Purpose | VLAN 1 | VLAN 10 (Mgmt) | VLAN 30 (IoT) | PVID |
-|------|---------|--------|----------------|---------------|------|
-| 1 | Uplink to Switch A | U | T | T | 1 |
-| 2 | Uplink to Switch B | U | T | T | 1 |
-| 3 | RPi QDevice | U | **U** | - | 10 |
-| 4 | Proxmox 1 | U | **U** | - | 10 |
-| 5 | Proxmox 2 | U | **U** | - | 10 |
-| 6 | IoT Device | U | - | **U** | 30 |
-| 7 | IoT Device | U | - | **U** | 30 |
-| 8 | IoT Device | U | - | **U** | 30 |
-
-**Legend:** U = Untagged, T = Tagged, - = Not Member
+    - VLAN 100 carrying mesh backbone traffic (ports 1-3, tagged)
+    - VLAN 1 for management via Switch A link (port 4, untagged)
+    - IP address 10.11.10.13 reachable from management workstation
 
 ---
 
-## Switch A & B Updates for Switch C
+## Management Workstation Connection
 
-Before connecting Switch C, update Switch A and Switch B to:
+Connect your management workstation to **Port 5** on Switch A. This is a **trunk port** with all VLANs tagged, giving you access to all networks.
 
-1. Add VLAN 30 (IoT) to node trunk ports (P1-3)
-2. Add VLAN 30 (IoT) to inter-switch port (P8)
-3. Add VLAN 10 and 30 to Port 5 for Switch C uplink
+### Network Access Summary
 
-### Update Switch A
+| Network | VLAN | Subnet | Workstation IP | Gateway |
+|---------|------|--------|----------------|---------|
+| Management | 10 | 10.11.10.0/24 | 10.11.10.100 | 10.11.10.1 |
+| IoT | 30 | 10.11.30.0/24 | 10.11.30.100 | 10.11.30.1 |
+| Mesh Backbone | 100 | L2 only | - | - |
+| Client/LAN | 200 | 10.11.12.0/24 | 10.11.12.100 | 10.11.12.1 |
 
-1. Log into Switch A at `http://10.11.10.11`
-2. Go to **VLAN → 802.1Q VLAN**
+### Setup VLAN Interfaces
 
-#### Add VLAN 30 to Switch A
+Configure your workstation's eth2 interface with VLAN sub-interfaces.
 
-3. Enter VLAN ID: `30`
-4. Configure ports:
+#### Option 1: Temporary (until reboot)
 
-| Port | Untagged | Tagged | Not Member |
-|------|----------|--------|------------|
-| Port 1 | ○ | ● | ○ |
-| Port 2 | ○ | ● | ○ |
-| Port 3 | ○ | ● | ○ |
-| Port 4 | ○ | ○ | ● |
-| Port 5 | ○ | ● | ○ |
-| Port 6 | ○ | ○ | ● |
-| Port 7 | ○ | ○ | ● |
-| Port 8 | ○ | ● | ○ |
+```bash
+# Setup all VLAN interfaces on eth2 (Switch A Port 5)
+make setup-mgmt-vlans
 
-5. Click **Add/Modify**
+# Or manually:
+sudo ip link add link eth2 name eth2.10 type vlan id 10
+sudo ip link add link eth2 name eth2.30 type vlan id 30
+sudo ip link add link eth2 name eth2.200 type vlan id 200
 
-#### Update VLAN 10 on Switch A (add Port 5)
+sudo ip addr add 10.11.10.100/24 dev eth2.10
+sudo ip addr add 10.11.30.100/24 dev eth2.30
+sudo ip addr add 10.11.12.100/24 dev eth2.200
 
-6. Enter VLAN ID: `10`
-7. Ensure Port 5 is **Tagged** (for Switch C uplink)
-8. Click **Add/Modify**
+sudo ip link set eth2.10 up
+sudo ip link set eth2.30 up
+sudo ip link set eth2.200 up
+```
 
-### Update Switch B
+#### Option 2: Persistent (survives reboot)
 
-Repeat the same steps on Switch B at `http://10.11.10.12`.
+Add to `/etc/network/interfaces`:
+
+```
+# Management workstation VLAN interfaces on eth2
+# Requires: eth2 connected to Switch A Port 5 (trunk port)
+
+auto eth2
+iface eth2 inet manual
+
+# VLAN 10 - Management Network
+auto eth2.10
+iface eth2.10 inet static
+    address 10.11.10.100
+    netmask 255.255.255.0
+    vlan-raw-device eth2
+
+# VLAN 30 - IoT Network
+auto eth2.30
+iface eth2.30 inet static
+    address 10.11.30.100
+    netmask 255.255.255.0
+    vlan-raw-device eth2
+
+# VLAN 200 - Client/LAN Network
+auto eth2.200
+iface eth2.200 inet static
+    address 10.11.12.100
+    netmask 255.255.255.0
+    vlan-raw-device eth2
+```
+
+Then apply with:
+
+```bash
+sudo ifup eth2.10 eth2.30 eth2.200
+```
+
+### Verify Access to All Networks
+
+```bash
+# Management network
+ping 10.11.10.1   # Node 1
+ping 10.11.10.11  # Switch A
+ping 10.11.10.12  # Switch B
+ping 10.11.10.13  # Switch C
+
+# Client/LAN network
+ping 10.11.12.1   # Node 1
+ping 10.11.12.2   # Node 2
+ping 10.11.12.3   # Node 3
+
+# IoT network (nodes only - IoT zone blocks ICMP from devices)
+ping 10.11.30.1   # Node 1
+ping 10.11.30.2   # Node 2
+ping 10.11.30.3   # Node 3
+```
+
+### Remove VLAN Interfaces
+
+```bash
+# Teardown VLAN interfaces
+make teardown-mgmt-vlans
+
+# Or manually:
+sudo ip link del eth2.10
+sudo ip link del eth2.30
+sudo ip link del eth2.200
+```
 
 ---
 
-## Physical Connections
+## Traffic Flow
 
-### Switch A and B Inter-Connection
-
-Connect Switch A and Switch B together:
-
-```
-Switch A Port 8  ◄────────────────►  Switch B Port 8
-```
-
-### Node to Switch Connections
-
-Connect each mesh node to both switches:
-
-| Node | Connection 1 | Connection 2 |
-|------|--------------|--------------|
-| Node 1 | LAN3 → Switch A Port 1 | LAN4 → Switch B Port 1 |
-| Node 2 | LAN3 → Switch A Port 2 | LAN4 → Switch B Port 2 |
-| Node 3 | LAN3 → Switch A Port 3 | LAN4 → Switch B Port 3 |
-
-### Switch C Uplink Connections
-
-Connect Switch C to both Switch A and Switch B for redundancy:
-
-```
-Switch A Port 5  ◄────────────────►  Switch C Port 1
-Switch B Port 5  ◄────────────────►  Switch C Port 2
-```
-
-!!! note "Dual Uplinks for Redundancy"
-    Both uplinks should be connected for full redundancy. If one uplink fails, traffic will route through the other via the inter-switch connection (Switch A P8 ↔ Switch B P8).
-
-### Infrastructure Device Connections
-
-| Device | Switch C Port | IP Address | Notes |
-|--------|---------------|------------|-------|
-| RPi QDevice | Port 3 | 10.11.10.20 | Proxmox cluster quorum |
-| Proxmox Node 1 | Port 4 | 10.11.10.21 | eth0 (management) |
-| Proxmox Node 2 | Port 5 | 10.11.10.22 | eth0 (management) |
-
-### Proxmox Storage Network
-
-Connect Proxmox nodes directly with a crossover cable for storage replication:
-
-```
-Proxmox 1 eth2 (10.11.50.1) ◄── Crossover Cable ──► Proxmox 2 eth2 (10.11.50.2)
-```
-
-This private /30 network is used for:
-
-- Ceph/ZFS replication
-- Live migration traffic
-- Cluster communication backup
-
-### IoT Device Connections
-
-Connect IoT devices to Switch C Ports 6-8:
-
-| Port | Example Device | IP Range |
-|------|----------------|----------|
-| Port 6 | Smart sensors | 10.11.30.100-199 |
-| Port 7 | IoT gateway | 10.11.30.100-199 |
-| Port 8 | Smart plugs | 10.11.30.100-199 |
+| Traffic Type | Path |
+|--------------|------|
+| **Mesh Backbone** | Nodes ↔ Switch A (LAN3) + Switch B (LAN4) + Wireless |
+| **Management** | Workstation → Switch A P5 → Nodes (via LAN3) |
+| **Clients** | Devices → Switch A P6-8 → Nodes (via LAN3) → Internet |
+| **IoT** | Devices → Switch C P6-8 → Switch A P4 → Nodes |
+| **Infrastructure** | Proxmox/RPi → Switch C P3-5 → Switch A P4 → Nodes |
 
 ---
 
-## VLAN Configuration Summary
+## Redundancy
 
-### Complete Switch Port VLAN Membership
+### What's Protected
 
-#### Switch A
+| Component | Redundancy | Mechanism |
+|-----------|------------|-----------|
+| Mesh backbone | ✓ Dual wired + wireless | Switch A (lan3.100) + Switch C (lan4.100) + phy0-mesh0 |
+| WAN connectivity | ✓ Multi-WAN | All nodes have WAN, batman-adv gateway selection |
+| Node failure | ✓ Full | Batman-adv routes around failed node, BLA handles switch paths |
+| Client/Mgmt/IoT | ✓ Via mesh | If Switch A path fails, traffic flows via mesh to other nodes |
 
-| Port | Purpose | VLAN 1 | VLAN 10 | VLAN 30 | VLAN 100 | VLAN 200 | PVID |
-|------|---------|--------|---------|---------|----------|----------|------|
-| 1 | Node 1 | U | T | T | T | T | 1 |
-| 2 | Node 2 | U | T | T | T | T | 1 |
-| 3 | Node 3 | U | T | T | T | T | 1 |
-| 4 | Mgmt | U | **U** | - | - | - | 10 |
-| 5 | Switch C uplink | U | T | T | - | - | 1 |
-| 6 | Client | U | - | - | - | U | 200 |
-| 7 | Client | U | - | - | - | U | 200 |
-| 8 | Inter-SW | U | T | T | T | **-** | 1 |
+### What's NOT Protected
 
-#### Switch B
+| Component | Impact if Failed |
+|-----------|------------------|
+| Switch A | Direct switch access lost, but clients can still reach mesh via WiFi or node LAN1 ports |
+| Switch C | Mesh loses one wired path, but still has Switch A + wireless backup |
 
-Same as Switch A.
+!!! tip "High Availability Design"
+    This design provides HA through batman-adv mesh redundancy:
 
-#### Switch C
+    - **Switch A failure**: Clients lose direct wired access via switch, but:
+      - WiFi clients (phy1-ap0) still work via mesh
+      - Devices on node LAN1 ports still work via mesh
+      - Traffic routes through mesh to reach other nodes
 
-| Port | Purpose | VLAN 1 | VLAN 10 | VLAN 30 | PVID |
-|------|---------|--------|---------|---------|------|
-| 1 | Uplink (SwA) | U | T | T | 1 |
-| 2 | Uplink (SwB) | U | T | T | 1 |
-| 3 | RPi | U | **U** | - | 10 |
-| 4 | Proxmox 1 | U | **U** | - | 10 |
-| 5 | Proxmox 2 | U | **U** | - | 10 |
-| 6 | IoT | U | - | **U** | 30 |
-| 7 | IoT | U | - | **U** | 30 |
-| 8 | IoT | U | - | **U** | 30 |
+    - **Any node failure**: Batman-adv automatically routes around failed node
 
-!!! note "VLAN 200 Not on Port 8"
-    Port 8 (inter-switch) does NOT carry VLAN 200 to prevent L2 loops. Client traffic between switches routes through the Batman mesh.
+    - **Switch C failure**: Mesh loses one wired backbone path, but:
+      - Switch A wired path (lan3.100) still works
+      - Wireless mesh (phy0-mesh0) provides backup
 
----
-
-## Critical: VLAN 200 Inter-Switch Isolation
-
-!!! danger "Layer 2 Loop Prevention"
-    **VLAN 200 (client traffic) MUST NOT be trunked between switches when the inter-switch link (Port 8) is connected.**
-
-### The Problem
-
-The mesh architecture creates multiple Layer 2 paths for client traffic:
-
-```
-Path 1: Client → Switch A → VLAN 200 tagged → Switch B (via Port 8)
-Path 2: Client → Switch A → VLAN 200 → Node → bat0 mesh → Node → VLAN 200 → Switch B
-```
-
-If both paths exist simultaneously:
-
-- **MAC address flapping**: Switches see the same MAC on multiple ports
-- **Broadcast storms**: Same broadcast arrives via multiple paths
-- **Duplicate frames**: Traffic delivered twice to the destination
-
-### The Solution
-
-The configuration in this guide sets Port 8 as **Not Member** of VLAN 200, ensuring:
-
-- Mesh backbone (VLAN 100) traverses both switch paths
-- Client traffic (VLAN 200) only reaches clients via Batman mesh
-- No duplicate client traffic paths
-
----
-
-## Redundancy and Failover
-
-### Failure Scenarios
-
-| Failure | Impact | Recovery Time |
-|---------|--------|---------------|
-| Switch A fails | SwA clients disconnected | Traffic via Switch B + wireless, <3s |
-| Switch B fails | SwB clients disconnected | Traffic via Switch A + wireless, <3s |
-| Switch C fails | IoT + Proxmox disconnected | No automatic failover |
-| Inter-switch link fails | No direct SwA↔SwB path | Traffic routes through nodes, <1s |
-| Single uplink to Switch C fails | No impact | Traffic via other uplink + inter-switch |
-| Single node failure | Node unreachable | Other 2 nodes continue mesh |
-
-### How Redundancy Works
-
-1. **Dual switch paths**: Each node connects to both switches via separate ports
-2. **Dual uplinks**: Switch C connects to both Switch A and Switch B
-3. **Inter-switch trunk**: Switch A ↔ Switch B link provides alternate path
-4. **Batman-adv mesh**: Automatically routes traffic via best available path
-5. **Wireless backup**: 2.4GHz mesh provides additional redundancy
+!!! tip "Future Upgrade"
+    For full redundancy on switch paths, replace switches with STP-capable models (e.g., TL-SG2008).
+    Then both switches can carry all VLANs with STP preventing loops instead of relying on BLA.
 
 ---
 
 ## Verification
 
-### Automated Testing
-
-Run the infrastructure test suite to verify all switches and devices are reachable:
+### Test Management Access
 
 ```bash
-# Test switches and infrastructure devices (10.11.10.x)
-make test-infrastructure
-
-# This tests:
-# - Switch A (10.11.10.11)
-# - Switch B (10.11.10.12)
-# - Switch C (10.11.10.13)
-# - RPi QDevice (10.11.10.20) - skipped if not deployed
-# - Proxmox nodes (10.11.10.21-22) - skipped if not deployed
+# From management workstation (Switch A P5)
+ping 10.11.10.1   # Node 1
+ping 10.11.10.2   # Node 2
+ping 10.11.10.3   # Node 3
+ping 10.11.10.11  # Switch A
+ping 10.11.10.12  # Switch B
+ping 10.11.10.13  # Switch C
 ```
 
-### Check VLAN Interfaces on Nodes
+### Test Mesh Backbone
 
 ```bash
 # SSH to any node
-ssh root@10.11.12.1
+ssh root@10.11.10.1
 
-# Verify VLAN interfaces exist
-ip link show | grep "lan[34]\."
-# Should show: lan3.10, lan3.30, lan3.100, lan3.200, lan4.10, lan4.30, lan4.100, lan4.200
-
-# Check Batman interfaces
+# Check batman interfaces
 batctl if
 # Should show: lan3.100, lan4.100, phy0-mesh0
-```
 
-### Check Mesh Connectivity
-
-```bash
-# View mesh originators
-batctl o
-# Should show all 3 nodes with TQ 255
-
-# View mesh neighbors
+# Check mesh neighbors
 batctl n
-# Should show connections via both switches
+
+# Check originators
+batctl o
 ```
 
 ### Test Client Connectivity
 
-1. Connect a device to Switch A Port 6
-2. Verify DHCP assigns IP from 10.11.12.x range
-3. Ping all nodes: `ping 10.11.12.1`, `10.11.12.2`, `10.11.12.3`
-4. Test internet: `ping 1.1.1.1`
-
-### Test Infrastructure Connectivity
-
-```bash
-# From your workstation on management network
-make switch-to-mgmt-network
-
-# Ping all switches
-ping 10.11.10.11  # Switch A
-ping 10.11.10.12  # Switch B
-ping 10.11.10.13  # Switch C
-
-# Ping infrastructure devices (if deployed)
-ping 10.11.10.20  # RPi QDevice
-ping 10.11.10.21  # Proxmox 1
-ping 10.11.10.22  # Proxmox 2
-```
-
-### Test IoT Connectivity
-
-```bash
-# From an IoT device on VLAN 30
-ip addr show  # Should have 10.11.30.x address
-
-# Test gateway
-ping 10.11.30.1
-
-# Test internet
-ping 1.1.1.1
-
-# Test Home Assistant (allowed by firewall)
-curl -s http://10.11.10.21:8123/api/ | head
-
-# Test SSH to Proxmox (should be blocked)
-nc -zv 10.11.10.21 22  # Should fail/timeout
-```
-
-### Test Failover
-
-1. **Switch A failure test**:
-   - Disconnect Switch A power
-   - Verify mesh continues via Switch B
-   - Reconnect and verify recovery
-
-2. **Switch C uplink failover test**:
-   - Disconnect one uplink cable (Switch A P5 to Switch C P1)
-   - Verify infrastructure still reachable via other uplink
-   - Reconnect and verify both uplinks active
-
-3. **Inter-switch link test**:
-   - Disconnect Port 8 cable between Switch A and B
-   - Verify traffic routes through nodes
-   - Reconnect and verify recovery
+1. Connect device to Switch A P6-8
+2. Should receive DHCP IP from 10.11.12.x
+3. Test: `ping 10.11.12.1` and `ping 8.8.8.8`
 
 ---
 
 ## Troubleshooting
 
-### Cannot Access Switch Web Interface
+### Cannot Access Switch
 
 ```bash
-# Verify your computer is on the correct network
-ip addr show
-
-# For factory default switch (192.168.0.1):
+# For factory default (192.168.0.1):
 make switch-to-switch-network
 
 # For configured switch (10.11.10.x):
 make switch-to-mgmt-network
-
-# Test connectivity
-ping 192.168.0.1   # Factory default
-ping 10.11.10.11   # Switch A
-ping 10.11.10.12   # Switch B
-ping 10.11.10.13   # Switch C
 ```
 
-### Configuration Not Saved After Reboot
+### Switch C Management Unreachable
 
-The TL-SG108E stores configuration in RAM until explicitly saved:
+**Symptoms:**
 
-1. Always click **Save Config** in the left sidebar after making changes
-2. Verify you see "Save config successfully" message
-3. Known issue: Save only once after all changes are complete
+- `ping 10.11.10.13` fails from management workstation
+- Mesh backbone still works (nodes see each other via lan4.100)
 
-### No VLAN Interfaces on Nodes
+**Diagnosis:**
 
 ```bash
-# Check if VLAN module is loaded
-lsmod | grep 8021q
+# From mesh node - check mesh backbone
+ssh root@10.11.12.1
+batctl o | grep lan4.100
+# Should show originators - means VLAN 100 is working
 
-# Manually create VLAN interface for testing
-ip link add link lan3 name lan3.100 type vlan id 100
-ip link set lan3.100 up
+# From workstation - check Switch A is reachable
+ping 10.11.10.11
+# If fails, check workstation connection to Switch A Port 5
 ```
 
-### Mesh Not Forming
+**Common Causes:**
+
+| Symptom | Mesh via lan4.100 | Ping 10.11.10.13 | Cause |
+|---------|:-----------------:|:----------------:|-------|
+| Switch off | No entries | Fail | Power/cable issue |
+| Cable missing | Has entries | Fail | Switch A ↔ Switch C cable not connected |
+| VLAN 1 wrong | Has entries | Fail | VLAN 1 not untagged on Switch A P6 or Switch C P4 |
+| Working | Has entries ✓ | Success ✓ | Correct config |
+
+**Fix Checklist:**
+
+1. **Verify cable**: Switch A Port 6 → Switch C Port 4
+2. **Check Switch A**: Port 6 in VLAN 1 (untagged), PVID 1
+3. **Check Switch C**: Port 4 in VLAN 1 (untagged), PVID 1
+4. **Check workstation**: Connected to Switch A Port 5, using untagged traffic
+
+### No Mesh Connectivity
 
 ```bash
-# Check Batman status
-batctl if
-batctl o
+# Check VLAN interfaces exist
+ssh root@10.11.12.1 'ip link show | grep "lan[34]\."'
 
-# Check physical link
-ip link show lan3
-ip link show lan4
+# Check batman interfaces
+ssh root@10.11.12.1 'batctl if'
 
-# Check for VLAN tagging issues
-tcpdump -i lan3 -e vlan
+# Should show:
+# lan3.100: active
+# lan4.100: active
+# phy0-mesh0: active
 ```
 
-### Switch C Ports Flashing On/Off Together
+### Broadcast Storm / High Latency
 
-If Ports 1 and 2 on Switch C flash on and off simultaneously (~1 second interval), this indicates **accidental LAG configuration** causing loop detection.
+If you experience broadcast storms, verify:
 
-**Fix:**
-
-1. Log into Switch C at `http://10.11.10.13`
-2. Go to **Switching → LAG**
-3. Remove Ports 1 and 2 from any LAG group
-4. Click **Apply**
-5. Ports should stop flashing and show steady link lights
+1. **Switch C** only has VLAN 100 tagged on ports 1-3 - NO VLAN 30 or 200
+2. **Node LAN4** only has `lan4.100` - verify no `lan4.10`, `lan4.30`, or `lan4.200` exists
+3. **BLA is enabled**: `batctl bla` should show `enabled`
+4. **All node IPs are static**: Check `uci show network | grep proto` - must NOT have `dhcp` for br-mgmt, br-lan, br-iot
 
 ```bash
-# After fixing, verify connectivity
-ping 10.11.10.11  # Switch A
-ping 10.11.10.12  # Switch B
-ping 10.11.10.13  # Switch C
-```
+# Check for loops - BLA backbone table should show entries after traffic flows
+ssh root@10.11.12.1 'batctl bbt'
 
-### IoT Devices Not Getting DHCP
+# Check BLA claims
+ssh root@10.11.12.1 'batctl cl'
 
-```bash
-# On mesh node, check DHCP server
-logread | grep dnsmasq
-
-# Verify VLAN 30 interface exists
-ip addr show | grep "10.11.30"
-
-# Check bridge membership
-bridge link show
-
-# Verify IoT zone in firewall
-iptables -L -v -n | grep iot
-```
-
-### Infrastructure Cannot Reach Gateway
-
-```bash
-# On Proxmox/RPi, check network config
-ip addr show
-ip route show
-
-# Verify default gateway is 10.11.10.1
-# Verify PVID on Switch C port is set to 10
-
-# From mesh node, check management bridge
-ip addr show br-management_bridge
-# Should show 10.11.10.1, 10.11.10.2, or 10.11.10.3
-```
-
-### IoT Cannot Reach Home Assistant
-
-```bash
-# On mesh node, check firewall rules
-iptables -L FORWARD -v -n | grep 10.11.30
-
-# Verify inter-VLAN routing is enabled
-cat /proc/sys/net/ipv4/ip_forward  # Should be 1
-
-# Test from mesh node
-ping 10.11.10.21    # Proxmox/HA
-ping 10.11.30.100   # IoT device
-
-# Check allowed ports (1883, 8123, 8443, 8883)
-iptables -L FORWARD -v -n | grep -E "1883|8123"
+# Verify no DHCP on management interfaces
+ssh root@10.11.12.1 'uci show network.mgmt.proto'
+# Should output: network.mgmt.proto='static'
 ```
 
 ---
 
 ## Workstation Network Commands
 
-Use these make targets to switch your workstation network for different tasks:
-
 ```bash
-# Access factory-default TP-Link switch (192.168.0.1)
+# Access factory-default switch (192.168.0.1)
 make switch-to-switch-network
 
 # Access configured switches (10.11.10.x)
@@ -1086,188 +836,4 @@ make switch-to-mesh-network
 
 # Access fresh OpenWrt nodes (192.168.1.x)
 make switch-to-initial-network
-```
-
----
-
-## Environment Variables
-
-These variables control switch integration in `.env`:
-
-```bash
-# VLAN IDs for switch trunks
-SWITCH_MESH_VLAN=100
-SWITCH_CLIENT_VLAN=200
-
-# Switch management IPs
-SWITCH_A_IP=10.11.10.11
-SWITCH_B_IP=10.11.10.12
-SWITCH_C_IP=10.11.10.13
-
-# IoT network (LAN2 and VLAN 30)
-IOT_VLAN=30
-IOT_NETWORK=10.11.30.0
-IOT_NETMASK=255.255.255.0
-IOT_GATEWAY=10.11.30.1
-
-# Infrastructure IPs (for DHCP reservations)
-RPI_QDEVICE_IP=10.11.10.20
-PROXMOX1_IP=10.11.10.21
-PROXMOX2_IP=10.11.10.22
-
-# Proxmox storage network
-PROXMOX_STORAGE_NET=10.11.50.0/30
-PROXMOX1_STORAGE_IP=10.11.50.1
-PROXMOX2_STORAGE_IP=10.11.50.2
-```
-
----
-
-## Proxmox Network Configuration
-
-### DHCP Reservations
-
-Add infrastructure MAC addresses to `openwrt-mesh-ansible/group_vars/all.yml`:
-
-```yaml
-static_hosts:
-  - name: rpi-qdevice
-    mac: 'dc:a6:32:94:67:eb'
-    ip: 10.11.10.20
-  - name: proxmox1
-    mac: 'YY:YY:YY:YY:YY:YY'  # Get from: ip link show eth0
-    ip: 10.11.10.21
-  - name: proxmox2
-    mac: 'ZZ:ZZ:ZZ:ZZ:ZZ:ZZ'  # Get from: ip link show eth0
-    ip: 10.11.10.22
-```
-
-Then deploy to update DHCP on mesh nodes:
-
-```bash
-make deploy
-```
-
-### Proxmox Node 1 Network (`/etc/network/interfaces`)
-
-```
-# Loopback
-auto lo
-iface lo inet loopback
-
-# Management network (VLAN 10) - DHCP with reservation
-auto eth0
-iface eth0 inet dhcp
-
-# VM Bridge (for VMs on management network)
-auto vmbr0
-iface vmbr0 inet static
-    address 10.11.10.21/24
-    bridge-ports eth0
-    bridge-stp off
-    bridge-fd 0
-
-# Storage network (crossover to Proxmox 2)
-auto eth2
-iface eth2 inet static
-    address 10.11.50.1/30
-```
-
-### Proxmox Node 2 Network (`/etc/network/interfaces`)
-
-```
-# Loopback
-auto lo
-iface lo inet loopback
-
-# Management network (VLAN 10) - DHCP with reservation
-auto eth0
-iface eth0 inet dhcp
-
-# VM Bridge (for VMs on management network)
-auto vmbr0
-iface vmbr0 inet static
-    address 10.11.10.22/24
-    bridge-ports eth0
-    bridge-stp off
-    bridge-fd 0
-
-# Storage network (crossover to Proxmox 1)
-auto eth2
-iface eth2 inet static
-    address 10.11.50.2/30
-```
-
----
-
-## Firewall Rules (Mesh Nodes)
-
-These rules are **automatically configured by Ansible** in the `firewall_config` role (`roles/firewall_config/templates/firewall.j2`).
-
-### IoT → Management Access
-
-| Source | Destination | Port | Service | Action |
-|--------|-------------|------|---------|--------|
-| 10.11.30.0/24 | 10.11.10.0/24 | 1883 | MQTT | ACCEPT |
-| 10.11.30.0/24 | 10.11.10.0/24 | 8883 | MQTT TLS | ACCEPT |
-| 10.11.30.0/24 | 10.11.10.0/24 | 8123 | Home Assistant | ACCEPT |
-| 10.11.30.0/24 | 10.11.10.0/24 | 8443 | Home Assistant TLS | ACCEPT |
-| 10.11.30.0/24 | 10.11.10.0/24 | * | All other | REJECT |
-
-### Zone Configuration
-
-| Zone | Networks | Input | Forward | Notes |
-|------|----------|-------|---------|-------|
-| management | management_bridge | ACCEPT | ACCEPT | Full access |
-| iot | iot | REJECT | REJECT | Isolated, selective access to mgmt |
-| lan | br-lan | ACCEPT | ACCEPT | Trusted clients |
-
----
-
-## Ansible Configuration
-
-The mesh node network and firewall configuration is managed by Ansible roles.
-
-### Network Configuration
-
-**File:** `roles/network_config/templates/network.j2`
-
-VLAN interfaces created on trunk ports (LAN3/LAN4):
-
-| VLAN | Interface | Purpose |
-|------|-----------|---------|
-| 10 | lan3.10, lan4.10 | Management network |
-| 30 | lan3.30, lan4.30 | IoT network |
-| 100 | lan3.100, lan4.100 | Mesh backbone |
-| 200 | lan3.200, lan4.200 | Client traffic |
-
-Bridge configurations:
-
-| Bridge | Ports | IP (per node) |
-|--------|-------|---------------|
-| management_bridge | lan3.10, lan4.10 | 10.11.10.{1,2,3} |
-| iot | lan2, lan3.30, lan4.30 | 10.11.30.{1,2,3} |
-| br-lan | bat0, lan1, lan3.200, lan4.200 | 10.11.12.{1,2,3} |
-
-### Firewall Configuration
-
-**File:** `roles/firewall_config/templates/firewall.j2`
-
-Zones and forwarding rules are automatically configured including:
-
-- Management zone with full LAN access
-- IoT zone with selective access to management services
-- Inter-VLAN routing between management and LAN
-
-### Deployment
-
-After modifying switch configurations, deploy to mesh nodes:
-
-```bash
-# Deploy all configuration
-make deploy
-
-# Or deploy specific roles
-cd openwrt-mesh-ansible
-ansible-playbook -i inventory/hosts.yml playbooks/deploy.yml --tags network,firewall
 ```

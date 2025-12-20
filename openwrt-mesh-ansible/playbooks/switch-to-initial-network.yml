@@ -4,6 +4,9 @@
 # This playbook configures the local eth2 interface to 192.168.1.100/24
 # allowing connection to factory-fresh OpenWrt nodes at 192.168.1.1
 #
+# NOTE: This is for UNTAGGED access (direct connect to fresh node LAN port).
+#       For TRUNK access via Switch A Port 5, use: make setup-mgmt-vlans
+#
 # Usage:
 #   ansible-playbook playbooks/switch-to-initial-network.yml
 #   make switch-to-initial-network
@@ -23,20 +26,21 @@
 
   tasks:
     - name: Check if interface exists
-      command: ip link show {{ interface }}
+      ansible.builtin.command: ip link show {{ interface }}
       register: interface_check
       failed_when: false
       changed_when: false
 
     - name: Display available interfaces if target not found
+      when: interface_check.rc != 0
       block:
         - name: Get available interfaces
-          command: ip -br link show
+          ansible.builtin.command: ip -br link show
           register: available_interfaces
           changed_when: false
 
         - name: Show error and available interfaces
-          fail:
+          ansible.builtin.fail:
             msg: |
               Error: Interface {{ interface }} does not exist
 
@@ -44,22 +48,34 @@
               {{ available_interfaces.stdout }}
 
               Set ETH_INTERFACE in .env to use a different interface
-      when: interface_check.rc != 0
 
     - name: Get current IP address
-      shell: ip -4 addr show {{ interface }} | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | head -n1
+      ansible.builtin.shell: |
+        set -o pipefail
+        ip -4 addr show {{ interface }} | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | head -n1
+      args:
+        executable: /bin/bash
       register: current_ip
       failed_when: false
       changed_when: false
 
     - name: Display current configuration
-      debug:
+      ansible.builtin.debug:
         msg: |
           Current IP on {{ interface }}: {{ current_ip.stdout | default('none') }}
           Switching to: {{ address }}
 
+    - name: Remove VLAN sub-interfaces on eth2 if present
+      ansible.builtin.command: ip link del {{ item }}
+      loop:
+        - "{{ interface }}.10"
+        - "{{ interface }}.30"
+        - "{{ interface }}.200"
+      failed_when: false
+      changed_when: false
+
     - name: Remove old network-specific routes
-      command: ip route del {{ item }}
+      ansible.builtin.command: ip route del {{ item }}
       loop:
         - "{{ network }}"
         - "{{ mesh_network }}"
@@ -67,34 +83,34 @@
       changed_when: false
 
     - name: Flush current IP addresses on interface
-      command: ip addr flush dev {{ interface }}
+      ansible.builtin.command: ip addr flush dev {{ interface }}
       changed_when: true
 
     - name: Add new IP address
-      command: ip addr add {{ address }} dev {{ interface }}
+      ansible.builtin.command: ip addr add {{ address }} dev {{ interface }}
       changed_when: true
 
     - name: Bring interface up
-      command: ip link set {{ interface }} up
+      ansible.builtin.command: ip link set {{ interface }} up
       changed_when: true
 
     - name: Display new configuration
       block:
         - name: Get interface IP info
-          command: ip -4 addr show {{ interface }}
+          ansible.builtin.command: ip -4 addr show {{ interface }}
           register: interface_info
           changed_when: false
 
         - name: Get route table
-          command: ip route show
+          ansible.builtin.command: ip route show
           register: route_info
           changed_when: false
 
         - name: Show configuration summary
-          debug:
+          ansible.builtin.debug:
             msg: |
               ═══════════════════════════════════════
-              ✓ Successfully switched to initial network
+              Successfully switched to initial network
               ═══════════════════════════════════════
 
               Interface: {{ interface }}

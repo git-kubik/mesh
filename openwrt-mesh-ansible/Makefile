@@ -43,6 +43,7 @@ endif
         deploy-node check-node audit-node \
         check-all check-connectivity audit deploy \
         switch-to-initial-network switch-to-mesh-network switch-to-switch-network switch-to-mgmt-network \
+        setup-mgmt-vlans teardown-mgmt-vlans setup-workstation-vlans teardown-workstation-vlans \
         verify backup update update-check check ping clean \
         deploy-network deploy-wireless deploy-dhcp deploy-firewall \
         packages batman-status logs \
@@ -118,6 +119,10 @@ help:
 	@echo "  make switch-to-mesh-network     - Switch workstation to 10.11.12.100 (deployed nodes)"
 	@echo "  make switch-to-switch-network   - Switch workstation to 192.168.0.2 (factory TP-Link switches)"
 	@echo "  make switch-to-mgmt-network     - Switch workstation to 10.11.10.100 (configured switches)"
+	@echo ""
+	@echo "  VLAN Trunk (eth2 on Switch A Port 5):"
+	@echo "  make setup-mgmt-vlans           - Setup eth2 VLAN interfaces (access all networks)"
+	@echo "  make teardown-mgmt-vlans        - Remove eth2 VLAN interfaces"
 	@echo ""
 	@echo "================================================================================"
 	@echo "TARGETED DEPLOYMENTS (Deploy Specific Components Only)"
@@ -671,6 +676,24 @@ switch-to-switch-network:
 
 switch-to-mgmt-network:
 	@bash -c "$(ANSIBLE_CMD) playbooks/switch-to-mgmt-network.yml"
+
+# Setup VLAN interfaces on eth2 for management workstation trunk port
+# This configures eth2 with tagged VLAN sub-interfaces for access to all networks:
+#   - eth2 (untagged): Switch management (10.11.10.101/32) - TL-SG108E only responds on untagged
+#   - eth2.10: Management network (10.11.10.100/24) - mesh nodes, infrastructure
+#   - eth2.30: IoT network (10.11.30.100/24) - IoT devices
+#   - eth2.200: LAN/Client network (10.11.12.100/24) - client devices
+# Requires: eth2 connected to Switch A Port 5 (trunk with all VLANs tagged)
+setup-mgmt-vlans setup-workstation-vlans:
+	@echo "=== Setting up VLAN interfaces on eth2 ==="
+	@echo "Logging to: $(ANSIBLE_LOG)"
+	@bash -c "$(ANSIBLE_CMD) playbooks/setup-workstation-vlans.yml"
+
+# Remove VLAN interfaces from eth2
+teardown-mgmt-vlans teardown-workstation-vlans:
+	@echo "=== Removing VLAN interfaces from eth2 ==="
+	@echo "Logging to: $(ANSIBLE_LOG)"
+	@bash -c "$(ANSIBLE_CMD) playbooks/teardown-workstation-vlans.yml"
 
 # ============================================================================
 # Multi-Node Operations (All Nodes at Once)

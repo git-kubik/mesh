@@ -43,6 +43,7 @@ config zone
 	option forward 'REJECT'
 
 # Management Zone (Proxmox, VMs, admin devices)
+# Note: This is a static zone - do NOT duplicate in the VLAN loop below
 config zone
 	option name 'management'
 	list network 'mgmt'
@@ -279,9 +280,10 @@ config rule
 
 {% if enable_vlans %}
 # ============================================================================
-# Optional VLAN Zones (Management, Guest WiFi)
+# Optional VLAN Zones (Guest WiFi - management zone is defined above)
 # ============================================================================
 {% for vlan_name, vlan_config in vlans.items() %}
+{% if vlan_name != 'management' %}
 
 config zone
 	option name '{{ vlan_name }}'
@@ -332,6 +334,7 @@ config rule
 	option proto 'all'
 	option target 'REJECT'
 
+{% endif %}
 {% endif %}
 {% endfor %}
 {% endif %}

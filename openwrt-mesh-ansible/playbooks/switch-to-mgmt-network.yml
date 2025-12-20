@@ -6,6 +6,9 @@
 #   - Switch A: 10.11.10.11
 #   - Switch B: 10.11.10.12
 #
+# NOTE: This is for UNTAGGED access (direct connect to switch access port).
+#       For TRUNK access via Switch A Port 5, use: make setup-mgmt-vlans
+#
 # Usage:
 #   ansible-playbook playbooks/switch-to-mgmt-network.yml
 #   make switch-to-mgmt-network
@@ -66,6 +69,15 @@
         msg: |
           Current IP on {{ interface }}: {{ current_ip.stdout | default('none') }}
           Switching to: {{ address }}
+
+    - name: Remove VLAN sub-interfaces on eth2 if present
+      ansible.builtin.command: ip link del {{ item }}
+      loop:
+        - "{{ interface }}.10"
+        - "{{ interface }}.30"
+        - "{{ interface }}.200"
+      failed_when: false
+      changed_when: false
 
     - name: Remove old network-specific routes
       ansible.builtin.command: ip route del {{ item }}

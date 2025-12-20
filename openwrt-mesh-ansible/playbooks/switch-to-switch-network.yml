@@ -63,6 +63,15 @@
           Current IP on {{ interface }}: {{ current_ip.stdout | default('none') }}
           Switching to: {{ address }}
 
+    - name: Remove VLAN sub-interfaces on eth2 if present
+      ansible.builtin.command: ip link del {{ item }}
+      loop:
+        - "{{ interface }}.10"
+        - "{{ interface }}.30"
+        - "{{ interface }}.200"
+      failed_when: false
+      changed_when: false
+
     - name: Remove old network-specific routes
       ansible.builtin.command: ip route del {{ item }}
       loop:

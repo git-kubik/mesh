@@ -1,133 +1,150 @@
 # OpenWrt Multi-Gateway Batman-adv Mesh Network
 
-[![Pre-commit Checks](https://github.com/yourusername/mesh/workflows/Pre-commit%20Checks/badge.svg)](https://github.com/yourusername/mesh/actions)
-[![Tests](https://github.com/yourusername/mesh/workflows/Tests/badge.svg)](https://github.com/yourusername/mesh/actions)
-[![codecov](https://codecov.io/gh/yourusername/mesh/branch/main/graph/badge.svg)](https://codecov.io/gh/yourusername/mesh)
-[![Documentation](https://img.shields.io/badge/docs-mkdocs-blue.svg)](https://yourusername.github.io/mesh/)
+[![Pre-commit Checks](https://github.com/git-kubik/mesh/workflows/Pre-commit%20Checks/badge.svg)](https://github.com/git-kubik/mesh/actions)
+[![Tests](https://github.com/git-kubik/mesh/workflows/Tests/badge.svg)](https://github.com/git-kubik/mesh/actions)
+[![codecov](https://codecov.io/gh/git-kubik/mesh/branch/main/graph/badge.svg)](https://codecov.io/gh/git-kubik/mesh)
+[![Documentation](https://img.shields.io/badge/docs-mkdocs-blue.svg)](https://git-kubik.github.io/mesh/)
 
-High-availability OpenWrt mesh network with Batman-adv routing, multi-gateway failover, and comprehensive automated testing.
+High-availability OpenWrt mesh network with Batman-adv routing, multi-gateway failover, VLAN segmentation, and comprehensive automated testing.
 
 ## Features
 
-- **🔄 Full Ring Topology**: 3 wired connections (LAN3/LAN4 ports) forming a complete ring
-- **📡 Wireless Backup**: 2.4GHz 802.11s mesh for automatic failover
-- **🌐 Multi-Gateway**: 3 independent WAN connections with automatic failover
-- **📱 Unified WiFi**: 5GHz client AP with 802.11r seamless roaming
-- **🐧 Batman-adv V**: Layer 2 mesh routing with automatic path selection
-- **🐳 Docker Deployment**: Self-contained Ansible environment with web interface
-- **✅ Comprehensive Testing**: Unit, integration, functional, performance, and failover tests
-- **📚 Documentation**: Professional documentation site with MkDocs Material
+- **Full Ring Topology**: 3 wired connections via managed switches forming a redundant ring
+- **Wireless Backup**: 2.4GHz 802.11s mesh for automatic failover
+- **Multi-Gateway**: 3 independent WAN connections with automatic failover
+- **VLAN Segmentation**: Management (10), Guest (20), IoT (30), Mesh backbone (100), Client (200)
+- **Unified WiFi**: 5GHz client AP with 802.11r seamless roaming
+- **Batman-adv V**: Layer 2 mesh routing with Bridge Loop Avoidance (BLA)
+- **Switch Integration**: TP-Link TL-SG108E managed switches for VLAN trunking
+- **Docker Deployment**: Self-contained Ansible environment with Semaphore web interface
+- **Comprehensive Testing**: 39 test files across unit, integration, functional, performance, and failover categories
+- **Documentation**: Professional documentation site with MkDocs Material
 
 ## Deployment Options
 
 This project provides **three ways** to deploy your mesh network, supporting different skill levels and preferences:
 
-### 1. 🔧 Manual Deployment (Learning Path)
+### 1. Makefile Automation (Recommended)
 
-Complete step-by-step guide for manual configuration. Perfect for:
+Run Ansible playbooks via Makefile for full automation control:
+
+```bash
+cd openwrt-mesh-ansible
+make deploy-node NODE=1  # Deploy to a single node
+make deploy              # Deploy to all nodes
+make verify              # Verify mesh status
+```
+
+**Benefits**: Direct CLI access, scriptable, auto-detects node state
+**Documentation**: [Makefile Reference](docs/reference/makefile.md) | [Quick Start](docs/getting-started/quickstart.md)
+
+### 2. Docker Web Interface
+
+Use Semaphore web UI for point-and-click deployment:
+
+1. Start containers: `cd docker && docker-compose up -d`
+2. Access <http://localhost:3000>
+3. Login with configured credentials
+4. Run deployment templates
+
+**Benefits**: Visual feedback, job history, scheduling
+**Documentation**: [Docker Setup](docs/development/docker.md)
+
+### 3. Manual Configuration (Learning Path)
+
+Complete step-by-step guide for understanding the configuration. Perfect for:
 
 - Understanding how mesh networking works
 - Learning OpenWrt and Batman-adv concepts
 - Customizing beyond automation capabilities
 
-**Documentation**: [Manual Setup Guide](docs/openwrt-batman-mesh-setup.md) | [Initial Node Setup](docs/INITIAL-NODE-SETUP.md)
-
-### 2. 🐳 Docker CLI Automation (Developer Path)
-
-Run Ansible playbooks via Docker exec for full automation control:
-
-```bash
-cd docker
-docker-compose up -d
-docker-compose exec ansible ansible-playbook -i /ansible/inventory/hosts.yml /ansible/playbooks/deploy.yml
-```
-
-**Benefits**: Direct CLI access, scriptable, version controlled
-**Documentation**: [Docker README](docker/README.md) | [Ansible Quick Start](docs/ANSIBLE-QUICKSTART.md)
-
-### 3. 🌐 Web Interface Automation (User-Friendly Path)
-
-Use Semaphore web UI for point-and-click deployment:
-
-1. Access <http://localhost:3000> (after `docker-compose up -d`)
-2. Login with default credentials
-3. Click "Run" on the deployment template
-4. Monitor progress in real-time
-
-**Benefits**: Visual feedback, job history, scheduling, notifications
-**Documentation**: [Docker README](docker/README.md)
+**Documentation**: [Architecture Overview](docs/architecture/overview.md)
 
 ---
 
-**All three paths produce identical network configurations.** Choose based on your comfort level and use case.
+**All paths produce identical network configurations.** Choose based on your comfort level and use case.
 
 ## Quick Start
 
-### Choose Your Path
-
-Select a deployment method from the [Deployment Options](#deployment-options) above, then follow the appropriate guide:
-
-- **Manual**: [Initial Node Setup](docs/INITIAL-NODE-SETUP.md) → [Manual Setup Guide](docs/openwrt-batman-mesh-setup.md)
-- **Docker CLI**: [Docker README](docker/README.md) → [Ansible Quick Start](docs/ANSIBLE-QUICKSTART.md)
-- **Web Interface**: [Docker README](docker/README.md)
-
-### Prerequisites (Automation Paths)
+### Prerequisites
 
 - **Hardware**: 3x D-Link DIR-1960 A1 routers with OpenWrt 24.10.4
-- **Software**: Docker Desktop 20.10+ (or Docker Engine + docker-compose)
+- **Switches**: 2x TP-Link TL-SG108E managed switches (for VLAN trunking)
+- **Software**: Python 3.11+, Ansible 8+, Docker (optional for web UI)
 - **Network**: Ethernet cables for ring topology
 
-### Quick Setup (Automation Paths)
+### Quick Setup
 
 1. **Clone and prepare:**
 
    ```bash
-   git clone https://github.com/yourusername/mesh.git
+   git clone https://github.com/git-kubik/mesh.git
    cd mesh
-
-   # Prepare initial node (manual step required)
-   # Follow: docs/INITIAL-NODE-SETUP.md for first node
+   cp .env.example .env  # Configure credentials
    ```
 
-2. **Start automation environment:**
+2. **Deploy nodes one at a time:**
 
    ```bash
-   cd docker
-   docker-compose up -d
+   cd openwrt-mesh-ansible
+
+   # Deploy each node (auto-detects initial vs production state)
+   make deploy-node NODE=1
+   make deploy-node NODE=2
+   make deploy-node NODE=3
    ```
 
-3. **Deploy via Web Interface OR CLI:**
-
-   **Option A: Web Interface**
-   - Open <http://localhost:3000>
-   - Login: admin / changeme
-   - Run deployment template
-
-   **Option B: Docker CLI**
+3. **Verify the mesh:**
 
    ```bash
-   docker-compose exec ansible ansible-playbook -i /ansible/inventory/hosts.yml /ansible/playbooks/deploy.yml
+   make check-all       # Connectivity check
+   make batman-status   # Mesh topology
+   make verify          # Full verification
    ```
 
-For detailed instructions, see the deployment path documentation above.
+For detailed instructions, see the [Quick Start Guide](docs/getting-started/quickstart.md).
 
 ## Architecture
 
 ```
-Node1 (10.11.12.1) ←lan3→ Node2 (10.11.12.2)
-  ↑ lan4                      ↓ lan4
-  └──────────← Node3 (10.11.12.3)
-
-  + 2.4GHz wireless mesh backup
-  + 5GHz unified client AP (802.11r roaming)
+                    ┌─────────────────────────────────────┐
+                    │           INTERNET                  │
+                    └─────────────┬───────────────────────┘
+                                  │
+        ┌─────────────────────────┼─────────────────────────┐
+        │                         │                         │
+        ▼                         ▼                         ▼
+   ┌─────────┐              ┌─────────┐              ┌─────────┐
+   │  WAN 1  │              │  WAN 2  │              │  WAN 3  │
+   │ Node 1  │              │ Node 2  │              │ Node 3  │
+   │10.11.12.1              │10.11.12.2              │10.11.12.3
+   └────┬────┘              └────┬────┘              └────┬────┘
+        │                        │                        │
+   LAN3 │ LAN4              LAN3 │ LAN4              LAN3 │ LAN4
+        │                        │                        │
+   ┌────┴────────────────────────┴────────────────────────┴────┐
+   │                    Switch A (All VLANs)                    │
+   │                    Switch C (Mesh VLAN only)               │
+   │                    + 2.4GHz Wireless Backup                │
+   └────────────────────────────────────────────────────────────┘
 ```
 
-**Network Details:**
+**Network Segments:**
 
-- **LAN**: 10.11.12.0/24
-- **DHCP**: 10.11.12.100-250 (served by Node1)
-- **Gateways**: All 3 nodes (automatic failover)
-- **Client AP**: HA-Client (5GHz, WPA2/WPA3)
+| Network | VLAN | Subnet | WiFi SSID |
+|---------|------|--------|-----------|
+| Client (LAN) | 200 | 10.11.12.0/24 | HA-Client (5GHz) |
+| Management | 10 | 10.11.10.0/24 | HA-Management (2.4GHz) |
+| Guest | 20 | 10.11.20.0/24 | HA-Guest (5GHz) |
+| IoT | 30 | 10.11.30.0/24 | HA-IoT (2.4GHz) |
+| Mesh Backbone | 100 | - | HA-Mesh (2.4GHz, hidden) |
+
+**Key Features:**
+
+- **Bridge Loop Avoidance (BLA)**: Prevents L2 loops across mesh + switch
+- **Multi-Gateway**: All 3 nodes with independent WAN (auto failover)
+- **802.11r Fast Roaming**: Seamless handoff on client WiFi
+- **Per-Node DHCP**: Pools 100-149, 150-199, 200-249 for redundancy
 
 ## Development
 
@@ -135,7 +152,7 @@ Node1 (10.11.12.1) ←lan3→ Node2 (10.11.12.2)
 
 ```bash
 # Clone and setup
-git clone https://github.com/yourusername/mesh.git
+git clone https://github.com/git-kubik/mesh.git
 cd mesh
 
 # Automated development environment setup
@@ -272,45 +289,50 @@ mkdocs gh-deploy
 
 ```
 mesh/
-├── openwrt-mesh-ansible/       # Ansible playbooks and templates
-│   ├── inventory/hosts.yml     # Node definitions
+├── openwrt-mesh-ansible/       # Ansible project root
+│   ├── inventory/              # Node definitions
+│   │   ├── hosts.yml           # Production inventory (10.11.12.x)
+│   │   └── hosts-initial.yml   # Initial setup inventory (192.168.0.1)
 │   ├── group_vars/all.yml      # Configuration variables
-│   ├── templates/              # Jinja2 templates for OpenWrt configs
-│   └── playbooks/              # Deployment playbooks
+│   ├── roles/                  # Ansible roles with Jinja2 templates
+│   │   ├── network_config/     # Network, VLANs, Batman-adv, BLA
+│   │   ├── wireless_config/    # WiFi, 802.11r, mesh backbone
+│   │   ├── firewall_config/    # Zone-based firewall rules
+│   │   ├── dhcp_config/        # Per-node DHCP pools
+│   │   ├── system_config/      # System settings, SSH, packages
+│   │   └── ...                 # Additional roles
+│   ├── playbooks/              # Deployment playbooks
+│   └── Makefile                # Automation commands
 ├── docker/                     # Docker containerization
-│   ├── Dockerfile
-│   ├── docker-compose.yml
-│   └── requirements.txt
-├── tests/                      # Comprehensive test suite
-│   ├── unit/                   # Unit tests
-│   ├── integration/            # Integration tests
-│   ├── functional/             # Functional tests
+│   ├── Dockerfile              # Alpine Python 3.11 + Ansible
+│   ├── docker-compose.yml      # PostgreSQL + Semaphore UI
+│   └── requirements.txt        # Python dependencies
+├── tests/                      # Comprehensive test suite (39 files)
+│   ├── unit/                   # Unit tests (syntax, templates)
+│   ├── integration/            # Integration tests (cross-role)
+│   ├── functional/             # Functional tests (UCI output)
 │   ├── performance/            # Performance benchmarks
-│   └── failover/               # Failover scenarios
-├── docs/                       # MkDocs documentation
-├── .github/                    # GitHub Actions workflows
-│   └── workflows/
-│       ├── pre-commit.yml      # Code quality enforcement
-│       ├── tests.yml           # Test automation
-│       └── deploy-docs.yml     # Documentation deployment
+│   ├── failover/               # Failover scenarios
+│   └── conftest.py             # 19 pytest fixtures
+├── docs/                       # MkDocs Material documentation
+│   ├── architecture/           # Architecture guides
+│   ├── getting-started/        # Quick start guides
+│   └── reference/              # Makefile, CLI reference
+├── .github/workflows/          # GitHub Actions CI/CD
 ├── .claude/                    # Claude Code skills and commands
-│   ├── skills/                 # Specialized development skills
-│   └── commands/               # Slash commands
 ├── scripts/                    # Utility scripts
 ├── .pre-commit-config.yaml     # Pre-commit hooks configuration
 ├── pyproject.toml              # Python project configuration
-├── CLAUDE.md                   # AI assistant instructions
-├── CONTRIBUTING.md             # Contribution guidelines
-└── README.md                   # This file
+└── CONTRIBUTING.md             # Contribution guidelines
 ```
 
 ## Documentation
 
-- **Quick Start**: [ANSIBLE-QUICKSTART.md](docs/ANSIBLE-QUICKSTART.md)
-- **Technical Guide**: [openwrt-batman-mesh-setup.md](docs/openwrt-batman-mesh-setup.md)
-- **Testing Guide**: [TESTING.md](docs/TESTING.md) (to be created)
+- **Quick Start**: [Getting Started](docs/getting-started/quickstart.md)
+- **Architecture**: [Overview](docs/architecture/overview.md) | [VLANs](docs/architecture/vlan-architecture.md) | [Switch Integration](docs/architecture/switch-integration.md)
+- **Reference**: [Makefile Commands](docs/reference/makefile.md)
 - **Contributing**: [CONTRIBUTING.md](CONTRIBUTING.md)
-- **Full Documentation**: <https://yourusername.github.io/mesh/>
+- **Full Documentation**: <https://git-kubik.github.io/mesh/>
 
 ## CI/CD
 
@@ -380,20 +402,23 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Support
 
-- **Documentation**: <https://yourusername.github.io/mesh/>
-- **Issues**: [GitHub Issues](https://github.com/yourusername/mesh/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/yourusername/mesh/discussions)
+- **Documentation**: <https://git-kubik.github.io/mesh/>
+- **Issues**: [GitHub Issues](https://github.com/git-kubik/mesh/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/git-kubik/mesh/discussions)
 
 ## Roadmap
 
 - [x] Basic mesh network with Batman-adv
 - [x] Multi-gateway failover
 - [x] Docker containerization
-- [x] Comprehensive test suite
+- [x] Comprehensive test suite (39 test files)
 - [x] MkDocs documentation
 - [x] Pre-commit hooks and CI/CD
-- [ ] VLAN support for guest networks
-- [ ] Monitoring dashboard
+- [x] VLAN segmentation (Management, Guest, IoT, Client, Mesh)
+- [x] Switch integration (TP-Link TL-SG108E)
+- [x] Bridge Loop Avoidance (BLA)
+- [x] 802.11r fast roaming
+- [ ] Monitoring dashboard (Prometheus/Grafana)
 - [ ] Automated backup to cloud storage
 - [ ] IPv6 support
 

@@ -1,0 +1,227 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1000">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#616161"/>
+    </marker>
+    <marker id="arrow-blue" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#1976d2"/>
+    </marker>
+    <marker id="arrow-orange" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#f57c00"/>
+    </marker>
+  </defs>
+
+  <style>
+    .node-box { fill: #4051b5; stroke: #303f9f; stroke-width: 2; }
+    .bat0-box { fill: #616161; stroke: #424242; stroke-width: 2; }
+    .ogm-box { fill: #7b1fa2; stroke: #4a148c; stroke-width: 2; }
+    .gw-box { fill: #2e7d32; stroke: #1b5e20; stroke-width: 2; }
+    .label { fill: white; font-family: system-ui, sans-serif; }
+    .text-dark { fill: #212121; font-family: system-ui, sans-serif; }
+    .text-medium { fill: #424242; font-family: system-ui, sans-serif; }
+    .wire-primary { stroke: #2e7d32; stroke-width: 3; }
+    .wire-backup { stroke: #f57c00; stroke-width: 2; stroke-dasharray: 8,4; }
+    .ogm-flow { stroke: #7b1fa2; stroke-width: 2; }
+  </style>
+
+  <!-- Background -->
+  <rect width="1200" height="1000" fill="#fafafa"/>
+
+  <!-- Title -->
+  <text x="600" y="40" text-anchor="middle" class="text-dark" font-size="24" font-weight="bold">Batman-adv Mesh Protocol Flow</text>
+  <text x="600" y="68" text-anchor="middle" class="text-medium" font-size="14">OGM Propagation, Gateway Selection, and Failover</text>
+
+  <!-- Section 1: OGM Propagation -->
+  <g transform="translate(40, 100)">
+    <text x="0" y="0" class="text-dark" font-size="18" font-weight="bold">1. OGM (Originator Message) Propagation</text>
+
+    <!-- Three nodes -->
+    <g transform="translate(80, 40)">
+      <rect class="node-box" width="160" height="80" rx="8"/>
+      <text x="80" y="30" text-anchor="middle" class="label" font-size="14" font-weight="bold">Node 1</text>
+      <text x="80" y="50" text-anchor="middle" fill="#90caf9" font-size="11">Primary Gateway</text>
+      <text x="80" y="68" text-anchor="middle" fill="#e8eaf6" font-size="10">bat0: aa:bb:cc:01</text>
+    </g>
+
+    <g transform="translate(320, 40)">
+      <rect class="node-box" width="160" height="80" rx="8"/>
+      <text x="80" y="30" text-anchor="middle" class="label" font-size="14" font-weight="bold">Node 2</text>
+      <text x="80" y="50" text-anchor="middle" fill="#bdbdbd" font-size="11">Relay</text>
+      <text x="80" y="68" text-anchor="middle" fill="#e8eaf6" font-size="10">bat0: aa:bb:cc:02</text>
+    </g>
+
+    <g transform="translate(560, 40)">
+      <rect class="node-box" width="160" height="80" rx="8"/>
+      <text x="80" y="30" text-anchor="middle" class="label" font-size="14" font-weight="bold">Node 3</text>
+      <text x="80" y="50" text-anchor="middle" fill="#90caf9" font-size="11">Secondary Gateway</text>
+      <text x="80" y="68" text-anchor="middle" fill="#e8eaf6" font-size="10">bat0: aa:bb:cc:03</text>
+    </g>
+
+    <!-- OGM flows - bidirectional arrows 20px apart for clarity -->
+    <!-- Right-pointing arrows at y=70 (above center) -->
+    <path class="ogm-flow" d="M240,70 L320,70" fill="none" marker-end="url(#arrow)"/>
+    <path class="ogm-flow" d="M480,70 L560,70" fill="none" marker-end="url(#arrow)"/>
+    <!-- Left-pointing arrows at y=90 (below center) -->
+    <path class="ogm-flow" d="M320,90 L240,90" fill="none" marker-end="url(#arrow)"/>
+    <path class="ogm-flow" d="M560,90 L480,90" fill="none" marker-end="url(#arrow)"/>
+
+    <!-- OGM packet detail -->
+    <g transform="translate(760, 30)">
+      <rect class="ogm-box" width="200" height="100" rx="6"/>
+      <text x="100" y="20" text-anchor="middle" class="label" font-size="12" font-weight="bold">OGMv2 Packet</text>
+      <text x="15" y="40" fill="#e1bee7" font-size="10">TTL: 50</text>
+      <text x="15" y="55" fill="#e1bee7" font-size="10">Originator: aa:bb:cc:01</text>
+      <text x="15" y="70" fill="#e1bee7" font-size="10">Throughput: 1000 Mbps</text>
+      <text x="15" y="85" fill="#e1bee7" font-size="10">Flags: [gateway]</text>
+    </g>
+
+    <text x="400" y="145" text-anchor="middle" class="text-medium" font-size="11">Nodes broadcast OGMs every 1 second, building routing tables from received metrics</text>
+  </g>
+
+  <!-- Section 2: Multi-Interface -->
+  <g transform="translate(40, 280)">
+    <text x="0" y="0" class="text-dark" font-size="18" font-weight="bold">2. Multi-Interface Support (per node)</text>
+
+    <!-- bat0 virtual interface - widened to span all interfaces -->
+    <g transform="translate(100, 30)">
+      <rect class="bat0-box" width="520" height="50" rx="8"/>
+      <text x="260" y="32" text-anchor="middle" class="label" font-size="14" font-weight="bold">bat0 (Batman Virtual Interface)</text>
+    </g>
+
+    <!-- Hard interfaces - connecting lines to each box center -->
+    <line x1="200" y1="80" x2="200" y2="120" stroke="#616161" stroke-width="2"/>
+    <line x1="360" y1="80" x2="360" y2="120" stroke="#616161" stroke-width="2"/>
+    <line x1="520" y1="80" x2="520" y2="120" stroke="#616161" stroke-width="2"/>
+
+    <!-- Interface boxes - properly spaced with 20px gap (each 140px wide, 160px apart) -->
+    <g transform="translate(130, 120)">
+      <rect width="140" height="45" rx="4" fill="#1976d2" stroke="#0d47a1" stroke-width="2"/>
+      <text x="70" y="18" text-anchor="middle" class="label" font-size="11" font-weight="bold">lan3.100</text>
+      <text x="70" y="35" text-anchor="middle" fill="#bbdefb" font-size="9">Switch A (Primary)</text>
+    </g>
+
+    <g transform="translate(290, 120)">
+      <rect width="140" height="45" rx="4" fill="#f57c00" stroke="#e65100" stroke-width="2"/>
+      <text x="70" y="18" text-anchor="middle" class="label" font-size="11" font-weight="bold">lan4.100</text>
+      <text x="70" y="35" text-anchor="middle" fill="#ffe0b2" font-size="9">Switch C (Ring)</text>
+    </g>
+
+    <g transform="translate(450, 120)">
+      <rect width="140" height="45" rx="4" fill="#7b1fa2" stroke="#4a148c" stroke-width="2"/>
+      <text x="70" y="18" text-anchor="middle" class="label" font-size="11" font-weight="bold">phy0-mesh0</text>
+      <text x="70" y="35" text-anchor="middle" fill="#e1bee7" font-size="9">Wireless Backup</text>
+    </g>
+
+    <!-- Throughput labels - aligned with box centers -->
+    <text x="200" y="185" text-anchor="middle" class="text-medium" font-size="10">1000 Mbps</text>
+    <text x="360" y="185" text-anchor="middle" class="text-medium" font-size="10">1000 Mbps</text>
+    <text x="520" y="185" text-anchor="middle" class="text-medium" font-size="10">~100 Mbps</text>
+
+    <!-- Metric explanation -->
+    <g transform="translate(650, 50)">
+      <rect width="280" height="130" rx="6" fill="#f5f5f5" stroke="#e0e0e0" stroke-width="1"/>
+      <text x="140" y="25" text-anchor="middle" class="text-dark" font-size="12" font-weight="bold">BATMAN_V Metric</text>
+      <text x="15" y="50" class="text-medium" font-size="11">Throughput-based routing:</text>
+      <text x="15" y="70" class="text-medium" font-size="10">metric = throughput × (1 - loss) / hops</text>
+      <text x="15" y="95" class="text-medium" font-size="10">Higher metric = better path</text>
+      <text x="15" y="115" class="text-medium" font-size="10">Wired paths always preferred</text>
+    </g>
+  </g>
+
+  <!-- Section 3: Gateway Selection -->
+  <g transform="translate(40, 510)">
+    <text x="0" y="0" class="text-dark" font-size="18" font-weight="bold">3. Gateway Selection</text>
+
+    <!-- Gateway nodes - spaced 220px apart (180px wide + 40px gap) -->
+    <g transform="translate(80, 30)">
+      <rect class="gw-box" width="180" height="90" rx="8"/>
+      <text x="90" y="25" text-anchor="middle" class="label" font-size="13" font-weight="bold">Node 1 (GW)</text>
+      <text x="90" y="45" text-anchor="middle" fill="#c8e6c9" font-size="11">Bandwidth: 100/100 Mbps</text>
+      <text x="90" y="62" text-anchor="middle" fill="#c8e6c9" font-size="11">TQ: 255 (direct)</text>
+      <text x="90" y="80" text-anchor="middle" fill="#a5d6a7" font-size="10" font-weight="bold">Score: 25,500</text>
+    </g>
+
+    <g transform="translate(300, 30)">
+      <rect width="180" height="90" rx="8" fill="#546e7a" stroke="#37474f" stroke-width="2"/>
+      <text x="90" y="25" text-anchor="middle" class="label" font-size="13" font-weight="bold">Node 2 (Relay)</text>
+      <text x="90" y="45" text-anchor="middle" fill="#b0bec5" font-size="11">No WAN connection</text>
+      <text x="90" y="62" text-anchor="middle" fill="#b0bec5" font-size="11">Routes to gateways</text>
+      <text x="90" y="80" text-anchor="middle" fill="#90a4ae" font-size="10">via best metric</text>
+    </g>
+
+    <g transform="translate(520, 30)">
+      <rect class="gw-box" width="180" height="90" rx="8"/>
+      <text x="90" y="25" text-anchor="middle" class="label" font-size="13" font-weight="bold">Node 3 (GW)</text>
+      <text x="90" y="45" text-anchor="middle" fill="#c8e6c9" font-size="11">Bandwidth: 100/100 Mbps</text>
+      <text x="90" y="62" text-anchor="middle" fill="#c8e6c9" font-size="11">TQ: 220 (1 hop)</text>
+      <text x="90" y="80" text-anchor="middle" fill="#a5d6a7" font-size="10" font-weight="bold">Score: 22,000</text>
+    </g>
+
+    <!-- Selection arrow -->
+    <path d="M170,130 L170,150" stroke="#2e7d32" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
+    <text x="170" y="170" text-anchor="middle" fill="#2e7d32" font-size="11" font-weight="bold">SELECTED</text>
+
+    <!-- Formula -->
+    <g transform="translate(750, 40)">
+      <rect width="200" height="70" rx="6" fill="#e8f5e9" stroke="#2e7d32" stroke-width="2"/>
+      <text x="100" y="25" text-anchor="middle" fill="#2e7d32" font-size="12" font-weight="bold">Selection Formula</text>
+      <text x="100" y="50" text-anchor="middle" class="text-dark" font-size="11">score = bandwidth × TQ</text>
+    </g>
+  </g>
+
+  <!-- Section 4: Failover -->
+  <g transform="translate(40, 720)">
+    <text x="0" y="0" class="text-dark" font-size="18" font-weight="bold">4. Automatic Failover Paths</text>
+
+    <!-- Normal operation - boxes are 360px wide with 10px gaps -->
+    <g transform="translate(0, 30)">
+      <rect width="360" height="80" rx="6" fill="#e8f5e9" stroke="#2e7d32" stroke-width="2"/>
+      <text x="180" y="22" text-anchor="middle" fill="#2e7d32" font-size="12" font-weight="bold">Normal Operation</text>
+      <text x="15" y="45" class="text-dark" font-size="11">Client → Node1 → [lan3.100] → Node2 → Server</text>
+      <text x="15" y="65" class="text-medium" font-size="10">Primary wired path via Switch A</text>
+    </g>
+
+    <!-- Wired failover -->
+    <g transform="translate(380, 30)">
+      <rect width="360" height="80" rx="6" fill="#fff3e0" stroke="#f57c00" stroke-width="2"/>
+      <text x="180" y="22" text-anchor="middle" fill="#f57c00" font-size="12" font-weight="bold">lan3.100 Fails</text>
+      <text x="15" y="45" class="text-dark" font-size="11">Client → Node1 → [lan4.100] → Node3 → Node2</text>
+      <text x="15" y="65" class="text-medium" font-size="10">Automatic reroute via Switch C ring</text>
+    </g>
+
+    <!-- Wireless failover -->
+    <g transform="translate(760, 30)">
+      <rect width="360" height="80" rx="6" fill="#f3e5f5" stroke="#7b1fa2" stroke-width="2"/>
+      <text x="180" y="22" text-anchor="middle" fill="#7b1fa2" font-size="12" font-weight="bold">All Wired Fails</text>
+      <text x="15" y="45" class="text-dark" font-size="11">Client → Node1 → [mesh0] → Node2 → Server</text>
+      <text x="15" y="65" class="text-medium" font-size="10">Wireless 2.4GHz backup (SAE/WPA3)</text>
+    </g>
+
+    <!-- Convergence note -->
+    <text x="560" y="140" text-anchor="middle" class="text-medium" font-size="11">Failover convergence: ~1-3 seconds (OGM interval dependent)</text>
+  </g>
+
+  <!-- Legend -->
+  <g transform="translate(40, 900)">
+    <rect width="1120" height="80" rx="8" fill="#f5f5f5" stroke="#e0e0e0" stroke-width="1"/>
+    <text x="560" y="22" text-anchor="middle" class="text-dark" font-size="13" font-weight="bold">Legend</text>
+
+    <line x1="50" y1="50" x2="100" y2="50" class="wire-primary"/>
+    <text x="110" y="54" class="text-dark" font-size="11">Primary Path (1 Gbps)</text>
+
+    <line x1="260" y1="50" x2="310" y2="50" class="wire-backup"/>
+    <text x="320" y="54" class="text-dark" font-size="11">Backup Path (Wireless)</text>
+
+    <line x1="480" y1="50" x2="530" y2="50" class="ogm-flow" marker-end="url(#arrow)"/>
+    <text x="540" y="54" class="text-dark" font-size="11">OGM Flow</text>
+
+    <rect x="660" y="40" width="20" height="20" rx="3" fill="#2e7d32"/>
+    <text x="690" y="55" class="text-dark" font-size="11">Gateway Node</text>
+
+    <rect x="810" y="40" width="20" height="20" rx="3" fill="#546e7a"/>
+    <text x="840" y="55" class="text-dark" font-size="11">Relay Node</text>
+
+    <text x="970" y="55" class="text-medium" font-size="10">BLA enabled for loop prevention</text>
+  </g>
+</svg>

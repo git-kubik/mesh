@@ -1,0 +1,95 @@
+---
+# Teardown workstation VLAN interfaces
+#
+# Removes all VLAN interfaces and resets eth2 to unconfigured state.
+# Use this before switching to a different network mode.
+#
+# Usage:
+#   ansible-playbook playbooks/teardown-workstation-vlans.yml
+#   make teardown-workstation-vlans
+
+- name: Teardown workstation VLAN interfaces
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  become: true
+
+  vars:
+    interface: "{{ lookup('env', 'ETH_INTERFACE') | default('eth2', true) }}"
+    vlan_ids:
+      - 10
+      - 30
+      - 200
+
+  tasks:
+    - name: Display current state
+      block:
+        - name: Get current VLAN interfaces
+          ansible.builtin.shell: ip -br addr show | grep "{{ interface }}" || echo "No interfaces found"
+          register: current_vlans
+          changed_when: false
+
+        - name: Show current state
+          ansible.builtin.debug:
+            msg: |
+              Current interfaces:
+              {{ current_vlans.stdout }}
+
+    - name: Remove VLAN interfaces
+      block:
+        - name: Bring down VLAN interface
+          ansible.builtin.command: ip link set {{ interface }}.{{ item }} down
+          loop: "{{ vlan_ids }}"
+          failed_when: false
+          changed_when: false
+
+        - name: Delete VLAN interface
+          ansible.builtin.command: ip link del {{ interface }}.{{ item }}
+          loop: "{{ vlan_ids }}"
+          failed_when: false
+          changed_when: true
+
+    - name: Reset base interface
+      block:
+        - name: Flush IP addresses from base interface
+          ansible.builtin.command: ip addr flush dev {{ interface }}
+          changed_when: true
+
+        - name: Remove switch host routes
+          ansible.builtin.command: ip route del {{ item }}/32 dev {{ interface }}
+          loop:
+            - 10.11.10.11
+            - 10.11.10.12
+            - 10.11.10.13
+          failed_when: false
+          changed_when: false
+
+        - name: Bring down base interface
+          ansible.builtin.command: ip link set {{ interface }} down
+          changed_when: true
+
+    - name: Verify teardown
+      block:
+        - name: Get final state
+          ansible.builtin.shell: ip -br addr show | grep "{{ interface }}" || echo "Interface down/removed"
+          register: final_state
+          changed_when: false
+
+        - name: Display result
+          ansible.builtin.debug:
+            msg: |
+              ═══════════════════════════════════════════════════════
+              Workstation VLAN Teardown Complete
+              ═══════════════════════════════════════════════════════
+
+              Final state:
+              {{ final_state.stdout }}
+
+              All VLAN interfaces removed.
+              Base interface {{ interface }} is now unconfigured.
+
+              To reconfigure:
+                make setup-workstation-vlans    # Multi-VLAN trunk access
+                make switch-to-mgmt-network     # Single network (untagged)
+                make switch-to-mesh-network     # Single network (untagged)
+              ═══════════════════════════════════════════════════════

@@ -261,7 +261,7 @@ shellcheck scripts/*.sh
 
 ```bash
 # 1. Clone repository
-git clone https://github.com/yourusername/mesh.git
+git clone https://github.com/git-kubik/mesh.git
 cd mesh
 
 # 2. Run automated setup

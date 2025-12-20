@@ -55,3 +55,7 @@
 # NOTE: System changes (hostname/timezone) are committed but NOT applied yet
 # They will take effect after reboot (if REBOOT_AFTER_DEPLOY=true) or on next boot
 # Applying system changes here with /etc/init.d/system reload could break connection
+
+# NOTE: bat-hosts deployment moved to post_tasks in deploy.yml
+# This ensures all hostvars are available when templating the file
+# (required because deploy.yml uses serial: 1 for initial deployment)

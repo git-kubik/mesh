@@ -133,7 +133,6 @@ extra_css:
 nav:
   - Home:
       - index.md
-      - Design Philosophy: philosophy.md
   - Getting Started:
       - getting-started/index.md
       - Quick Start: getting-started/quickstart.md

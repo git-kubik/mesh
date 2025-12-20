@@ -67,7 +67,7 @@ cd docker && docker-compose build
 
 **Status**: ⚪ Non-blocking - Doesn't affect PR approval
 
-**Deployment URL**: `https://yourusername.github.io/mesh/`
+**Deployment URL**: `https://git-kubik.github.io/mesh/`
 
 **Local equivalent**:
 
@@ -91,9 +91,9 @@ Check workflow status:
 Add to `README.md`:
 
 ```markdown
-![Pre-commit Checks](https://github.com/yourusername/mesh/workflows/Pre-commit%20Checks/badge.svg)
-![Tests](https://github.com/yourusername/mesh/workflows/Tests/badge.svg)
-![Deploy Documentation](https://github.com/yourusername/mesh/workflows/Deploy%20Documentation/badge.svg)
+![Pre-commit Checks](https://github.com/git-kubik/mesh/workflows/Pre-commit%20Checks/badge.svg)
+![Tests](https://github.com/git-kubik/mesh/workflows/Tests/badge.svg)
+![Deploy Documentation](https://github.com/git-kubik/mesh/workflows/Deploy%20Documentation/badge.svg)
 ```
 
 ## Branch Protection Rules

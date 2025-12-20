@@ -246,13 +246,17 @@ make deploy-node NODE=1
 | Component | Configuration |
 |-----------|---------------|
 | Hostname | mesh-node1 |
-| LAN IP | 10.11.12.1/24 |
+| Client LAN | 10.11.12.1/24 (VLAN 200) |
+| Management | 10.11.10.1/24 (VLAN 10) |
+| Guest | 10.11.20.1/24 (VLAN 20) |
+| IoT | 10.11.30.1/24 (VLAN 30) |
 | WAN | DHCP client |
-| Batman-adv | Mesh bridge (bat0) |
-| 2.4GHz WiFi | Mesh backhaul |
-| 5GHz WiFi | Client AP (HA-Client) |
-| DHCP | 10.11.12.100-149 |
-| Firewall | Standard zones |
+| Batman-adv | bat0 with BLA enabled |
+| Mesh Backbone | VLAN 100 (lan3.100, lan4.100) |
+| 2.4GHz WiFi | HA-Mesh (hidden), HA-Management, HA-IoT |
+| 5GHz WiFi | HA-Client (802.11r), HA-Guest |
+| DHCP | Per-node pools (100-149, 150-199, 200-249) |
+| Firewall | Zone-based (lan, management, guest, iot, wan) |
 
 **Important**: After deployment, the node IP changes from 192.168.1.1 to 10.11.12.1!
 
@@ -326,32 +330,48 @@ Same process with Node 3 (final IP: 10.11.12.3)
 
 ## Step 9: Connect the Mesh
 
-With all three nodes configured, wire the physical mesh:
+With all three nodes configured, wire the physical mesh through managed switches:
 
-### Ring Topology
+### Topology with Switches
 
 ```
-         node1 (10.11.12.1)
-          /  \
-     LAN3/    \LAN4
-        /      \
-       /        \
-  node2 -------- node3
-(10.11.12.2) (10.11.12.3)
-     LAN4 - LAN3
+                         ┌──────────────────────────┐
+                         │        INTERNET          │
+                         └────┬─────────┬─────────┬─┘
+                              │         │         │
+                         ┌────┴───┐ ┌───┴────┐ ┌──┴─────┐
+                         │ Node 1 │ │ Node 2 │ │ Node 3 │
+                         │10.11.12│ │10.11.12│ │10.11.12│
+                         │   .1   │ │   .2   │ │   .3   │
+                         └────┬───┘ └───┬────┘ └──┬─────┘
+                         LAN3 │ LAN4    │ LAN3  LAN4 │ LAN3
+                              │         │           │
+┌────────────────────────────┴─────────┴───────────┴──────────────────────────┐
+│                             Switch A                                         │
+│                  (All VLANs: 10, 20, 30, 100, 200)                           │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                             Switch C                                         │
+│                        (Mesh VLAN 100 only)                                  │
+└─────────────────────────────────────────────────────────────────────────────┘
+                    + 2.4GHz wireless mesh backup (HA-Mesh)
 ```
 
 ### Physical Connections
 
-| From | Port | To | Port |
-|------|------|----|------|
-| Node 1 | LAN3 | Node 2 | LAN3/LAN4 |
-| Node 1 | LAN4 | Node 3 | LAN3/LAN4 |
-| Node 2 | LAN4 | Node 3 | LAN3/LAN4 |
+| From | Port | To | VLANs Carried |
+|------|------|----|---------------|
+| Node 1 | LAN3 | Switch A | 10, 20, 30, 100, 200 (trunk) |
+| Node 1 | LAN4 | Switch C | 100 only (mesh backbone) |
+| Node 2 | LAN3 | Switch A | 10, 20, 30, 100, 200 (trunk) |
+| Node 2 | LAN4 | Switch C | 100 only (mesh backbone) |
+| Node 3 | LAN3 | Switch A | 10, 20, 30, 100, 200 (trunk) |
+| Node 3 | LAN4 | Switch C | 100 only (mesh backbone) |
+
+**Switch Configuration**: See [Switch Integration](../architecture/switch-integration.md) for TP-Link TL-SG108E VLAN setup.
 
 ### Connect WAN
 
-Connect each node's WAN port to your upstream network (switch or ISP router).
+Connect each node's WAN port to your upstream network (ISP router or modem).
 
 ---
 
@@ -402,10 +422,11 @@ Connect with the password from `group_vars/all.yml` → `client_password`
 
 Your mesh network is operational:
 
-- **3-node mesh** with automatic routing
-- **Ring topology** for redundancy
-- **Wireless backup** via 2.4GHz mesh
+- **3-node mesh** with automatic routing via Batman-adv
+- **Switch-based backbone** with VLAN trunking
+- **Wireless backup** via 2.4GHz 802.11s mesh
 - **Multi-gateway** WAN failover
+- **VLAN segmentation** for security
 - **802.11r** fast roaming
 
 ### What You Have
@@ -413,11 +434,16 @@ Your mesh network is operational:
 | Feature | Status |
 |---------|--------|
 | Mesh nodes | 3 (10.11.12.1-3) |
-| Wired mesh links | 3 (ring) |
-| Wireless backup | 2.4GHz 802.11s |
-| Client WiFi | 5GHz AP per node |
-| Gateway redundancy | All nodes |
-| Fast roaming | 802.11r enabled |
+| Managed switches | 2 (Switch A + Switch C) |
+| Wired mesh | VLAN 100 trunks |
+| Wireless backup | 2.4GHz HA-Mesh (hidden) |
+| Client WiFi | 5GHz HA-Client (802.11r) |
+| Guest WiFi | 5GHz HA-Guest (isolated) |
+| Management WiFi | 2.4GHz HA-Management |
+| IoT WiFi | 2.4GHz HA-IoT (isolated) |
+| VLANs | 5 (10, 20, 30, 100, 200) |
+| BLA | Enabled (loop prevention) |
+| Gateway redundancy | All 3 nodes |
 
 ---
 
@@ -446,10 +472,10 @@ make deploy-wireless
 
 ### Learn More
 
-- [Network Topology](../architecture/network-topology.md) - Physical and logical architecture
-- [Batman-adv Protocol](../architecture/batman-mesh.md) - How mesh routing works
-- [Backup & Restore](../operations/backup-restore.md) - Disaster recovery
-- [Troubleshooting](../troubleshooting/common-issues.md) - Problem resolution
+- [Architecture Overview](../architecture/overview.md) - Complete technical deep-dive
+- [VLAN Architecture](../architecture/vlan-architecture.md) - Network segmentation details
+- [Switch Integration](../architecture/switch-integration.md) - Managed switch configuration
+- [Makefile Reference](../reference/makefile.md) - All available commands
 
 ---
 
