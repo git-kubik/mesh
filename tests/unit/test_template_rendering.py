@@ -30,6 +30,30 @@ def mock_node_variables() -> Dict[str, Any]:
         "mesh_network": "10.11.12.0",
         "batman_gateway_mode": "server",
         "batman_gw_bandwidth": "100000/100000",
+        # VLAN settings
+        "switch_mesh_vlan": 100,
+        "switch_client_vlan": 200,
+        "iot_vlan": 30,
+        "iot_network": "10.11.30.0",
+        "enable_vlans": True,
+        "vlans": {
+            "management": {
+                "vid": 10,
+                "network": "10.11.10.0/24",
+                "gateway_ip": "10.11.10.1",
+                "netmask": "255.255.255.0",
+                "dhcp_start": 100,
+                "dhcp_limit": 50,
+            },
+            "guest": {
+                "vid": 20,
+                "network": "10.11.20.0/24",
+                "gateway_ip": "10.11.20.1",
+                "netmask": "255.255.255.0",
+                "dhcp_start": 100,
+                "dhcp_limit": 50,
+            },
+        },
         # Wireless settings
         "mesh_id": "HA-Mesh",
         "mesh_password": "test-mesh-password",
