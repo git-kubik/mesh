@@ -178,5 +178,5 @@
 
   <!-- Wireless mesh note -->
   <text class="text-note" x="600" y="690">2.4GHz Mesh (backup): Node1 ←→ Node2 ←→ Node3 ←→ Node1</text>
-  <text class="text-note" x="600" y="715">5GHz Client AP: All nodes broadcast "HA-Network-5G" (unified SSID)</text>
+  <text class="text-note" x="600" y="715">5GHz Client AP: All nodes broadcast "HA-Client" (unified SSID)</text>
 </svg>

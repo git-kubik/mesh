@@ -1,0 +1,181 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1000">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#444"/>
+    </marker>
+  </defs>
+
+  <style>
+    .vlan-box { stroke-width: 2; rx: 8; }
+    .vlan-10 { fill: #1976d2; stroke: #0d47a1; }
+    .vlan-20 { fill: #7b1fa2; stroke: #4a148c; }
+    .vlan-30 { fill: #f57c00; stroke: #e65100; }
+    .vlan-100 { fill: #616161; stroke: #424242; }
+    .vlan-200 { fill: #2e7d32; stroke: #1b5e20; }
+    .label { fill: white; font-family: system-ui, sans-serif; text-anchor: middle; }
+    .sublabel { fill: rgba(255,255,255,0.85); font-family: system-ui, sans-serif; text-anchor: middle; }
+    .text-dark { fill: #212121; font-family: system-ui, sans-serif; }
+    .text-medium { fill: #424242; font-family: system-ui, sans-serif; }
+    .wire { stroke: #444; stroke-width: 2; }
+  </style>
+
+  <!-- Background for contrast -->
+  <rect width="1200" height="1000" fill="#fafafa"/>
+
+  <!-- Title -->
+  <text x="600" y="40" text-anchor="middle" class="text-dark" font-size="24" font-weight="bold">VLAN Architecture</text>
+  <text x="600" y="65" text-anchor="middle" class="text-medium" font-size="14">Network Segmentation with Batman-adv Mesh</text>
+
+  <!-- VLAN boxes in a row -->
+  <!-- VLAN 200 - Client -->
+  <g transform="translate(40, 100)">
+    <rect class="vlan-box vlan-200" width="200" height="170"/>
+    <text x="100" y="30" class="label" font-size="18" font-weight="bold">VLAN 200</text>
+    <text x="100" y="52" class="label" font-size="14">Client Network</text>
+    <line x1="30" y1="65" x2="170" y2="65" stroke="rgba(255,255,255,0.3)" stroke-width="1"/>
+    <text x="100" y="90" class="sublabel" font-size="12">10.11.12.0/24</text>
+    <text x="100" y="110" class="sublabel" font-size="11">HA-Client (5GHz)</text>
+    <text x="100" y="130" class="sublabel" font-size="11">802.11r Fast Roaming</text>
+    <text x="100" y="155" class="sublabel" font-size="10">LAN1, lan3.200, bat0</text>
+  </g>
+
+  <!-- VLAN 10 - Management -->
+  <g transform="translate(260, 100)">
+    <rect class="vlan-box vlan-10" width="200" height="170"/>
+    <text x="100" y="30" class="label" font-size="18" font-weight="bold">VLAN 10</text>
+    <text x="100" y="52" class="label" font-size="14">Management</text>
+    <line x1="30" y1="65" x2="170" y2="65" stroke="rgba(255,255,255,0.3)" stroke-width="1"/>
+    <text x="100" y="90" class="sublabel" font-size="12">10.11.10.0/24</text>
+    <text x="100" y="110" class="sublabel" font-size="11">HA-Management (2.4GHz)</text>
+    <text x="100" y="130" class="sublabel" font-size="11">Admin Access Only</text>
+    <text x="100" y="155" class="sublabel" font-size="10">lan3.10, bat0.10</text>
+  </g>
+
+  <!-- VLAN 20 - Guest -->
+  <g transform="translate(480, 100)">
+    <rect class="vlan-box vlan-20" width="200" height="170"/>
+    <text x="100" y="30" class="label" font-size="18" font-weight="bold">VLAN 20</text>
+    <text x="100" y="52" class="label" font-size="14">Guest Network</text>
+    <line x1="30" y1="65" x2="170" y2="65" stroke="rgba(255,255,255,0.3)" stroke-width="1"/>
+    <text x="100" y="90" class="sublabel" font-size="12">10.11.20.0/24</text>
+    <text x="100" y="110" class="sublabel" font-size="11">HA-Guest (5GHz)</text>
+    <text x="100" y="130" class="sublabel" font-size="11">Isolated from LAN</text>
+    <text x="100" y="155" class="sublabel" font-size="10">bat0.20 only</text>
+  </g>
+
+  <!-- VLAN 30 - IoT -->
+  <g transform="translate(700, 100)">
+    <rect class="vlan-box vlan-30" width="200" height="170"/>
+    <text x="100" y="30" class="label" font-size="18" font-weight="bold">VLAN 30</text>
+    <text x="100" y="52" class="label" font-size="14">IoT Network</text>
+    <line x1="30" y1="65" x2="170" y2="65" stroke="rgba(255,255,255,0.3)" stroke-width="1"/>
+    <text x="100" y="90" class="sublabel" font-size="12">10.11.30.0/24</text>
+    <text x="100" y="110" class="sublabel" font-size="11">HA-IoT (2.4GHz)</text>
+    <text x="100" y="130" class="sublabel" font-size="11">MQTT + Home Assistant</text>
+    <text x="100" y="155" class="sublabel" font-size="10">LAN2, lan3.30, bat0.30</text>
+  </g>
+
+  <!-- VLAN 100 - Mesh Backbone -->
+  <g transform="translate(920, 100)">
+    <rect class="vlan-box vlan-100" width="200" height="170"/>
+    <text x="100" y="30" class="label" font-size="18" font-weight="bold">VLAN 100</text>
+    <text x="100" y="52" class="label" font-size="14">Mesh Backbone</text>
+    <line x1="30" y1="65" x2="170" y2="65" stroke="rgba(255,255,255,0.3)" stroke-width="1"/>
+    <text x="100" y="90" class="sublabel" font-size="12">Layer 2 Only</text>
+    <text x="100" y="110" class="sublabel" font-size="11">Batman-adv</text>
+    <text x="100" y="130" class="sublabel" font-size="11">BLA Enabled</text>
+    <text x="100" y="155" class="sublabel" font-size="10">lan3.100, lan4.100</text>
+  </g>
+
+  <!-- Traffic Flow Section -->
+  <g transform="translate(40, 310)">
+    <text x="0" y="0" class="text-dark" font-size="18" font-weight="bold">Traffic Flow</text>
+
+    <!-- Internet at top -->
+    <rect x="480" y="30" width="120" height="45" rx="6" fill="#e65100" stroke="#bf360c" stroke-width="2"/>
+    <text x="540" y="58" text-anchor="middle" fill="white" font-family="system-ui, sans-serif" font-size="13" font-weight="bold">Internet</text>
+
+    <!-- Lines from Internet to gateways - separate paths, no crossing -->
+    <path class="wire" d="M480,52 L350,52 L350,105" fill="none" marker-end="url(#arrow)"/>
+    <path class="wire" d="M600,52 L730,52 L730,105" fill="none" marker-end="url(#arrow)"/>
+
+    <!-- Gateway nodes - positioned below with clear spacing -->
+    <rect x="280" y="110" width="140" height="50" rx="6" fill="#4051b5" stroke="#303f9f" stroke-width="2"/>
+    <text x="350" y="140" text-anchor="middle" fill="white" font-family="system-ui, sans-serif" font-size="11">Node 1 (Primary GW)</text>
+
+    <rect x="660" y="110" width="140" height="50" rx="6" fill="#4051b5" stroke="#303f9f" stroke-width="2"/>
+    <text x="730" y="140" text-anchor="middle" fill="white" font-family="system-ui, sans-serif" font-size="11">Node 3 (Secondary GW)</text>
+
+    <!-- Mesh backbone - horizontal bar below -->
+    <rect x="280" y="190" width="520" height="40" rx="4" fill="#616161" stroke="#424242" stroke-width="2"/>
+    <text x="540" y="215" text-anchor="middle" fill="white" font-family="system-ui, sans-serif" font-size="12">Batman-adv Mesh (VLAN 100)</text>
+
+    <!-- Vertical lines from gateways to mesh - no crossing -->
+    <line class="wire" x1="350" y1="160" x2="350" y2="190"/>
+    <line class="wire" x1="730" y1="160" x2="730" y2="190"/>
+  </g>
+
+  <!-- Access Matrix -->
+  <g transform="translate(40, 570)">
+    <text x="0" y="0" class="text-dark" font-size="18" font-weight="bold">Access Matrix</text>
+
+    <!-- Table headers -->
+    <text x="180" y="40" class="text-medium" font-size="12" font-weight="bold">→ WAN</text>
+    <text x="270" y="40" class="text-medium" font-size="12" font-weight="bold">→ LAN</text>
+    <text x="360" y="40" class="text-medium" font-size="12" font-weight="bold">→ Mgmt</text>
+    <text x="450" y="40" class="text-medium" font-size="12" font-weight="bold">→ IoT</text>
+
+    <!-- Client row -->
+    <rect x="0" y="55" width="140" height="32" fill="#2e7d32" rx="4"/>
+    <text x="70" y="76" class="label" font-size="11">Client (200)</text>
+    <text x="195" y="76" fill="#2e7d32" font-family="system-ui, sans-serif" font-size="16">✓</text>
+    <text x="285" y="76" fill="#2e7d32" font-family="system-ui, sans-serif" font-size="16">✓</text>
+    <text x="375" y="76" fill="#2e7d32" font-family="system-ui, sans-serif" font-size="16">✓</text>
+    <text x="465" y="76" fill="#2e7d32" font-family="system-ui, sans-serif" font-size="16">✓</text>
+
+    <!-- Management row -->
+    <rect x="0" y="95" width="140" height="32" fill="#1976d2" rx="4"/>
+    <text x="70" y="116" class="label" font-size="11">Management (10)</text>
+    <text x="195" y="116" fill="#2e7d32" font-family="system-ui, sans-serif" font-size="16">✓</text>
+    <text x="285" y="116" fill="#2e7d32" font-family="system-ui, sans-serif" font-size="16">✓</text>
+    <text x="375" y="116" fill="#2e7d32" font-family="system-ui, sans-serif" font-size="16">✓</text>
+    <text x="465" y="116" fill="#2e7d32" font-family="system-ui, sans-serif" font-size="16">✓</text>
+
+    <!-- Guest row -->
+    <rect x="0" y="135" width="140" height="32" fill="#7b1fa2" rx="4"/>
+    <text x="70" y="156" class="label" font-size="11">Guest (20)</text>
+    <text x="195" y="156" fill="#2e7d32" font-family="system-ui, sans-serif" font-size="16">✓</text>
+    <text x="285" y="156" fill="#c62828" font-family="system-ui, sans-serif" font-size="16">✗</text>
+    <text x="375" y="156" fill="#c62828" font-family="system-ui, sans-serif" font-size="16">✗</text>
+    <text x="465" y="156" fill="#c62828" font-family="system-ui, sans-serif" font-size="16">✗</text>
+
+    <!-- IoT row -->
+    <rect x="0" y="175" width="140" height="32" fill="#f57c00" rx="4"/>
+    <text x="70" y="196" class="label" font-size="11">IoT (30)</text>
+    <text x="195" y="196" fill="#2e7d32" font-family="system-ui, sans-serif" font-size="16">✓</text>
+    <text x="285" y="196" fill="#c62828" font-family="system-ui, sans-serif" font-size="16">✗</text>
+    <text x="375" y="196" fill="#f57c00" font-family="system-ui, sans-serif" font-size="14">△</text>
+    <text x="465" y="196" fill="#2e7d32" font-family="system-ui, sans-serif" font-size="16">✓</text>
+  </g>
+
+  <!-- Legend - right side -->
+  <g transform="translate(620, 570)">
+    <text x="0" y="0" class="text-dark" font-size="16" font-weight="bold">Legend</text>
+
+    <text x="0" y="35" fill="#2e7d32" font-family="system-ui, sans-serif" font-size="13">✓ Full access</text>
+    <text x="0" y="60" fill="#c62828" font-family="system-ui, sans-serif" font-size="13">✗ Blocked</text>
+    <text x="0" y="85" fill="#f57c00" font-family="system-ui, sans-serif" font-size="13">△ Limited (MQTT, HA ports)</text>
+
+    <!-- Port legend -->
+    <text x="0" y="125" class="text-dark" font-size="14" font-weight="bold">Port Assignments</text>
+    <text x="0" y="148" class="text-medium" font-size="11">WAN = Internet uplink</text>
+    <text x="0" y="166" class="text-medium" font-size="11">LAN1 = Client devices</text>
+    <text x="0" y="184" class="text-medium" font-size="11">LAN2 = IoT direct connect</text>
+    <text x="200" y="148" class="text-medium" font-size="11">LAN3 = Switch A (all VLANs)</text>
+    <text x="200" y="166" class="text-medium" font-size="11">LAN4 = Switch C (mesh only)</text>
+  </g>
+
+  <!-- Footer note -->
+  <text x="600" y="780" text-anchor="middle" fill="#757575" font-family="system-ui, sans-serif" font-size="11">Bridge Loop Avoidance (BLA) enabled on bat0 • Static IPs required on all nodes</text>
+</svg>

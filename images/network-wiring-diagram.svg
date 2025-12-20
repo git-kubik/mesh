@@ -331,7 +331,7 @@
   <!-- ========== WIRELESS MESH BACKUP ========== -->
   <g id="wireless-backup" transform="translate(0, 800)">
     <rect class="bg-area" x="50" y="0" width="1300" height="80" rx="8"/>
-    <text class="text-section" x="700" y="25" text-anchor="middle">2.4GHz Wireless Mesh Backup (ha-mesh-net)</text>
+    <text class="text-section" x="700" y="25" text-anchor="middle">2.4GHz Wireless Mesh Backup (HA-Mesh)</text>
 
     <path class="wireless-link" d="M 250 50 Q 450 30 650 50" />
     <text class="text-note" x="450" y="45" text-anchor="middle">N1 ↔ N2</text>

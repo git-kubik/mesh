@@ -1,0 +1,367 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1000">
+  <style>
+    .switch-box { stroke-width: 2; }
+    .switch-a { fill: #2e7d32; stroke: #1b5e20; }
+    .switch-b { fill: #00838f; stroke: #006064; }
+    .switch-c { fill: #558b2f; stroke: #33691e; }
+    .port { stroke-width: 1.5; rx: 3; }
+    .port-trunk { fill: #4051b5; stroke: #303f9f; }
+    .port-vlan10 { fill: #1976d2; stroke: #0d47a1; }
+    .port-vlan30 { fill: #f57c00; stroke: #e65100; }
+    .port-vlan100 { fill: #616161; stroke: #424242; }
+    .port-vlan200 { fill: #2e7d32; stroke: #1b5e20; }
+    .port-spare { fill: #e0e0e0; stroke: #9e9e9e; }
+    .label { fill: white; font-family: system-ui, sans-serif; }
+    .text-dark { fill: #212121; font-family: system-ui, sans-serif; }
+    .text-medium { fill: #424242; font-family: system-ui, sans-serif; }
+  </style>
+
+  <!-- Background -->
+  <rect width="1200" height="1000" fill="#fafafa"/>
+
+  <!-- Title -->
+  <text x="600" y="40" text-anchor="middle" class="text-dark" font-size="24" font-weight="bold">Switch Port VLAN Mapping</text>
+  <text x="600" y="68" text-anchor="middle" class="text-medium" font-size="14">TP-Link TL-SG108E/PE Port Configuration</text>
+
+  <!-- Switch A -->
+  <g transform="translate(60, 100)">
+    <rect class="switch-box switch-a" width="500" height="260" rx="10"/>
+    <text x="250" y="35" text-anchor="middle" class="label" font-size="18" font-weight="bold">Switch A - Main Distribution</text>
+    <text x="250" y="58" text-anchor="middle" fill="#c8e6c9" font-size="12">TL-SG108E | 10.11.10.11 | All VLANs</text>
+
+    <!-- Port row -->
+    <g transform="translate(30, 80)">
+      <!-- Port 1 -->
+      <g transform="translate(0, 0)">
+        <rect class="port port-trunk" width="50" height="70"/>
+        <text x="25" y="18" text-anchor="middle" class="label" font-size="11" font-weight="bold">P1</text>
+        <text x="25" y="35" text-anchor="middle" fill="#c5cae9" font-size="8">Node 1</text>
+        <text x="25" y="48" text-anchor="middle" fill="#c5cae9" font-size="7">LAN3</text>
+        <text x="25" y="62" text-anchor="middle" fill="#9fa8da" font-size="7">TRUNK</text>
+      </g>
+      <!-- Port 2 -->
+      <g transform="translate(55, 0)">
+        <rect class="port port-trunk" width="50" height="70"/>
+        <text x="25" y="18" text-anchor="middle" class="label" font-size="11" font-weight="bold">P2</text>
+        <text x="25" y="35" text-anchor="middle" fill="#c5cae9" font-size="8">Node 2</text>
+        <text x="25" y="48" text-anchor="middle" fill="#c5cae9" font-size="7">LAN3</text>
+        <text x="25" y="62" text-anchor="middle" fill="#9fa8da" font-size="7">TRUNK</text>
+      </g>
+      <!-- Port 3 -->
+      <g transform="translate(110, 0)">
+        <rect class="port port-trunk" width="50" height="70"/>
+        <text x="25" y="18" text-anchor="middle" class="label" font-size="11" font-weight="bold">P3</text>
+        <text x="25" y="35" text-anchor="middle" fill="#c5cae9" font-size="8">Node 3</text>
+        <text x="25" y="48" text-anchor="middle" fill="#c5cae9" font-size="7">LAN3</text>
+        <text x="25" y="62" text-anchor="middle" fill="#9fa8da" font-size="7">TRUNK</text>
+      </g>
+      <!-- Port 4 -->
+      <g transform="translate(165, 0)">
+        <rect class="port" width="50" height="70" fill="#00838f" stroke="#006064"/>
+        <text x="25" y="18" text-anchor="middle" class="label" font-size="11" font-weight="bold">P4</text>
+        <text x="25" y="35" text-anchor="middle" fill="#b2ebf2" font-size="8">Switch B</text>
+        <text x="25" y="48" text-anchor="middle" fill="#b2ebf2" font-size="7">Uplink</text>
+        <text x="25" y="62" text-anchor="middle" fill="#80deea" font-size="7">10,30 T</text>
+      </g>
+      <!-- Port 5 -->
+      <g transform="translate(220, 0)">
+        <rect class="port port-trunk" width="50" height="70"/>
+        <text x="25" y="18" text-anchor="middle" class="label" font-size="11" font-weight="bold">P5</text>
+        <text x="25" y="35" text-anchor="middle" fill="#c5cae9" font-size="8">Mgmt</text>
+        <text x="25" y="48" text-anchor="middle" fill="#c5cae9" font-size="7">Workst.</text>
+        <text x="25" y="62" text-anchor="middle" fill="#9fa8da" font-size="7">TRUNK</text>
+      </g>
+      <!-- Port 6 -->
+      <g transform="translate(275, 0)">
+        <rect class="port port-vlan200" width="50" height="70"/>
+        <text x="25" y="18" text-anchor="middle" class="label" font-size="11" font-weight="bold">P6</text>
+        <text x="25" y="35" text-anchor="middle" fill="#c8e6c9" font-size="8">Client</text>
+        <text x="25" y="48" text-anchor="middle" fill="#c8e6c9" font-size="7">Device</text>
+        <text x="25" y="62" text-anchor="middle" fill="#a5d6a7" font-size="7">200 U</text>
+      </g>
+      <!-- Port 7 -->
+      <g transform="translate(330, 0)">
+        <rect class="port port-vlan200" width="50" height="70"/>
+        <text x="25" y="18" text-anchor="middle" class="label" font-size="11" font-weight="bold">P7</text>
+        <text x="25" y="35" text-anchor="middle" fill="#c8e6c9" font-size="8">Client</text>
+        <text x="25" y="48" text-anchor="middle" fill="#c8e6c9" font-size="7">Device</text>
+        <text x="25" y="62" text-anchor="middle" fill="#a5d6a7" font-size="7">200 U</text>
+      </g>
+      <!-- Port 8 -->
+      <g transform="translate(385, 0)">
+        <rect class="port port-vlan200" width="50" height="70"/>
+        <text x="25" y="18" text-anchor="middle" class="label" font-size="11" font-weight="bold">P8</text>
+        <text x="25" y="35" text-anchor="middle" fill="#c8e6c9" font-size="8">Client</text>
+        <text x="25" y="48" text-anchor="middle" fill="#c8e6c9" font-size="7">Device</text>
+        <text x="25" y="62" text-anchor="middle" fill="#a5d6a7" font-size="7">200 U</text>
+      </g>
+    </g>
+
+    <!-- VLAN table -->
+    <g transform="translate(30, 170)">
+      <text x="0" y="0" fill="#a5d6a7" font-size="11" font-weight="bold">VLAN Membership:</text>
+      <text x="0" y="18" fill="#c8e6c9" font-size="10">P1-3: VLAN 10, 30, 100, 200 (Tagged)</text>
+      <text x="0" y="34" fill="#c8e6c9" font-size="10">P4: VLAN 10, 30 (Tagged)</text>
+      <text x="0" y="50" fill="#c8e6c9" font-size="10">P5: VLAN 10, 30, 100, 200 (Tagged)</text>
+      <text x="0" y="66" fill="#c8e6c9" font-size="10">P6-8: VLAN 200 (Untagged, PVID=200)</text>
+    </g>
+  </g>
+
+  <!-- Switch B -->
+  <g transform="translate(640, 100)">
+    <rect class="switch-box switch-b" width="500" height="260" rx="10"/>
+    <text x="250" y="35" text-anchor="middle" class="label" font-size="18" font-weight="bold">Switch B - Infrastructure</text>
+    <text x="250" y="58" text-anchor="middle" fill="#b2ebf2" font-size="12">TL-SG108PE | 10.11.10.12 | PoE+ Ports 4-7</text>
+
+    <!-- Port row -->
+    <g transform="translate(30, 80)">
+      <!-- Port 1 -->
+      <g transform="translate(0, 0)">
+        <rect class="port" width="50" height="70" fill="#2e7d32" stroke="#1b5e20"/>
+        <text x="25" y="18" text-anchor="middle" class="label" font-size="11" font-weight="bold">P1</text>
+        <text x="25" y="35" text-anchor="middle" fill="#c8e6c9" font-size="8">Switch A</text>
+        <text x="25" y="48" text-anchor="middle" fill="#c8e6c9" font-size="7">Uplink</text>
+        <text x="25" y="62" text-anchor="middle" fill="#a5d6a7" font-size="7">10,30 T</text>
+      </g>
+      <!-- Port 2 -->
+      <g transform="translate(55, 0)">
+        <rect class="port port-vlan10" width="50" height="70"/>
+        <text x="25" y="18" text-anchor="middle" class="label" font-size="11" font-weight="bold">P2</text>
+        <text x="25" y="35" text-anchor="middle" fill="#bbdefb" font-size="8">Infra</text>
+        <text x="25" y="48" text-anchor="middle" fill="#bbdefb" font-size="7">Device</text>
+        <text x="25" y="62" text-anchor="middle" fill="#90caf9" font-size="7">10 U</text>
+      </g>
+      <!-- Port 3 -->
+      <g transform="translate(110, 0)">
+        <rect class="port port-vlan10" width="50" height="70"/>
+        <text x="25" y="18" text-anchor="middle" class="label" font-size="11" font-weight="bold">P3</text>
+        <text x="25" y="35" text-anchor="middle" fill="#bbdefb" font-size="8">Infra</text>
+        <text x="25" y="48" text-anchor="middle" fill="#bbdefb" font-size="7">Device</text>
+        <text x="25" y="62" text-anchor="middle" fill="#90caf9" font-size="7">10 U</text>
+      </g>
+      <!-- Port 4 -->
+      <g transform="translate(165, 0)">
+        <rect class="port port-vlan10" width="50" height="70"/>
+        <text x="25" y="18" text-anchor="middle" class="label" font-size="11" font-weight="bold">P4</text>
+        <text x="25" y="35" text-anchor="middle" fill="#bbdefb" font-size="8">Infra</text>
+        <text x="25" y="48" text-anchor="middle" fill="#bbdefb" font-size="7">PoE+</text>
+        <text x="25" y="62" text-anchor="middle" fill="#90caf9" font-size="7">10 U</text>
+      </g>
+      <!-- Port 5 -->
+      <g transform="translate(220, 0)">
+        <rect class="port port-vlan30" width="50" height="70"/>
+        <text x="25" y="18" text-anchor="middle" class="label" font-size="11" font-weight="bold">P5</text>
+        <text x="25" y="35" text-anchor="middle" fill="#ffe0b2" font-size="8">IoT</text>
+        <text x="25" y="48" text-anchor="middle" fill="#ffe0b2" font-size="7">PoE+</text>
+        <text x="25" y="62" text-anchor="middle" fill="#ffcc80" font-size="7">30 U</text>
+      </g>
+      <!-- Port 6 -->
+      <g transform="translate(275, 0)">
+        <rect class="port port-vlan30" width="50" height="70"/>
+        <text x="25" y="18" text-anchor="middle" class="label" font-size="11" font-weight="bold">P6</text>
+        <text x="25" y="35" text-anchor="middle" fill="#ffe0b2" font-size="8">IoT</text>
+        <text x="25" y="48" text-anchor="middle" fill="#ffe0b2" font-size="7">PoE+</text>
+        <text x="25" y="62" text-anchor="middle" fill="#ffcc80" font-size="7">30 U</text>
+      </g>
+      <!-- Port 7 -->
+      <g transform="translate(330, 0)">
+        <rect class="port port-vlan30" width="50" height="70"/>
+        <text x="25" y="18" text-anchor="middle" class="label" font-size="11" font-weight="bold">P7</text>
+        <text x="25" y="35" text-anchor="middle" fill="#ffe0b2" font-size="8">IoT</text>
+        <text x="25" y="48" text-anchor="middle" fill="#ffe0b2" font-size="7">PoE+</text>
+        <text x="25" y="62" text-anchor="middle" fill="#ffcc80" font-size="7">30 U</text>
+      </g>
+      <!-- Port 8 -->
+      <g transform="translate(385, 0)">
+        <rect class="port port-vlan30" width="50" height="70"/>
+        <text x="25" y="18" text-anchor="middle" class="label" font-size="11" font-weight="bold">P8</text>
+        <text x="25" y="35" text-anchor="middle" fill="#ffe0b2" font-size="8">IoT</text>
+        <text x="25" y="48" text-anchor="middle" fill="#ffe0b2" font-size="7">Device</text>
+        <text x="25" y="62" text-anchor="middle" fill="#ffcc80" font-size="7">30 U</text>
+      </g>
+    </g>
+
+    <!-- VLAN table -->
+    <g transform="translate(30, 170)">
+      <text x="0" y="0" fill="#80deea" font-size="11" font-weight="bold">VLAN Membership:</text>
+      <text x="0" y="18" fill="#b2ebf2" font-size="10">P1: VLAN 10, 30 (Tagged) - Uplink trunk</text>
+      <text x="0" y="34" fill="#b2ebf2" font-size="10">P2-4: VLAN 10 (Untagged, PVID=10) - Infra</text>
+      <text x="0" y="50" fill="#b2ebf2" font-size="10">P5-8: VLAN 30 (Untagged, PVID=30) - IoT</text>
+      <text x="0" y="66" fill="#4dd0e1" font-size="10">PoE+ available on ports 4-7</text>
+    </g>
+  </g>
+
+  <!-- Switch C -->
+  <g transform="translate(60, 400)">
+    <rect class="switch-box switch-c" width="500" height="260" rx="10"/>
+    <text x="250" y="35" text-anchor="middle" class="label" font-size="18" font-weight="bold">Switch C - Mesh Backbone</text>
+    <text x="250" y="58" text-anchor="middle" fill="#dcedc8" font-size="12">TL-SG108E | 10.11.10.13 | VLAN 10, 100 Only</text>
+
+    <!-- Port row -->
+    <g transform="translate(30, 80)">
+      <!-- Port 1 -->
+      <g transform="translate(0, 0)">
+        <rect class="port port-vlan100" width="50" height="70"/>
+        <text x="25" y="18" text-anchor="middle" class="label" font-size="11" font-weight="bold">P1</text>
+        <text x="25" y="35" text-anchor="middle" fill="#bdbdbd" font-size="8">Node 1</text>
+        <text x="25" y="48" text-anchor="middle" fill="#bdbdbd" font-size="7">LAN4</text>
+        <text x="25" y="62" text-anchor="middle" fill="#9e9e9e" font-size="7">10,100 T</text>
+      </g>
+      <!-- Port 2 -->
+      <g transform="translate(55, 0)">
+        <rect class="port port-vlan100" width="50" height="70"/>
+        <text x="25" y="18" text-anchor="middle" class="label" font-size="11" font-weight="bold">P2</text>
+        <text x="25" y="35" text-anchor="middle" fill="#bdbdbd" font-size="8">Node 2</text>
+        <text x="25" y="48" text-anchor="middle" fill="#bdbdbd" font-size="7">LAN4</text>
+        <text x="25" y="62" text-anchor="middle" fill="#9e9e9e" font-size="7">10,100 T</text>
+      </g>
+      <!-- Port 3 -->
+      <g transform="translate(110, 0)">
+        <rect class="port port-vlan100" width="50" height="70"/>
+        <text x="25" y="18" text-anchor="middle" class="label" font-size="11" font-weight="bold">P3</text>
+        <text x="25" y="35" text-anchor="middle" fill="#bdbdbd" font-size="8">Node 3</text>
+        <text x="25" y="48" text-anchor="middle" fill="#bdbdbd" font-size="7">LAN4</text>
+        <text x="25" y="62" text-anchor="middle" fill="#9e9e9e" font-size="7">10,100 T</text>
+      </g>
+      <!-- Port 4-8 spare -->
+      <g transform="translate(165, 0)">
+        <rect class="port port-spare" width="50" height="70"/>
+        <text x="25" y="18" text-anchor="middle" fill="#757575" font-size="11" font-weight="bold">P4</text>
+        <text x="25" y="42" text-anchor="middle" fill="#9e9e9e" font-size="9">spare</text>
+      </g>
+      <g transform="translate(220, 0)">
+        <rect class="port port-spare" width="50" height="70"/>
+        <text x="25" y="18" text-anchor="middle" fill="#757575" font-size="11" font-weight="bold">P5</text>
+        <text x="25" y="42" text-anchor="middle" fill="#9e9e9e" font-size="9">spare</text>
+      </g>
+      <g transform="translate(275, 0)">
+        <rect class="port port-spare" width="50" height="70"/>
+        <text x="25" y="18" text-anchor="middle" fill="#757575" font-size="11" font-weight="bold">P6</text>
+        <text x="25" y="42" text-anchor="middle" fill="#9e9e9e" font-size="9">spare</text>
+      </g>
+      <g transform="translate(330, 0)">
+        <rect class="port port-spare" width="50" height="70"/>
+        <text x="25" y="18" text-anchor="middle" fill="#757575" font-size="11" font-weight="bold">P7</text>
+        <text x="25" y="42" text-anchor="middle" fill="#9e9e9e" font-size="9">spare</text>
+      </g>
+      <g transform="translate(385, 0)">
+        <rect class="port port-spare" width="50" height="70"/>
+        <text x="25" y="18" text-anchor="middle" fill="#757575" font-size="11" font-weight="bold">P8</text>
+        <text x="25" y="42" text-anchor="middle" fill="#9e9e9e" font-size="9">spare</text>
+      </g>
+    </g>
+
+    <!-- VLAN table -->
+    <g transform="translate(30, 170)">
+      <text x="0" y="0" fill="#aed581" font-size="11" font-weight="bold">VLAN Membership:</text>
+      <text x="0" y="18" fill="#c5e1a5" font-size="10">P1-3: VLAN 10, 100 (Tagged) - Mesh backbone</text>
+      <text x="0" y="34" fill="#c5e1a5" font-size="10">P4-8: Not configured (spare)</text>
+      <text x="0" y="50" fill="#dcedc8" font-size="10">Management VLAN: 10</text>
+      <text x="0" y="66" fill="#f44336" font-size="10" font-weight="bold">WARNING: Never add VLAN 30/200 (creates loops)</text>
+    </g>
+  </g>
+
+  <!-- Node Port Assignment -->
+  <g transform="translate(640, 400)">
+    <rect width="500" height="260" rx="10" fill="#4051b5" stroke="#303f9f" stroke-width="2"/>
+    <text x="250" y="35" text-anchor="middle" class="label" font-size="18" font-weight="bold">Node Port Assignment</text>
+    <text x="250" y="58" text-anchor="middle" fill="#c5cae9" font-size="12">D-Link DIR-1960 A1 Router Ports</text>
+
+    <!-- Port diagram -->
+    <g transform="translate(30, 80)">
+      <!-- WAN -->
+      <g transform="translate(0, 0)">
+        <rect width="80" height="60" rx="4" fill="#e65100" stroke="#bf360c" stroke-width="2"/>
+        <text x="40" y="22" text-anchor="middle" class="label" font-size="12" font-weight="bold">WAN</text>
+        <text x="40" y="40" text-anchor="middle" fill="#ffe0b2" font-size="9">Internet</text>
+        <text x="40" y="54" text-anchor="middle" fill="#ffcc80" font-size="8">Uplink</text>
+      </g>
+      <!-- LAN1 -->
+      <g transform="translate(100, 0)">
+        <rect width="80" height="60" rx="4" fill="#2e7d32" stroke="#1b5e20" stroke-width="2"/>
+        <text x="40" y="22" text-anchor="middle" class="label" font-size="12" font-weight="bold">LAN1</text>
+        <text x="40" y="40" text-anchor="middle" fill="#c8e6c9" font-size="9">Clients</text>
+        <text x="40" y="54" text-anchor="middle" fill="#a5d6a7" font-size="8">br-lan</text>
+      </g>
+      <!-- LAN2 -->
+      <g transform="translate(200, 0)">
+        <rect width="80" height="60" rx="4" fill="#f57c00" stroke="#e65100" stroke-width="2"/>
+        <text x="40" y="22" text-anchor="middle" class="label" font-size="12" font-weight="bold">LAN2</text>
+        <text x="40" y="40" text-anchor="middle" fill="#ffe0b2" font-size="9">IoT</text>
+        <text x="40" y="54" text-anchor="middle" fill="#ffcc80" font-size="8">br-iot</text>
+      </g>
+      <!-- LAN3 -->
+      <g transform="translate(300, 0)">
+        <rect width="80" height="60" rx="4" fill="#1976d2" stroke="#0d47a1" stroke-width="2"/>
+        <text x="40" y="22" text-anchor="middle" class="label" font-size="12" font-weight="bold">LAN3</text>
+        <text x="40" y="40" text-anchor="middle" fill="#bbdefb" font-size="9">Switch A</text>
+        <text x="40" y="54" text-anchor="middle" fill="#90caf9" font-size="8">All VLANs</text>
+      </g>
+      <!-- LAN4 -->
+      <g transform="translate(400, 0)">
+        <rect width="60" height="60" rx="4" fill="#616161" stroke="#424242" stroke-width="2"/>
+        <text x="30" y="22" text-anchor="middle" class="label" font-size="12" font-weight="bold">LAN4</text>
+        <text x="30" y="40" text-anchor="middle" fill="#bdbdbd" font-size="9">Switch C</text>
+        <text x="30" y="54" text-anchor="middle" fill="#9e9e9e" font-size="8">10,100</text>
+      </g>
+    </g>
+
+    <!-- VLAN breakdown -->
+    <g transform="translate(30, 160)">
+      <text x="0" y="0" fill="#9fa8da" font-size="11" font-weight="bold">VLAN Breakdown by Port:</text>
+      <text x="0" y="20" fill="#c5cae9" font-size="10">LAN1: Untagged VLAN 200 → br-lan (bat0)</text>
+      <text x="0" y="38" fill="#c5cae9" font-size="10">LAN2: Untagged VLAN 30 → br-iot (bat0.30)</text>
+      <text x="0" y="56" fill="#c5cae9" font-size="10">LAN3: Tagged 10,30,100,200 → bridges + bat0 hardif</text>
+      <text x="0" y="74" fill="#c5cae9" font-size="10">LAN4: Tagged 10,100 → lan4.100 bat0 hardif only</text>
+    </g>
+  </g>
+
+  <!-- Legend -->
+  <g transform="translate(60, 700)">
+    <rect width="1080" height="130" rx="10" fill="#f5f5f5" stroke="#e0e0e0" stroke-width="1"/>
+    <text x="540" y="25" text-anchor="middle" class="text-dark" font-size="14" font-weight="bold">VLAN Color Legend</text>
+
+    <!-- VLAN boxes -->
+    <g transform="translate(40, 45)">
+      <rect width="100" height="35" rx="4" class="port port-trunk"/>
+      <text x="50" y="23" text-anchor="middle" class="label" font-size="11">Trunk</text>
+    </g>
+    <g transform="translate(160, 45)">
+      <rect width="100" height="35" rx="4" class="port port-vlan10"/>
+      <text x="50" y="23" text-anchor="middle" class="label" font-size="11">VLAN 10</text>
+    </g>
+    <g transform="translate(280, 45)">
+      <rect width="100" height="35" rx="4" class="port port-vlan30"/>
+      <text x="50" y="23" text-anchor="middle" class="label" font-size="11">VLAN 30</text>
+    </g>
+    <g transform="translate(400, 45)">
+      <rect width="100" height="35" rx="4" class="port port-vlan100"/>
+      <text x="50" y="23" text-anchor="middle" class="label" font-size="11">VLAN 100</text>
+    </g>
+    <g transform="translate(520, 45)">
+      <rect width="100" height="35" rx="4" class="port port-vlan200"/>
+      <text x="50" y="23" text-anchor="middle" class="label" font-size="11">VLAN 200</text>
+    </g>
+    <g transform="translate(640, 45)">
+      <rect width="100" height="35" rx="4" class="port port-spare"/>
+      <text x="50" y="23" text-anchor="middle" fill="#757575" font-size="11">Spare</text>
+    </g>
+
+    <!-- Purpose labels -->
+    <text x="90" y="100" text-anchor="middle" class="text-medium" font-size="9">All VLANs</text>
+    <text x="210" y="100" text-anchor="middle" class="text-medium" font-size="9">Management</text>
+    <text x="330" y="100" text-anchor="middle" class="text-medium" font-size="9">IoT</text>
+    <text x="450" y="100" text-anchor="middle" class="text-medium" font-size="9">Mesh</text>
+    <text x="570" y="100" text-anchor="middle" class="text-medium" font-size="9">Client</text>
+    <text x="690" y="100" text-anchor="middle" class="text-medium" font-size="9">Unused</text>
+
+    <!-- Tagging legend -->
+    <text x="820" y="60" class="text-dark" font-size="11" font-weight="bold">Tagging:</text>
+    <text x="820" y="80" class="text-medium" font-size="10">T = Tagged (802.1Q)</text>
+    <text x="820" y="98" class="text-medium" font-size="10">U = Untagged (native)</text>
+  </g>
+
+  <!-- Footer -->
+  <text x="600" y="870" text-anchor="middle" fill="#757575" font-size="11">IGMP Snooping enabled on all switches | Management VLAN 10 for switch access</text>
+</svg>

@@ -1,0 +1,360 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1000">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#616161"/>
+    </marker>
+    <marker id="arrow-blue" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#1976d2"/>
+    </marker>
+    <marker id="arrow-green" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#2e7d32"/>
+    </marker>
+    <marker id="arrow-purple" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#7b1fa2"/>
+    </marker>
+  </defs>
+
+  <style>
+    .title { fill: #212121; font-family: system-ui, sans-serif; font-size: 24px; font-weight: bold; }
+    .subtitle { fill: #424242; font-family: system-ui, sans-serif; font-size: 14px; }
+    .label { fill: white; font-family: system-ui, sans-serif; }
+    .text-dark { fill: #212121; font-family: system-ui, sans-serif; }
+    .text-medium { fill: #424242; font-family: system-ui, sans-serif; }
+    .text-light { fill: #757575; font-family: system-ui, sans-serif; }
+    .node-box { fill: #4051b5; stroke: #303f9f; stroke-width: 2; }
+    .collectd-box { fill: #1976d2; stroke: #0d47a1; stroke-width: 2; }
+    .vnstat-box { fill: #00838f; stroke: #006064; stroke-width: 2; }
+    .health-box { fill: #f57c00; stroke: #e65100; stroke-width: 2; }
+    .storage-box { fill: #616161; stroke: #424242; stroke-width: 2; }
+    .luci-box { fill: #388e3c; stroke: #1b5e20; stroke-width: 2; }
+    .alert-box { fill: #7b1fa2; stroke: #4a148c; stroke-width: 2; }
+    .external-box { fill: #c62828; stroke: #b71c1c; stroke-width: 2; }
+    .tier-label { fill: #f5f5f5; stroke: #e0e0e0; stroke-width: 1; }
+    .connector { stroke: #616161; stroke-width: 2; fill: none; }
+    .connector-data { stroke: #1976d2; stroke-width: 2; fill: none; }
+    .connector-alert { stroke: #7b1fa2; stroke-width: 2; stroke-dasharray: 6,3; fill: none; }
+  </style>
+
+  <!-- Background -->
+  <rect width="1200" height="1000" fill="#fafafa"/>
+
+  <!-- Title -->
+  <text x="600" y="40" text-anchor="middle" class="title">Monitoring Stack Architecture</text>
+  <text x="600" y="65" text-anchor="middle" class="subtitle">Lightweight monitoring for OpenWrt mesh nodes with optional alerting</text>
+
+  <!-- Section 1: On-Node Monitoring (Main) -->
+  <g transform="translate(40, 90)">
+    <rect width="720" height="430" rx="8" class="tier-label"/>
+    <text x="360" y="25" text-anchor="middle" class="text-dark" font-size="16" font-weight="bold">On-Node Monitoring (Per Node)</text>
+    <text x="360" y="45" text-anchor="middle" class="text-medium" font-size="11">Runs independently on each mesh node</text>
+
+    <!-- Node Box -->
+    <g transform="translate(20, 60)">
+      <rect class="node-box" width="200" height="50" rx="6"/>
+      <text x="100" y="25" text-anchor="middle" class="label" font-size="12" font-weight="bold">OpenWrt Mesh Node</text>
+      <text x="100" y="42" text-anchor="middle" fill="#c5cae9" font-size="10">D-Link DIR-1960</text>
+    </g>
+
+    <!-- Collectd Stack -->
+    <g transform="translate(20, 130)">
+      <rect class="collectd-box" width="200" height="150" rx="6"/>
+      <text x="100" y="22" text-anchor="middle" class="label" font-size="12" font-weight="bold">Collectd</text>
+      <text x="100" y="40" text-anchor="middle" fill="#bbdefb" font-size="10">Metrics Collection Daemon</text>
+
+      <!-- Plugins -->
+      <rect x="15" y="50" width="75" height="25" rx="3" fill="#0d47a1"/>
+      <text x="52" y="67" text-anchor="middle" fill="#bbdefb" font-size="9">CPU</text>
+
+      <rect x="95" y="50" width="90" height="25" rx="3" fill="#0d47a1"/>
+      <text x="140" y="67" text-anchor="middle" fill="#bbdefb" font-size="9">Memory</text>
+
+      <rect x="15" y="80" width="75" height="25" rx="3" fill="#0d47a1"/>
+      <text x="52" y="97" text-anchor="middle" fill="#bbdefb" font-size="9">Disk I/O</text>
+
+      <rect x="95" y="80" width="90" height="25" rx="3" fill="#0d47a1"/>
+      <text x="140" y="97" text-anchor="middle" fill="#bbdefb" font-size="9">Network</text>
+
+      <rect x="15" y="110" width="75" height="25" rx="3" fill="#0d47a1"/>
+      <text x="52" y="127" text-anchor="middle" fill="#bbdefb" font-size="9">Wireless</text>
+
+      <rect x="95" y="110" width="90" height="25" rx="3" fill="#0d47a1"/>
+      <text x="140" y="127" text-anchor="middle" fill="#bbdefb" font-size="9">Ping (nodes)</text>
+    </g>
+
+    <!-- vnStat -->
+    <g transform="translate(20, 295)">
+      <rect class="vnstat-box" width="200" height="80" rx="6"/>
+      <text x="100" y="22" text-anchor="middle" class="label" font-size="12" font-weight="bold">vnStat</text>
+      <text x="100" y="40" text-anchor="middle" fill="#b2ebf2" font-size="10">Bandwidth Tracking</text>
+      <text x="100" y="58" text-anchor="middle" fill="#80deea" font-size="9">bat0, br-lan, wlan0, wlan1</text>
+      <text x="100" y="72" text-anchor="middle" fill="#80deea" font-size="9">Hourly/Daily/Monthly stats</text>
+    </g>
+
+    <!-- Health Check -->
+    <g transform="translate(250, 130)">
+      <rect class="health-box" width="200" height="120" rx="6"/>
+      <text x="100" y="22" text-anchor="middle" class="label" font-size="12" font-weight="bold">mesh-monitor.sh</text>
+      <text x="100" y="40" text-anchor="middle" fill="#ffe0b2" font-size="10">Health Check Script</text>
+
+      <text x="15" y="60" fill="#fff3e0" font-size="9">Checks every 5 minutes:</text>
+      <text x="15" y="75" fill="#ffccbc" font-size="9">• Batman-adv module loaded</text>
+      <text x="15" y="88" fill="#ffccbc" font-size="9">• bat0 interface up</text>
+      <text x="15" y="101" fill="#ffccbc" font-size="9">• Mesh neighbors present</text>
+      <text x="15" y="114" fill="#ffccbc" font-size="9">• Disk space &lt; 90%</text>
+    </g>
+
+    <!-- USB Storage -->
+    <g transform="translate(250, 265)">
+      <rect class="storage-box" width="200" height="110" rx="6"/>
+      <text x="100" y="22" text-anchor="middle" class="label" font-size="12" font-weight="bold">/x00/monitoring/</text>
+      <text x="100" y="40" text-anchor="middle" fill="#bdbdbd" font-size="10">USB Storage (F2FS)</text>
+
+      <text x="15" y="58" fill="#e0e0e0" font-size="9">collectd/rrd/</text>
+      <text x="120" y="58" fill="#9e9e9e" font-size="8">~50-100MB</text>
+
+      <text x="15" y="73" fill="#e0e0e0" font-size="9">vnstat/</text>
+      <text x="120" y="73" fill="#9e9e9e" font-size="8">~5-10MB</text>
+
+      <text x="15" y="88" fill="#e0e0e0" font-size="9">logs/mesh-health.log</text>
+      <text x="160" y="88" fill="#9e9e9e" font-size="8">~1-5MB</text>
+
+      <text x="100" y="105" text-anchor="middle" fill="#9e9e9e" font-size="8">30-day retention, auto-rotate</text>
+    </g>
+
+    <!-- Data flow arrows -->
+    <path d="M120,110 L120,130" class="connector-data" marker-end="url(#arrow-blue)"/>
+    <path d="M220,205 L250,205" class="connector-data" marker-end="url(#arrow-blue)"/>
+    <path d="M350,250 L350,265" class="connector-data" marker-end="url(#arrow-blue)"/>
+    <path d="M120,280 L120,295" class="connector-data" marker-end="url(#arrow-blue)"/>
+    <path d="M220,335 L240,335 L240,320 L250,320" class="connector-data" marker-end="url(#arrow-blue)"/>
+
+    <!-- Web UI Section -->
+    <g transform="translate(480, 130)">
+      <rect class="luci-box" width="210" height="245" rx="6"/>
+      <text x="105" y="22" text-anchor="middle" class="label" font-size="12" font-weight="bold">LuCI Web Interface</text>
+      <text x="105" y="40" text-anchor="middle" fill="#c8e6c9" font-size="10">http://10.11.12.x</text>
+
+      <!-- Statistics -->
+      <rect x="15" y="55" width="180" height="55" rx="4" fill="#1b5e20"/>
+      <text x="105" y="72" text-anchor="middle" class="label" font-size="10" font-weight="bold">Statistics → Graphs</text>
+      <text x="105" y="88" text-anchor="middle" fill="#a5d6a7" font-size="9">CPU, Memory, Network</text>
+      <text x="105" y="101" text-anchor="middle" fill="#a5d6a7" font-size="9">Disk, Wireless, Load</text>
+
+      <!-- vnStat UI -->
+      <rect x="15" y="118" width="180" height="45" rx="4" fill="#1b5e20"/>
+      <text x="105" y="135" text-anchor="middle" class="label" font-size="10" font-weight="bold">Status → vnStat</text>
+      <text x="105" y="150" text-anchor="middle" fill="#a5d6a7" font-size="9">Bandwidth graphs &amp; stats</text>
+
+      <!-- Custom Commands -->
+      <rect x="15" y="170" width="180" height="65" rx="4" fill="#1b5e20"/>
+      <text x="105" y="187" text-anchor="middle" class="label" font-size="10" font-weight="bold">System → Commands</text>
+      <text x="105" y="203" text-anchor="middle" fill="#a5d6a7" font-size="9">batctl o (neighbors)</text>
+      <text x="105" y="216" text-anchor="middle" fill="#a5d6a7" font-size="9">batctl gwl (gateways)</text>
+      <text x="105" y="229" text-anchor="middle" fill="#a5d6a7" font-size="9">monitoring-report.sh</text>
+    </g>
+
+    <!-- Arrow from storage to LuCI -->
+    <path d="M450,320 L480,320 L480,200" class="connector-data" marker-end="url(#arrow-blue)"/>
+  </g>
+
+  <!-- Section 2: Optional Alerting -->
+  <g transform="translate(780, 90)">
+    <rect width="380" height="430" rx="8" class="tier-label"/>
+    <text x="190" y="25" text-anchor="middle" class="text-dark" font-size="16" font-weight="bold">Optional Alerting</text>
+    <text x="190" y="45" text-anchor="middle" class="text-medium" font-size="11">Push notifications for critical issues</text>
+
+    <!-- Tier 1: Essential Alerts -->
+    <g transform="translate(20, 60)">
+      <rect width="340" height="150" rx="6" fill="#f3e5f5" stroke="#7b1fa2" stroke-width="2"/>
+      <text x="170" y="22" text-anchor="middle" fill="#7b1fa2" font-size="12" font-weight="bold">Tier 1: Essential Alerts (Recommended)</text>
+
+      <!-- Alert script -->
+      <rect class="alert-box" x="15" y="35" width="150" height="50" rx="4"/>
+      <text x="90" y="55" text-anchor="middle" class="label" font-size="10" font-weight="bold">mesh-alert.sh</text>
+      <text x="90" y="72" text-anchor="middle" fill="#e1bee7" font-size="9">Runs every 15 min</text>
+
+      <!-- Alert channels -->
+      <g transform="translate(180, 35)">
+        <rect width="145" height="25" rx="3" fill="#7b1fa2"/>
+        <text x="72" y="17" text-anchor="middle" class="label" font-size="9">Telegram Bot</text>
+
+        <rect y="30" width="145" height="25" rx="3" fill="#7b1fa2"/>
+        <text x="72" y="47" text-anchor="middle" class="label" font-size="9">Email (SMTP)</text>
+      </g>
+
+      <!-- Alerts list -->
+      <text x="15" y="105" fill="#4a148c" font-size="9" font-weight="bold">Critical Alerts:</text>
+      <text x="15" y="118" fill="#6a1b9a" font-size="8">• Disk &gt; 95%  • No neighbors  • Low memory</text>
+      <text x="15" y="130" fill="#6a1b9a" font-size="8">• High CPU  • WAN down  • Node offline</text>
+      <text x="15" y="143" fill="#6a1b9a" font-size="8">1-hour cooldown between duplicate alerts</text>
+    </g>
+
+    <!-- Tier 2: External Monitor -->
+    <g transform="translate(20, 225)">
+      <rect width="340" height="115" rx="6" fill="#ffebee" stroke="#c62828" stroke-width="2"/>
+      <text x="170" y="22" text-anchor="middle" fill="#c62828" font-size="12" font-weight="bold">Tier 2: External Monitor (Optional)</text>
+
+      <rect class="external-box" x="15" y="35" width="150" height="65" rx="4"/>
+      <text x="90" y="52" text-anchor="middle" class="label" font-size="10" font-weight="bold">Uptime Kuma</text>
+      <text x="90" y="68" text-anchor="middle" fill="#ffcdd2" font-size="9">Docker on Pi/NAS</text>
+      <text x="90" y="82" text-anchor="middle" fill="#ffcdd2" font-size="9">Web dashboard</text>
+      <text x="90" y="95" text-anchor="middle" fill="#ffcdd2" font-size="9">Multi-channel alerts</text>
+
+      <g transform="translate(180, 35)">
+        <text x="0" y="10" fill="#b71c1c" font-size="9" font-weight="bold">Monitors:</text>
+        <text x="0" y="26" fill="#c62828" font-size="8">• Ping: 10.11.12.1/2/3</text>
+        <text x="0" y="40" fill="#c62828" font-size="8">• HTTP: LuCI availability</text>
+        <text x="0" y="54" fill="#c62828" font-size="8">• SSH: Port 22 open</text>
+        <text x="0" y="68" fill="#c62828" font-size="8">5-min check intervals</text>
+      </g>
+    </g>
+
+    <!-- Tier 3: Advanced (Skip) -->
+    <g transform="translate(20, 355)">
+      <rect width="340" height="60" rx="6" fill="#f5f5f5" stroke="#9e9e9e" stroke-width="1" stroke-dasharray="4,2"/>
+      <text x="170" y="22" text-anchor="middle" fill="#757575" font-size="12" font-weight="bold">Tier 3: Advanced (Overkill for 3 nodes)</text>
+      <text x="170" y="40" text-anchor="middle" fill="#9e9e9e" font-size="10">Prometheus + Grafana | LibreNMS</text>
+      <text x="170" y="52" text-anchor="middle" fill="#bdbdbd" font-size="9">Complex setup, requires dedicated server</text>
+    </g>
+  </g>
+
+  <!-- Section 3: Architecture Diagram -->
+  <g transform="translate(40, 540)">
+    <rect width="1120" height="180" rx="8" class="tier-label"/>
+    <text x="560" y="25" text-anchor="middle" class="text-dark" font-size="16" font-weight="bold">Data Flow Architecture</text>
+
+    <!-- Node 1 -->
+    <g transform="translate(80, 50)">
+      <rect class="node-box" width="120" height="60" rx="6"/>
+      <text x="60" y="25" text-anchor="middle" class="label" font-size="11" font-weight="bold">Node 1</text>
+      <text x="60" y="42" text-anchor="middle" fill="#c5cae9" font-size="9">10.11.12.1</text>
+      <text x="60" y="55" text-anchor="middle" fill="#9fa8da" font-size="8">collectd + vnstat</text>
+    </g>
+
+    <!-- Node 2 -->
+    <g transform="translate(230, 50)">
+      <rect class="node-box" width="120" height="60" rx="6"/>
+      <text x="60" y="25" text-anchor="middle" class="label" font-size="11" font-weight="bold">Node 2</text>
+      <text x="60" y="42" text-anchor="middle" fill="#c5cae9" font-size="9">10.11.12.2</text>
+      <text x="60" y="55" text-anchor="middle" fill="#9fa8da" font-size="8">collectd + vnstat</text>
+    </g>
+
+    <!-- Node 3 -->
+    <g transform="translate(380, 50)">
+      <rect class="node-box" width="120" height="60" rx="6"/>
+      <text x="60" y="25" text-anchor="middle" class="label" font-size="11" font-weight="bold">Node 3</text>
+      <text x="60" y="42" text-anchor="middle" fill="#c5cae9" font-size="9">10.11.12.3</text>
+      <text x="60" y="55" text-anchor="middle" fill="#9fa8da" font-size="8">collectd + vnstat</text>
+    </g>
+
+    <!-- Mesh connectivity -->
+    <path d="M200,80 L230,80" stroke="#4051b5" stroke-width="2"/>
+    <path d="M350,80 L380,80" stroke="#4051b5" stroke-width="2"/>
+
+    <!-- Browser -->
+    <g transform="translate(550, 50)">
+      <rect class="luci-box" width="120" height="60" rx="6"/>
+      <text x="60" y="25" text-anchor="middle" class="label" font-size="11" font-weight="bold">Browser</text>
+      <text x="60" y="42" text-anchor="middle" fill="#c8e6c9" font-size="9">LuCI Access</text>
+      <text x="60" y="55" text-anchor="middle" fill="#a5d6a7" font-size="8">View graphs</text>
+    </g>
+
+    <!-- Alert endpoints -->
+    <g transform="translate(710, 35)">
+      <rect class="alert-box" width="100" height="40" rx="6"/>
+      <text x="50" y="18" text-anchor="middle" class="label" font-size="10" font-weight="bold">Telegram</text>
+      <text x="50" y="32" text-anchor="middle" fill="#e1bee7" font-size="8">Push alerts</text>
+    </g>
+
+    <g transform="translate(710, 85)">
+      <rect class="external-box" width="100" height="40" rx="6"/>
+      <text x="50" y="18" text-anchor="middle" class="label" font-size="10" font-weight="bold">Uptime Kuma</text>
+      <text x="50" y="32" text-anchor="middle" fill="#ffcdd2" font-size="8">Status page</text>
+    </g>
+
+    <!-- User -->
+    <g transform="translate(870, 50)">
+      <ellipse cx="40" cy="30" rx="40" ry="30" fill="#e8eaf6" stroke="#3f51b5" stroke-width="2"/>
+      <text x="40" y="25" text-anchor="middle" class="text-dark" font-size="11" font-weight="bold">Admin</text>
+      <text x="40" y="40" text-anchor="middle" class="text-medium" font-size="9">You</text>
+    </g>
+
+    <!-- Arrows -->
+    <path d="M500,80 L550,80" class="connector-data" marker-end="url(#arrow-blue)"/>
+    <path d="M670,80 L870,80" stroke="#388e3c" stroke-width="2" fill="none" marker-end="url(#arrow-green)"/>
+    <path d="M500,65 L530,65 L530,55 L710,55" class="connector-alert" marker-end="url(#arrow-purple)"/>
+    <path d="M810,55 L870,55 L870,60" stroke="#7b1fa2" stroke-width="2" fill="none" marker-end="url(#arrow-purple)"/>
+    <path d="M810,105 L840,105 L840,85 L870,85" stroke="#c62828" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+
+    <!-- Legend -->
+    <text x="100" y="145" class="text-dark" font-size="10" font-weight="bold">Data Flow:</text>
+    <line x1="180" y1="142" x2="220" y2="142" stroke="#1976d2" stroke-width="2"/>
+    <text x="230" y="145" class="text-medium" font-size="9">Metrics (local)</text>
+
+    <line x1="330" y1="142" x2="370" y2="142" stroke="#7b1fa2" stroke-width="2" stroke-dasharray="6,3"/>
+    <text x="380" y="145" class="text-medium" font-size="9">Alerts (push)</text>
+
+    <line x1="470" y1="142" x2="510" y2="142" stroke="#388e3c" stroke-width="2"/>
+    <text x="520" y="145" class="text-medium" font-size="9">Web UI (pull)</text>
+
+    <text x="640" y="145" class="text-light" font-size="9" font-style="italic">Note: Each node stores its own data independently (no central collector)</text>
+  </g>
+
+  <!-- Section 4: Quick Reference -->
+  <g transform="translate(40, 740)">
+    <rect width="1120" height="240" rx="8" class="tier-label"/>
+    <text x="560" y="25" text-anchor="middle" class="text-dark" font-size="14" font-weight="bold">Quick Reference Commands</text>
+
+    <!-- Column 1: View Status -->
+    <g transform="translate(20, 45)">
+      <rect width="350" height="180" rx="6" fill="#e3f2fd" stroke="#1976d2" stroke-width="1"/>
+      <text x="175" y="22" text-anchor="middle" fill="#1976d2" font-size="12" font-weight="bold">View Monitoring Status</text>
+
+      <text x="15" y="45" class="text-dark" font-size="10" font-family="monospace"># Status report on node</text>
+      <text x="15" y="60" fill="#0d47a1" font-size="10" font-family="monospace">ssh root@10.11.12.1 monitoring-report.sh</text>
+
+      <text x="15" y="85" class="text-dark" font-size="10" font-family="monospace"># Bandwidth stats</text>
+      <text x="15" y="100" fill="#0d47a1" font-size="10" font-family="monospace">vnstat -i bat0 -d</text>
+
+      <text x="15" y="125" class="text-dark" font-size="10" font-family="monospace"># Health logs</text>
+      <text x="15" y="140" fill="#0d47a1" font-size="10" font-family="monospace">tail -f /x00/monitoring/logs/mesh-health.log</text>
+
+      <text x="15" y="165" class="text-dark" font-size="10" font-family="monospace"># Web UI</text>
+      <text x="15" y="178" fill="#0d47a1" font-size="10" font-family="monospace">http://10.11.12.1/cgi-bin/luci/admin/statistics</text>
+    </g>
+
+    <!-- Column 2: Deploy Monitoring -->
+    <g transform="translate(390, 45)">
+      <rect width="350" height="180" rx="6" fill="#e8f5e9" stroke="#388e3c" stroke-width="1"/>
+      <text x="175" y="22" text-anchor="middle" fill="#388e3c" font-size="12" font-weight="bold">Deploy/Manage Monitoring</text>
+
+      <text x="15" y="45" class="text-dark" font-size="10" font-family="monospace"># Deploy monitoring to node</text>
+      <text x="15" y="60" fill="#1b5e20" font-size="10" font-family="monospace">make deploy-monitoring NODE=1</text>
+
+      <text x="15" y="85" class="text-dark" font-size="10" font-family="monospace"># Restart services</text>
+      <text x="15" y="100" fill="#1b5e20" font-size="10" font-family="monospace">/etc/init.d/collectd restart</text>
+      <text x="15" y="115" fill="#1b5e20" font-size="10" font-family="monospace">/etc/init.d/vnstat restart</text>
+
+      <text x="15" y="140" class="text-dark" font-size="10" font-family="monospace"># Check disk usage</text>
+      <text x="15" y="155" fill="#1b5e20" font-size="10" font-family="monospace">df -h /x00</text>
+      <text x="15" y="170" fill="#1b5e20" font-size="10" font-family="monospace">du -sh /x00/monitoring/*</text>
+    </g>
+
+    <!-- Column 3: Resource Usage -->
+    <g transform="translate(760, 45)">
+      <rect width="340" height="180" rx="6" fill="#fff3e0" stroke="#f57c00" stroke-width="1"/>
+      <text x="170" y="22" text-anchor="middle" fill="#f57c00" font-size="12" font-weight="bold">Resource Impact</text>
+
+      <text x="15" y="48" fill="#e65100" font-size="10" font-weight="bold">Per Node:</text>
+      <text x="15" y="65" class="text-dark" font-size="10">• CPU: &lt; 1% average</text>
+      <text x="15" y="80" class="text-dark" font-size="10">• RAM: ~10-15MB</text>
+      <text x="15" y="95" class="text-dark" font-size="10">• Storage: ~100MB (30 days)</text>
+
+      <text x="15" y="120" fill="#e65100" font-size="10" font-weight="bold">Optimizations:</text>
+      <text x="15" y="137" class="text-dark" font-size="10">• Collection: 30 second intervals</text>
+      <text x="15" y="152" class="text-dark" font-size="10">• Disk write: 5 minute flush</text>
+      <text x="15" y="167" class="text-dark" font-size="10">• Health check: 5 minute cron</text>
+    </g>
+  </g>
+</svg>

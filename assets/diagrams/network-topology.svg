@@ -1,0 +1,211 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1000">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#444"/>
+    </marker>
+  </defs>
+
+  <style>
+    .node-box { fill: #4051b5; stroke: #303f9f; stroke-width: 2; }
+    .switch-a { fill: #2e7d32; stroke: #1b5e20; stroke-width: 2; }
+    .switch-b { fill: #00838f; stroke: #006064; stroke-width: 2; }
+    .switch-c { fill: #558b2f; stroke: #33691e; stroke-width: 2; }
+    .cloud-shape { fill: #e65100; stroke: #bf360c; stroke-width: 2; }
+    .label-primary { fill: white; font-family: system-ui, sans-serif; font-weight: bold; }
+    .label-secondary { fill: #e8eaf6; font-family: system-ui, sans-serif; }
+    .wire { stroke: #444; stroke-width: 2; }
+    .wire-thick { stroke: #444; stroke-width: 3; }
+    .wire-lan3 { stroke: #1976d2; stroke-width: 3; }
+    .wire-lan4 { stroke: #e65100; stroke-width: 3; }
+    .wireless { stroke: #9c27b0; stroke-width: 2; stroke-dasharray: 8,4; }
+    .text-dark { fill: #212121; font-family: system-ui, sans-serif; }
+    .text-medium { fill: #424242; font-family: system-ui, sans-serif; }
+  </style>
+
+  <!-- Background -->
+  <rect width="1200" height="1000" fill="#fafafa"/>
+
+  <!-- Title -->
+  <text x="600" y="45" text-anchor="middle" class="text-dark" font-size="26" font-weight="bold">OpenWrt Mesh Network Topology</text>
+  <text x="600" y="75" text-anchor="middle" class="text-medium" font-size="14">3-Node Batman-adv Mesh with VLAN-Aware Switches</text>
+
+  <!-- Internet Cloud -->
+  <g transform="translate(490, 100)">
+    <path class="cloud-shape" d="M50,55 Q5,55 5,32 Q5,10 50,10 Q62,-8 105,-8 Q148,-8 160,10 Q205,10 205,32 Q205,55 160,55 Z"/>
+    <text x="105" y="32" text-anchor="middle" class="label-primary" font-size="15">Internet</text>
+  </g>
+
+  <!-- WAN Lines from Internet to Nodes -->
+  <path class="wire" d="M500,155 Q380,185 300,230" fill="none" marker-end="url(#arrow)"/>
+  <line class="wire" x1="595" y1="155" x2="595" y2="230" marker-end="url(#arrow)"/>
+  <path class="wire" d="M690,155 Q810,185 890,230" fill="none" marker-end="url(#arrow)"/>
+
+  <!-- WAN Labels -->
+  <text x="390" y="162" class="text-medium" font-size="11" font-weight="bold">WAN</text>
+  <text x="610" y="168" class="text-medium" font-size="11" font-weight="bold">WAN</text>
+  <text x="800" y="162" class="text-medium" font-size="11" font-weight="bold">WAN</text>
+
+  <!-- Node 1 - Primary Gateway -->
+  <g transform="translate(180, 230)">
+    <rect class="node-box" width="240" height="110" rx="12"/>
+    <text x="120" y="30" text-anchor="middle" class="label-primary" font-size="18">Node 1</text>
+    <text x="120" y="52" text-anchor="middle" class="label-secondary" font-size="13">D-Link DIR-1960 A1</text>
+    <text x="120" y="72" text-anchor="middle" class="label-secondary" font-size="12">10.11.12.1 / 10.11.10.1</text>
+    <text x="120" y="95" text-anchor="middle" fill="#90caf9" font-family="system-ui, sans-serif" font-size="12" font-weight="bold">PRIMARY GATEWAY</text>
+  </g>
+
+  <!-- Node 2 - Relay -->
+  <g transform="translate(480, 230)">
+    <rect class="node-box" width="240" height="110" rx="12"/>
+    <text x="120" y="30" text-anchor="middle" class="label-primary" font-size="18">Node 2</text>
+    <text x="120" y="52" text-anchor="middle" class="label-secondary" font-size="13">D-Link DIR-1960 A1</text>
+    <text x="120" y="72" text-anchor="middle" class="label-secondary" font-size="12">10.11.12.2 / 10.11.10.2</text>
+    <text x="120" y="95" text-anchor="middle" fill="#bdbdbd" font-family="system-ui, sans-serif" font-size="12" font-weight="bold">RELAY NODE</text>
+  </g>
+
+  <!-- Node 3 - Secondary Gateway -->
+  <g transform="translate(780, 230)">
+    <rect class="node-box" width="240" height="110" rx="12"/>
+    <text x="120" y="30" text-anchor="middle" class="label-primary" font-size="18">Node 3</text>
+    <text x="120" y="52" text-anchor="middle" class="label-secondary" font-size="13">D-Link DIR-1960 A1</text>
+    <text x="120" y="72" text-anchor="middle" class="label-secondary" font-size="12">10.11.12.3 / 10.11.10.3</text>
+    <text x="120" y="95" text-anchor="middle" fill="#90caf9" font-family="system-ui, sans-serif" font-size="12" font-weight="bold">SECONDARY GATEWAY</text>
+  </g>
+
+  <!-- Wireless mesh backbone (dashed purple) - arc above nodes -->
+  <path class="wireless" d="M300,230 Q600,140 900,230" fill="none"/>
+  <text x="600" y="200" text-anchor="middle" fill="#7b1fa2" font-family="system-ui, sans-serif" font-size="12" font-weight="bold">2.4GHz HA-Mesh (SAE/WPA3 backup)</text>
+
+  <!-- LAN3 connections from nodes to Switch A (left) - blue lines, 40px spacing at x=180,220,260 -->
+  <path class="wire-lan3" d="M280,340 L280,360 L180,360 L180,460" fill="none"/>
+  <text x="240" y="360" fill="#1976d2" font-family="system-ui, sans-serif" font-size="10" font-weight="bold">LAN3</text>
+
+  <path class="wire-lan3" d="M560,340 L560,390 L220,390 L220,460" fill="none"/>
+  <text x="520" y="360" fill="#1976d2" font-family="system-ui, sans-serif" font-size="10" font-weight="bold">LAN3</text>
+
+  <path class="wire-lan3" d="M840,340 L840,435 L260,435 L260,460" fill="none"/>
+  <text x="800" y="360" fill="#1976d2" font-family="system-ui, sans-serif" font-size="10" font-weight="bold">LAN3</text>
+
+  <!-- LAN4 connections from nodes to Switch C (right) - orange lines, 40px spacing at x=940,980,1020 -->
+  <path class="wire-lan4" d="M400,340 L400,420 L940,420 L940,460" fill="none"/>
+  <text x="440" y="360" fill="#e65100" font-family="system-ui, sans-serif" font-size="10" font-weight="bold">LAN4</text>
+
+  <path class="wire-lan4" d="M680,340 L680,405 L980,405 L980,460" fill="none"/>
+  <text x="720" y="360" fill="#e65100" font-family="system-ui, sans-serif" font-size="10" font-weight="bold">LAN4</text>
+
+  <path class="wire-lan4" d="M980,340 L980,375 L1020,375 L1020,460" fill="none"/>
+  <text x="1020" y="360" fill="#e65100" font-family="system-ui, sans-serif" font-size="10" font-weight="bold">LAN4</text>
+
+  <!-- All switches at same vertical level with consistent size -->
+
+  <!-- Switch A - Main Distribution (left) -->
+  <g transform="translate(40, 460)">
+    <rect class="switch-a" width="360" height="85" rx="8"/>
+    <text x="180" y="28" text-anchor="middle" class="label-primary" font-size="15">Switch A - Main Distribution</text>
+    <text x="180" y="50" text-anchor="middle" fill="#c8e6c9" font-family="system-ui, sans-serif" font-size="12">TL-SG108E | 10.11.10.11</text>
+    <text x="180" y="70" text-anchor="middle" fill="#a5d6a7" font-family="system-ui, sans-serif" font-size="11">VLANs: 10, 30, 100, 200</text>
+  </g>
+
+  <!-- Switch B - Infrastructure (center) -->
+  <g transform="translate(420, 460)">
+    <rect class="switch-b" width="360" height="85" rx="8"/>
+    <text x="180" y="28" text-anchor="middle" class="label-primary" font-size="15">Switch B - Infrastructure</text>
+    <text x="180" y="50" text-anchor="middle" fill="#b2ebf2" font-family="system-ui, sans-serif" font-size="12">TL-SG108PE | 10.11.10.12</text>
+    <text x="180" y="70" text-anchor="middle" fill="#80deea" font-family="system-ui, sans-serif" font-size="11">VLANs: 10, 30 | PoE+ ports</text>
+  </g>
+
+  <!-- Switch C - Mesh Backbone (right) -->
+  <g transform="translate(800, 460)">
+    <rect class="switch-c" width="360" height="85" rx="8"/>
+    <text x="180" y="28" text-anchor="middle" class="label-primary" font-size="15">Switch C - Mesh Backbone</text>
+    <text x="180" y="50" text-anchor="middle" fill="#dcedc8" font-family="system-ui, sans-serif" font-size="12">TL-SG108E | 10.11.10.13</text>
+    <text x="180" y="70" text-anchor="middle" fill="#c5e1a5" font-family="system-ui, sans-serif" font-size="11">VLANs: 10, 100 only</text>
+  </g>
+
+  <!-- Connection from Switch A to Switch B -->
+  <line class="wire-thick" x1="400" y1="502" x2="420" y2="502"/>
+  <text x="410" y="495" text-anchor="middle" class="text-dark" font-size="9" font-weight="bold">Interlink</text>
+
+  <!-- Device groups - positioned below their respective switches -->
+
+  <!-- Wired Clients - below Switch A (left) -->
+  <g transform="translate(50, 610)">
+    <rect width="160" height="70" rx="8" fill="#81c784" stroke="#43a047" stroke-width="2"/>
+    <text x="80" y="25" text-anchor="middle" fill="#1b5e20" font-family="system-ui, sans-serif" font-size="13" font-weight="bold">Wired Clients</text>
+    <text x="80" y="45" text-anchor="middle" fill="#2e7d32" font-family="system-ui, sans-serif" font-size="11">Switch A P6-8</text>
+    <text x="80" y="62" text-anchor="middle" fill="#2e7d32" font-family="system-ui, sans-serif" font-size="10">VLAN 200</text>
+  </g>
+  <line x1="130" y1="610" x2="130" y2="545" stroke="#81c784" stroke-width="2"/>
+
+  <!-- Mgmt Workstation - below Switch A (left), right of Clients -->
+  <g transform="translate(230, 610)">
+    <rect width="160" height="70" rx="8" fill="#64b5f6" stroke="#1976d2" stroke-width="2"/>
+    <text x="80" y="25" text-anchor="middle" fill="#0d47a1" font-family="system-ui, sans-serif" font-size="13" font-weight="bold">Mgmt Workstation</text>
+    <text x="80" y="45" text-anchor="middle" fill="#1565c0" font-family="system-ui, sans-serif" font-size="11">Switch A P5</text>
+    <text x="80" y="62" text-anchor="middle" fill="#1565c0" font-family="system-ui, sans-serif" font-size="10">All VLANs (trunk)</text>
+  </g>
+  <line x1="310" y1="610" x2="310" y2="545" stroke="#64b5f6" stroke-width="2"/>
+
+  <!-- Infrastructure devices - below Switch B (center) -->
+  <g transform="translate(440, 610)">
+    <rect width="160" height="70" rx="8" fill="#4dd0e1" stroke="#00acc1" stroke-width="2"/>
+    <text x="80" y="25" text-anchor="middle" fill="#004d40" font-family="system-ui, sans-serif" font-size="13" font-weight="bold">Infrastructure</text>
+    <text x="80" y="45" text-anchor="middle" fill="#00695c" font-family="system-ui, sans-serif" font-size="11">Proxmox, VMs</text>
+    <text x="80" y="62" text-anchor="middle" fill="#00695c" font-family="system-ui, sans-serif" font-size="10">VLAN 10</text>
+  </g>
+  <line x1="520" y1="610" x2="520" y2="545" stroke="#4dd0e1" stroke-width="2"/>
+
+  <!-- IoT devices - below Switch B (center), right of Infrastructure -->
+  <g transform="translate(620, 610)">
+    <rect width="160" height="70" rx="8" fill="#ffb74d" stroke="#f57c00" stroke-width="2"/>
+    <text x="80" y="25" text-anchor="middle" fill="#e65100" font-family="system-ui, sans-serif" font-size="13" font-weight="bold">IoT Devices</text>
+    <text x="80" y="45" text-anchor="middle" fill="#bf360c" font-family="system-ui, sans-serif" font-size="11">Cameras, Sensors</text>
+    <text x="80" y="62" text-anchor="middle" fill="#bf360c" font-family="system-ui, sans-serif" font-size="10">VLAN 30 (PoE)</text>
+  </g>
+  <line x1="700" y1="610" x2="700" y2="545" stroke="#ffb74d" stroke-width="2"/>
+
+  <!-- Wireless clients indicator - below Switch C area -->
+  <g transform="translate(870, 610)">
+    <rect width="160" height="70" rx="8" fill="#ce93d8" stroke="#9c27b0" stroke-width="2"/>
+    <text x="80" y="25" text-anchor="middle" fill="#4a148c" font-family="system-ui, sans-serif" font-size="13" font-weight="bold">WiFi Clients</text>
+    <text x="80" y="45" text-anchor="middle" fill="#6a1b9a" font-family="system-ui, sans-serif" font-size="11">All Nodes</text>
+    <text x="80" y="62" text-anchor="middle" fill="#6a1b9a" font-family="system-ui, sans-serif" font-size="10">5GHz HA-Client</text>
+  </g>
+  <path d="M950,610 L950,580 Q950,560 930,560 L600,560 Q580,560 580,540 L580,340" stroke="#ce93d8" stroke-width="2" stroke-dasharray="6,3" fill="none"/>
+
+  <!-- Legend -->
+  <g transform="translate(40, 760)">
+    <rect width="1120" height="100" rx="10" fill="#f5f5f5" stroke="#e0e0e0" stroke-width="1"/>
+    <text x="560" y="25" text-anchor="middle" class="text-dark" font-size="14" font-weight="bold">Legend</text>
+
+    <!-- Row 1: Connection types -->
+    <line x1="40" y1="55" x2="90" y2="55" class="wire-lan3"/>
+    <text x="100" y="59" fill="#1976d2" font-family="system-ui, sans-serif" font-size="11" font-weight="bold">LAN3 → Switch A (all VLANs)</text>
+
+    <line x1="320" y1="55" x2="370" y2="55" class="wire-lan4"/>
+    <text x="380" y="59" fill="#e65100" font-family="system-ui, sans-serif" font-size="11" font-weight="bold">LAN4 → Switch C (mesh only)</text>
+
+    <line x1="620" y1="55" x2="670" y2="55" class="wireless"/>
+    <text x="680" y="59" class="text-dark" font-size="11">Wireless mesh backup</text>
+
+    <!-- Row 2: Device types -->
+    <rect x="40" y="72" width="18" height="18" rx="4" fill="#4051b5"/>
+    <text x="68" y="86" class="text-dark" font-size="11">Router Node</text>
+
+    <rect x="180" y="72" width="18" height="18" rx="4" fill="#2e7d32"/>
+    <text x="208" y="86" class="text-dark" font-size="11">Switch A</text>
+
+    <rect x="300" y="72" width="18" height="18" rx="4" fill="#00838f"/>
+    <text x="328" y="86" class="text-dark" font-size="11">Switch B</text>
+
+    <rect x="420" y="72" width="18" height="18" rx="4" fill="#558b2f"/>
+    <text x="448" y="86" class="text-dark" font-size="11">Switch C</text>
+
+    <rect x="560" y="72" width="18" height="18" rx="4" fill="#e65100"/>
+    <text x="588" y="86" class="text-dark" font-size="11">Internet</text>
+
+    <text x="720" y="86" class="text-medium" font-size="10">Batman-adv BLA enabled | Static IPs required</text>
+  </g>
+
+</svg>
