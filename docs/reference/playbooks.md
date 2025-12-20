@@ -419,6 +419,61 @@ Switches to 10.11.10.0/24 network for management VLAN.
 ansible-playbook playbooks/switch-to-mgmt-network.yml
 ```
 
+### setup-workstation-vlans.yml
+
+**Purpose**: Configure workstation with multiple VLAN interfaces for simultaneous access to all networks via trunk port.
+
+**What it does**:
+
+1. Configures eth2 with /32 address for switch management (untagged)
+2. Creates eth2.10 for Management VLAN (10.11.10.0/24)
+3. Creates eth2.30 for IoT VLAN (10.11.30.0/24)
+4. Creates eth2.200 for LAN/Client VLAN (10.11.12.0/24)
+5. Adds host routes for switch management IPs
+6. Verifies connectivity to switches and nodes
+
+**Usage**:
+
+```bash
+ansible-playbook playbooks/setup-workstation-vlans.yml
+
+# Or via Makefile
+make setup-workstation-vlans
+```
+
+**Interfaces created**:
+
+| Interface | Address | Purpose |
+|-----------|---------|---------|
+| eth2 | 10.11.10.101/32 | Switch management (untagged VLAN 1) |
+| eth2.10 | 10.11.10.100/24 | Management network (nodes, infrastructure) |
+| eth2.30 | 10.11.30.100/24 | IoT network |
+| eth2.200 | 10.11.12.100/24 | LAN/Client network |
+
+!!! note "Why separate eth2 and eth2.10?"
+    TL-SG108E Easy Smart switches only respond to management on **untagged** traffic.
+    Mesh nodes expect VLAN 10 **tagged** traffic. Both use 10.11.10.0/24 but different L2 paths.
+
+### teardown-workstation-vlans.yml
+
+**Purpose**: Remove all VLAN interfaces from workstation and reset eth2.
+
+**What it does**:
+
+1. Brings down and deletes eth2.10, eth2.30, eth2.200
+2. Flushes IP addresses from eth2
+3. Removes switch host routes
+4. Brings down eth2
+
+**Usage**:
+
+```bash
+ansible-playbook playbooks/teardown-workstation-vlans.yml
+
+# Or via Makefile
+make teardown-workstation-vlans
+```
+
 ---
 
 ## Utility Playbooks

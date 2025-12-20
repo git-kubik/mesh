@@ -87,6 +87,27 @@ Manual network switching for workstation:
 !!! note
     `deploy-node` handles network switching automatically. These are for manual operations.
 
+### Multi-VLAN Workstation Access
+
+For accessing all networks simultaneously via trunk port:
+
+| Command | Description |
+|---------|-------------|
+| `make setup-workstation-vlans` | Setup VLAN interfaces on eth2 for multi-network access |
+| `make teardown-workstation-vlans` | Remove VLAN interfaces from eth2 |
+
+**Interfaces created by `setup-workstation-vlans`:**
+
+| Interface | Address | Purpose |
+|-----------|---------|---------|
+| eth2 | 10.11.10.101/32 | Switch management (untagged) |
+| eth2.10 | 10.11.10.100/24 | Management VLAN 10 |
+| eth2.30 | 10.11.30.100/24 | IoT VLAN 30 |
+| eth2.200 | 10.11.12.100/24 | LAN/Client VLAN 200 |
+
+!!! tip "Trunk Port Required"
+    Connect workstation to Switch A Port 5 (configured as trunk with VLANs 10, 30, 200 tagged).
+
 ## USB Storage
 
 | Command | Description |
