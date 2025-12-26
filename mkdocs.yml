@@ -157,6 +157,8 @@ nav:
       - Monitoring: operations/monitoring.md
       - Distributed Syslog: operations/syslog.md
       - Recovery: operations/recovery.md
+  - Security:
+      - Security Hardening: security/security-hardening.md
   - Development:
       - development/index.md
       - Testing Guide: development/testing.md
