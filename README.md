@@ -15,7 +15,7 @@ High-availability OpenWrt mesh network with Batman-adv routing, multi-gateway fa
 - **VLAN Segmentation**: Management (10), Guest (20), IoT (30), Mesh backbone (100), Client (200)
 - **Unified WiFi**: 5GHz client AP with 802.11r seamless roaming
 - **Batman-adv V**: Layer 2 mesh routing with Bridge Loop Avoidance (BLA)
-- **Switch Integration**: TP-Link TL-SG108E managed switches for VLAN trunking
+- **Switch Integration**: TP-Link TL-SG108E/TL-SG108PE managed switches for VLAN trunking
 - **Docker Deployment**: Self-contained Ansible environment with Semaphore web interface
 - **Comprehensive Testing**: 39 test files across unit, integration, functional, performance, and failover categories
 - **Documentation**: Professional documentation site with MkDocs Material
@@ -69,7 +69,7 @@ Complete step-by-step guide for understanding the configuration. Perfect for:
 ### Prerequisites
 
 - **Hardware**: 3x D-Link DIR-1960 A1 routers with OpenWrt 24.10.4
-- **Switches**: 2x TP-Link TL-SG108E managed switches (for VLAN trunking)
+- **Switches**: 2x TP-Link TL-SG108E + 1x TL-SG108PE managed switches (for VLAN trunking)
 - **Software**: Python 3.11+, Ansible 8+, Docker (optional for web UI)
 - **Network**: Ethernet cables for ring topology
 
@@ -121,12 +121,12 @@ For detailed instructions, see the [Quick Start Guide](docs/getting-started/quic
    └────┬────┘              └────┬────┘              └────┬────┘
         │                        │                        │
    LAN3 │ LAN4              LAN3 │ LAN4              LAN3 │ LAN4
-        │                        │                        │
-   ┌────┴────────────────────────┴────────────────────────┴────┐
-   │                    Switch A (All VLANs)                    │
-   │                    Switch C (Mesh VLAN only)               │
-   │                    + 2.4GHz Wireless Backup                │
-   └────────────────────────────────────────────────────────────┘
+        │    │                   │    │                   │    │
+   ┌────┴────┴───────────────────┴────┴───────────────────┴────┴───┐
+   │  Switch A/B (10.11.10.11/12) - LAN3 - All VLANs               │
+   │  Switch C   (10.11.10.13)    - LAN4 - Mesh VLAN 100 only      │
+   │  + 2.4GHz Wireless Backup (HA-Mesh)                           │
+   └───────────────────────────────────────────────────────────────┘
 ```
 
 **Network Segments:**

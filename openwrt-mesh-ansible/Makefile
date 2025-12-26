@@ -41,7 +41,8 @@ endif
 
 .PHONY: help validate-env \
         deploy-node check-node audit-node \
-        check-all check-connectivity audit deploy \
+        check-all check-connectivity audit vuln-scan wifi-scan deploy \
+        security-audit security-check deploy-security \
         switch-to-initial-network switch-to-mesh-network switch-to-switch-network switch-to-mgmt-network \
         setup-mgmt-vlans teardown-mgmt-vlans setup-workstation-vlans teardown-workstation-vlans \
         verify backup update update-check check ping clean \
@@ -94,6 +95,7 @@ help:
 	@echo "================================================================================"
 	@echo "ENVIRONMENT & SETUP"
 	@echo "================================================================================"
+	@echo "  make install                    - Check Ansible dependencies"
 	@echo "  make validate-env               - Validate .env configuration (run first!)"
 	@echo ""
 	@echo "================================================================================"
@@ -176,6 +178,22 @@ help:
 	@echo "  make show-logs                  - Show last 100 lines of Ansible logs"
 	@echo "  make tail-logs                  - Follow Ansible logs (live)"
 	@echo "  make clear-logs                 - Clear Ansible log files"
+	@echo ""
+	@echo "================================================================================"
+	@echo "SECURITY HARDENING & SCANNING"
+	@echo "================================================================================"
+	@echo "Security Validation:"
+	@echo "  make security-audit             - Full security audit (10-phase scan)"
+	@echo "  make security-check             - Quick security validation (6 checks)"
+	@echo "  make deploy-security            - Deploy security hardening only"
+	@echo ""
+	@echo "Security Scanning (Kali Container):"
+	@echo "  make vuln-scan                  - Network vulnerability scan (nmap, nikto, SSL)"
+	@echo "  make wifi-scan                  - WiFi security scan (encryption, rogue AP)"
+	@echo ""
+	@echo "  Reports saved to:"
+	@echo "    vuln-reports/vuln-scan-DATE.json"
+	@echo "    wifi-reports/wifi-scan-DATE.json"
 	@echo ""
 	@echo "================================================================================"
 	@echo "LOCAL PACKAGE REPOSITORY (Optional - faster deployments)"
@@ -263,6 +281,7 @@ help:
 	@echo "================================================================================"
 	@echo "  make test                       - Run standard live tests (recommended)"
 	@echo "  make test-quick                 - Run quick connectivity tests only"
+	@echo "  make test-wireless              - Run WiFi/wireless-specific tests"
 	@echo "  make test-full                  - Run all tests with HTML report"
 	@echo "  make test-infrastructure        - Test switches and infrastructure devices"
 	@echo "                                    (Pings all switches, RPi, Proxmox nodes)"
@@ -719,6 +738,64 @@ else
 	@echo "=== Auditing all nodes ==="
 	@echo "Logging to: $(ANSIBLE_LOG)"
 	@bash -c "$(ANSIBLE_CMD) playbooks/audit.yml"
+endif
+
+# Vulnerability scan using Kali container
+vuln-scan:
+	@echo "=== Running Vulnerability Scan via Kali Container ==="
+	@echo "Logging to: $(ANSIBLE_LOG)"
+	@bash -c "$(ANSIBLE_CMD) playbooks/vulnerability_scan.yml"
+
+# WiFi security scan using Kali container
+wifi-scan:
+	@echo "=== Running WiFi Security Scan via Kali Container ==="
+	@echo "Logging to: $(ANSIBLE_LOG)"
+	@bash -c "$(ANSIBLE_CMD) playbooks/wifi_security_scan.yml"
+
+# ============================================================================
+# Security Hardening Operations
+# ============================================================================
+
+# Full security audit (10-phase comprehensive scan)
+# Usage: make security-audit
+#        make security-audit NODE=1
+security-audit:
+ifdef NODE
+	@echo "=== Running Security Audit on $(NODE_NAME) ==="
+	@echo "Logging to: $(ANSIBLE_LOG)"
+	@bash -c "$(ANSIBLE_CMD) -i $(INVENTORY_PROD) playbooks/security_audit.yml --limit $(NODE_NAME) $(VERBOSE_FLAG)"
+else
+	@echo "=== Running Security Audit on all nodes ==="
+	@echo "Logging to: $(ANSIBLE_LOG)"
+	@bash -c "$(ANSIBLE_CMD) -i $(INVENTORY_PROD) playbooks/security_audit.yml"
+endif
+
+# Quick security validation (6 checks)
+# Usage: make security-check
+#        make security-check NODE=1
+security-check:
+ifdef NODE
+	@echo "=== Running Security Check on $(NODE_NAME) ==="
+	@echo "Logging to: $(ANSIBLE_LOG)"
+	@bash -c "$(ANSIBLE_CMD) -i $(INVENTORY_PROD) playbooks/security_check.yml --limit $(NODE_NAME) $(VERBOSE_FLAG)"
+else
+	@echo "=== Running Security Check on all nodes ==="
+	@echo "Logging to: $(ANSIBLE_LOG)"
+	@bash -c "$(ANSIBLE_CMD) -i $(INVENTORY_PROD) playbooks/security_check.yml"
+endif
+
+# Deploy security hardening only (without full deployment)
+# Usage: make deploy-security
+#        make deploy-security NODE=1
+deploy-security:
+ifdef NODE
+	@echo "=== Deploying Security Hardening to $(NODE_NAME) ==="
+	@echo "Logging to: $(ANSIBLE_LOG)"
+	@bash -c "$(ANSIBLE_CMD) -i $(INVENTORY_PROD) playbooks/deploy.yml --tags security --limit $(NODE_NAME) $(VERBOSE_FLAG)"
+else
+	@echo "=== Deploying Security Hardening to all nodes ==="
+	@echo "Logging to: $(ANSIBLE_LOG)"
+	@bash -c "$(ANSIBLE_CMD) -i $(INVENTORY_PROD) playbooks/deploy.yml --tags security"
 endif
 
 # Deploy to all nodes

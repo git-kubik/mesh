@@ -1,0 +1,36 @@
+---
+# Security Hardening Role - Handlers
+#
+# Note: This role typically relies on the final reboot during deployment
+# to apply all changes. These handlers are provided for standalone usage
+# or when running with --tags security without a full deployment.
+
+- name: Restart uhttpd
+  ansible.builtin.raw: /etc/init.d/uhttpd restart
+  listen: "restart uhttpd"
+  changed_when: true
+
+- name: Restart sshd
+  ansible.builtin.raw: /etc/init.d/sshd restart
+  listen: "restart sshd"
+  changed_when: true
+
+- name: Reload firewall
+  ansible.builtin.raw: /etc/init.d/firewall reload
+  listen: "reload firewall"
+  changed_when: true
+
+- name: Restart syslog
+  ansible.builtin.raw: /etc/init.d/log restart
+  listen: "restart syslog"
+  changed_when: true
+
+- name: Commit uhttpd
+  ansible.builtin.raw: uci commit uhttpd
+  listen: "commit uhttpd"
+  changed_when: true
+
+- name: Commit firewall
+  ansible.builtin.raw: uci commit firewall
+  listen: "commit firewall"
+  changed_when: true

@@ -1,0 +1,90 @@
+---
+# Security Hardening - SSH Configuration
+#
+# Enhances SSH security beyond the base configuration from ssh_transition role.
+# Adds connection limits, timeouts, and additional hardening options.
+
+- name: SSH Hardening - Check current SSH configuration
+  ansible.builtin.raw: |
+    if [ -f /etc/ssh/sshd_config ]; then
+      echo "openssh"
+    elif [ -f /etc/config/dropbear ]; then
+      echo "dropbear"
+    else
+      echo "unknown"
+    fi
+  register: ssh_type
+  changed_when: false
+
+- name: SSH Hardening - Configure OpenSSH security options
+  ansible.builtin.raw: |
+    SSHD_CONFIG="/etc/ssh/sshd_config"
+
+    # Backup original config
+    cp -n "$SSHD_CONFIG" "${SSHD_CONFIG}.orig" 2>/dev/null || true
+
+    # Function to set or update SSH option
+    set_ssh_option() {
+      local option="$1"
+      local value="$2"
+      if grep -q "^${option}" "$SSHD_CONFIG"; then
+        sed -i "s/^${option}.*/${option} ${value}/" "$SSHD_CONFIG"
+      elif grep -q "^#${option}" "$SSHD_CONFIG"; then
+        sed -i "s/^#${option}.*/${option} ${value}/" "$SSHD_CONFIG"
+      else
+        echo "${option} ${value}" >> "$SSHD_CONFIG"
+      fi
+    }
+
+    # Apply security hardening options
+    set_ssh_option "LoginGraceTime" "{{ security_ssh_login_grace_time }}"
+    set_ssh_option "MaxAuthTries" "{{ security_ssh_max_auth_tries }}"
+    set_ssh_option "MaxSessions" "{{ security_ssh_max_sessions }}"
+    set_ssh_option "ClientAliveInterval" "{{ security_ssh_client_alive_interval }}"
+    set_ssh_option "ClientAliveCountMax" "{{ security_ssh_client_alive_count_max }}"
+
+    # Additional security options
+    set_ssh_option "PermitEmptyPasswords" "no"
+    set_ssh_option "X11Forwarding" "no"
+    set_ssh_option "AllowAgentForwarding" "no"
+    set_ssh_option "AllowTcpForwarding" "no"
+    set_ssh_option "PrintMotd" "no"
+    set_ssh_option "TCPKeepAlive" "yes"
+    set_ssh_option "Compression" "no"
+    set_ssh_option "UseDNS" "no"
+
+    # Verify configuration
+    if /usr/sbin/sshd -t 2>/dev/null; then
+      echo "SSH configuration valid"
+    else
+      echo "WARNING: SSH configuration may have errors"
+    fi
+  register: ssh_config
+  changed_when: "'configuration valid' in ssh_config.stdout"
+  when: "'openssh' in ssh_type.stdout"
+  # No notify - reboot at end of deployment applies changes
+
+- name: SSH Hardening - Configure Dropbear security options (fallback)
+  ansible.builtin.raw: |
+    # If still using Dropbear (unlikely after ssh_transition role)
+    uci set dropbear.@dropbear[0].IdleTimeout='{{ security_ssh_client_alive_interval }}'
+    uci set dropbear.@dropbear[0].MaxAuthAttempts='{{ security_ssh_max_auth_tries }}'
+    uci commit dropbear
+    echo "Dropbear configured"
+  register: dropbear_config
+  changed_when: "'configured' in dropbear_config.stdout"
+  when: "'dropbear' in ssh_type.stdout"
+
+- name: SSH Hardening - Display configuration summary
+  ansible.builtin.debug:
+    msg: |  # pragma: allowlist secret
+      SSH Hardening Applied ({{ ssh_type.stdout | trim }}):
+        - LoginGraceTime: {{ security_ssh_login_grace_time }}s
+        - MaxAuthTries: {{ security_ssh_max_auth_tries }}
+        - MaxSessions: {{ security_ssh_max_sessions }}
+        - ClientAliveInterval: {{ security_ssh_client_alive_interval }}s
+        - ClientAliveCountMax: {{ security_ssh_client_alive_count_max }}
+        - PermitEmptyPasswords: no
+        - X11Forwarding: no
+        - AllowAgentForwarding: no
+        - AllowTcpForwarding: no

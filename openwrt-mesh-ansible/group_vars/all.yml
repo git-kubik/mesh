@@ -112,6 +112,16 @@ static_hosts:
 # ============================================================================
 
 batman_routing_algo: "{{ lookup('env', 'BATMAN_ROUTING_ALGO') | default('BATMAN_V', true) }}"
+
+# ============================================================================
+# ARP Cache Configuration (Management Network Stability)
+# ============================================================================
+# Longer ARP cache times prevent intermittent connectivity issues in multi-switch
+# topologies where MAC/ARP relearning can cause brief outages.
+# These settings apply to br-mgmt (management bridge) interface.
+
+arp_gc_stale_time: "{{ lookup('env', 'ARP_GC_STALE_TIME') | default('300', true) | int }}"
+arp_base_reachable_time_ms: "{{ lookup('env', 'ARP_BASE_REACHABLE_TIME_MS') | default('120000', true) | int }}"
 batman_gw_bandwidth: "{{ lookup('env', 'BATMAN_GW_BANDWIDTH') | default('100000/100000', true) }}"
 batman_orig_interval: "{{ lookup('env', 'BATMAN_ORIG_INTERVAL') | default('500', true) | int }}"
 
@@ -190,10 +200,60 @@ ntp_servers: "{{ lookup('env', 'NTP_SERVERS') | default('0.au.pool.ntp.org,1.au.
 enable_services: "{{ lookup('env', 'ENABLE_SERVICES') | default('network,firewall,dnsmasq,sshd', true) | split(',') }}"
 
 # ============================================================================
+# Security Hardening Configuration
+# ============================================================================
+# See docs/security/security-hardening.md for detailed documentation
+# Run playbooks/security_audit.yml for comprehensive security scanning
+# Run playbooks/security_check.yml for quick security validation
+
+# Master switch - enable/disable all security hardening
+security_hardening_enabled: "{{ lookup('env', 'SECURITY_HARDENING_ENABLED') | default('true', true) | bool }}"
+
+# HTTPS/TLS Configuration
+security_https_enabled: "{{ lookup('env', 'SECURITY_HTTPS_ENABLED') | default('true', true) | bool }}"
+security_tls_cert_days: "{{ lookup('env', 'SECURITY_TLS_CERT_DAYS') | default('3650', true) | int }}"
+security_tls_cert_country: "{{ lookup('env', 'SECURITY_TLS_CERT_COUNTRY') | default('AU', true) }}"
+security_tls_cert_org: "{{ lookup('env', 'SECURITY_TLS_CERT_ORG') | default('Mesh Network', true) }}"
+
+# HTTP Security Headers
+security_http_headers_enabled: "{{ lookup('env', 'SECURITY_HTTP_HEADERS_ENABLED') | default('true', true) | bool }}"
+security_http_redirect_enabled: "{{ lookup('env', 'SECURITY_HTTP_REDIRECT_ENABLED') | default('true', true) | bool }}"
+
+# SSH Hardening
+security_ssh_hardening_enabled: "{{ lookup('env', 'SECURITY_SSH_HARDENING_ENABLED') | default('true', true) | bool }}"
+security_ssh_max_auth_tries: "{{ lookup('env', 'SECURITY_SSH_MAX_AUTH_TRIES') | default('3', true) | int }}"
+security_ssh_login_grace_time: "{{ lookup('env', 'SECURITY_SSH_LOGIN_GRACE_TIME') | default('30', true) | int }}"
+security_ssh_max_sessions: "{{ lookup('env', 'SECURITY_SSH_MAX_SESSIONS') | default('5', true) | int }}"
+security_ssh_client_alive_interval: "{{ lookup('env', 'SECURITY_SSH_CLIENT_ALIVE_INTERVAL') | default('300', true) | int }}"
+security_ssh_client_alive_count_max: "{{ lookup('env', 'SECURITY_SSH_CLIENT_ALIVE_COUNT_MAX') | default('2', true) | int }}"
+
+# Rate Limiting
+security_rate_limiting_enabled: "{{ lookup('env', 'SECURITY_RATE_LIMITING_ENABLED') | default('true', true) | bool }}"
+security_rate_limit_ssh_per_minute: "{{ lookup('env', 'SECURITY_RATE_LIMIT_SSH') | default('3', true) | int }}"
+security_rate_limit_icmp_per_second: "{{ lookup('env', 'SECURITY_RATE_LIMIT_ICMP') | default('10', true) | int }}"
+
+# Service Hardening
+security_service_hardening_enabled: "{{ lookup('env', 'SECURITY_SERVICE_HARDENING_ENABLED') | default('true', true) | bool }}"
+security_disable_services:
+  - odhcpd  # IPv6 DHCP - not used in this network
+
+# Security Logging
+security_syslog_local_enabled: "{{ lookup('env', 'SECURITY_SYSLOG_LOCAL_ENABLED') | default('true', true) | bool }}"
+security_syslog_remote_enabled: "{{ lookup('env', 'SECURITY_SYSLOG_REMOTE_ENABLED') | default('false', true) | bool }}"
+security_syslog_server: "{{ lookup('env', 'SECURITY_SYSLOG_SERVER') | default('', true) }}"
+security_syslog_level: "{{ lookup('env', 'SECURITY_SYSLOG_LEVEL') | default('warning', true) }}"
+
+# Security Validation
+security_validation_enabled: "{{ lookup('env', 'SECURITY_VALIDATION_ENABLED') | default('true', true) | bool }}"
+security_validation_fail_on_error: "{{ lookup('env', 'SECURITY_VALIDATION_FAIL_ON_ERROR') | default('false', true) | bool }}"
+
+# ============================================================================
 # Switch Integration Configuration
 # ============================================================================
-# Dual TP-Link TL-SG108E switches for mesh redundancy and client expansion
-# See docs/SWITCH-INTEGRATION.md for setup guide
+# Three TP-Link TL-SG108E managed switches for mesh redundancy and VLAN trunking
+# Switch A/B (LAN3): All VLANs - primary and redundant client traffic paths
+# Switch C (LAN4): Mesh VLAN 100 only - prevents L2 loops (BLA design)
+# See docs/architecture/switch-integration.md for setup guide
 
 # VLAN IDs for switch trunk ports
 switch_mesh_vlan: "{{ lookup('env', 'SWITCH_MESH_VLAN') | default('100', true) | int }}"
@@ -202,6 +262,7 @@ switch_client_vlan: "{{ lookup('env', 'SWITCH_CLIENT_VLAN') | default('200', tru
 # Switch management IPs (for documentation/monitoring)
 switch_a_ip: "{{ lookup('env', 'SWITCH_A_IP') | default('10.11.10.11', true) }}"
 switch_b_ip: "{{ lookup('env', 'SWITCH_B_IP') | default('10.11.10.12', true) }}"
+switch_c_ip: "{{ lookup('env', 'SWITCH_C_IP') | default('10.11.10.13', true) }}"
 
 # ============================================================================
 # IoT/Infrastructure Network Configuration (LAN2)

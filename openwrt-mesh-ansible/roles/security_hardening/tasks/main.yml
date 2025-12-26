@@ -1,0 +1,77 @@
+---
+# Security Hardening Role - Main Task Orchestration
+#
+# This role implements comprehensive security hardening for OpenWrt mesh nodes.
+# Each security component can be individually enabled/disabled via variables.
+
+- name: Security hardening - Check if enabled
+  ansible.builtin.debug:
+    msg: "Security hardening is {{ 'ENABLED' if security_hardening_enabled | bool else 'DISABLED' }}"
+
+- name: Security hardening - Skip if disabled
+  ansible.builtin.meta: end_play
+  when: not (security_hardening_enabled | bool)
+
+# =============================================================================
+# HTTPS/TLS and HTTP Security Headers
+# =============================================================================
+- name: Include HTTPS and HTTP security headers tasks
+  ansible.builtin.include_tasks: http_headers.yml
+  when: security_https_enabled | bool or security_http_headers_enabled | bool
+  tags:
+    - security
+    - https
+    - headers
+
+# =============================================================================
+# SSH Hardening
+# =============================================================================
+- name: Include SSH hardening tasks
+  ansible.builtin.include_tasks: ssh_hardening.yml
+  when: security_ssh_hardening_enabled | bool
+  tags:
+    - security
+    - ssh
+
+# =============================================================================
+# Rate Limiting
+# =============================================================================
+- name: Include rate limiting tasks
+  ansible.builtin.include_tasks: rate_limiting.yml
+  when: security_rate_limiting_enabled | bool
+  tags:
+    - security
+    - firewall
+    - rate_limiting
+
+# =============================================================================
+# Service Hardening
+# =============================================================================
+- name: Include service hardening tasks
+  ansible.builtin.include_tasks: service_hardening.yml
+  when: security_service_hardening_enabled | bool
+  tags:
+    - security
+    - services
+
+# =============================================================================
+# Security Logging
+# =============================================================================
+- name: Include security logging tasks
+  ansible.builtin.include_tasks: syslog_config.yml
+  when: security_syslog_local_enabled | bool or security_syslog_remote_enabled | bool
+  tags:
+    - security
+    - logging
+    - syslog
+
+# =============================================================================
+# Validation
+# =============================================================================
+- name: Include security validation tasks
+  ansible.builtin.include_tasks: validation.yml
+  when: security_validation_enabled | bool
+  tags:
+    - security
+    - validation
+    - verify

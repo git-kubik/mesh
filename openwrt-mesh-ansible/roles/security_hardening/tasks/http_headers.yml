@@ -1,0 +1,90 @@
+---
+# Security Hardening - HTTPS/TLS Configuration
+#
+# This task file:
+# 1. Generates self-signed TLS certificates for each node
+# 2. Configures uHTTPd with HTTPS support
+# 3. Optionally redirects HTTP to HTTPS
+#
+# NOTE: uhttpd does NOT support custom HTTP security headers (X-Frame-Options,
+# CSP, etc.). Only HTTPS/TLS and HTTP redirect are implemented here.
+# See docs/security/security-hardening.md for details on this limitation.
+
+# =============================================================================
+# CERTIFICATE GENERATION
+# =============================================================================
+- name: HTTPS - Check if certificate already exists
+  ansible.builtin.raw: |
+    test -f /etc/uhttpd.crt && test -f /etc/uhttpd.key && echo "exists" || echo "missing"
+  register: security_hardening_cert_check
+  changed_when: false
+  when: security_https_enabled | bool
+
+- name: HTTPS - Generate self-signed certificate
+  ansible.builtin.raw: |
+    # Generate private key and self-signed certificate
+    openssl req -x509 -newkey rsa:2048 -keyout /etc/uhttpd.key -out /etc/uhttpd.crt \
+      -days {{ security_tls_cert_days }} -nodes \
+      -subj "/C={{ security_tls_cert_country }}/ST={{ security_tls_cert_state }}/L={{ security_tls_cert_locality }}/O={{ security_tls_cert_org }}/OU={{ security_tls_cert_ou }}/CN={{ inventory_hostname }}"
+
+    # Set proper permissions
+    chmod 600 /etc/uhttpd.key
+    chmod 644 /etc/uhttpd.crt
+
+    echo "Certificate generated successfully"
+  register: security_hardening_cert_gen
+  changed_when: "'generated successfully' in security_hardening_cert_gen.stdout"
+  when:
+    - security_https_enabled | bool
+    - "'missing' in security_hardening_cert_check.stdout"
+
+- name: HTTPS - Verify certificate exists
+  ansible.builtin.raw: |
+    if [ -f /etc/uhttpd.crt ] && [ -f /etc/uhttpd.key ]; then
+      openssl x509 -in /etc/uhttpd.crt -noout -subject -dates
+    else
+      echo "ERROR: Certificate files not found"
+      exit 1
+    fi
+  register: security_hardening_cert_verify
+  changed_when: false
+  failed_when: "'ERROR' in security_hardening_cert_verify.stdout"
+  when: security_https_enabled | bool
+
+# =============================================================================
+# UHTTPD CONFIGURATION
+# =============================================================================
+- name: HTTPS - Configure uHTTPd for HTTPS
+  ansible.builtin.raw: |
+    # Enable HTTPS listener
+    uci set uhttpd.main.listen_https='0.0.0.0:443'
+    uci set uhttpd.main.listen_https='[::]:443'
+
+    # Set certificate paths
+    uci set uhttpd.main.cert='/etc/uhttpd.crt'
+    uci set uhttpd.main.key='/etc/uhttpd.key'
+
+    # Redirect HTTP to HTTPS if enabled
+    {% if security_http_redirect_enabled | bool %}
+    uci set uhttpd.main.redirect_https='1'
+    {% else %}
+    uci set uhttpd.main.redirect_https='0'
+    {% endif %}
+
+    uci commit uhttpd
+    echo "uHTTPd HTTPS configured"
+  register: security_hardening_uhttpd_config
+  changed_when: "'configured' in security_hardening_uhttpd_config.stdout"
+  when: security_https_enabled | bool
+  # No notify - reboot at end of deployment applies changes
+
+- name: HTTPS - Display configuration status
+  ansible.builtin.debug:
+    msg: |
+      HTTPS Configuration:
+        - HTTPS Enabled: {{ security_https_enabled }}
+        - Certificate: /etc/uhttpd.crt ({{ security_tls_cert_days }} days validity)
+        - HTTP to HTTPS Redirect: {{ security_http_redirect_enabled }}
+
+      Note: uhttpd does not support custom HTTP security headers.
+      Headers like X-Frame-Options, CSP, etc. require a reverse proxy.

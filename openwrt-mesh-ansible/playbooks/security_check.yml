@@ -1,0 +1,191 @@
+---
+# Security Check Playbook (Lightweight)
+#
+# Performs quick security validation checks on mesh network nodes.
+# Designed for regular/scheduled execution to verify security posture.
+#
+# Usage:
+#   ansible-playbook playbooks/security_check.yml
+#   ansible-playbook playbooks/security_check.yml --limit node1
+#
+# Exit codes:
+#   0 - All checks passed
+#   1 - One or more checks failed
+
+- name: Security Check - Quick Validation
+  hosts: mesh_nodes
+  gather_facts: false
+  vars:
+    check_results: []
+    checks_passed: 0
+    checks_failed: 0
+
+  pre_tasks:
+    - name: Load environment variables
+      ansible.builtin.include_tasks: ../roles/common/tasks/load_env_vars.yml
+      tags: always
+
+  tasks:
+    # =========================================================================
+    # CHECK 1: SSH Security
+    # =========================================================================
+    - name: "CHECK 1/6: Verify SSH security"
+      ansible.builtin.raw: |
+        RESULT="PASS"
+        DETAILS=""
+
+        if [ -f /etc/ssh/sshd_config ]; then
+          # Check password auth is disabled
+          if ! grep -q "^PasswordAuthentication no" /etc/ssh/sshd_config; then
+            RESULT="FAIL"
+            DETAILS="Password authentication not disabled"
+          fi
+
+          # Check pubkey auth is enabled
+          if ! grep -q "^PubkeyAuthentication yes" /etc/ssh/sshd_config; then
+            RESULT="FAIL"
+            DETAILS="${DETAILS}, PubKey auth not enabled"
+          fi
+        fi
+
+        echo "${RESULT}:SSH_SECURITY:${DETAILS}"
+      register: ssh_check
+      changed_when: false
+      tags: ssh
+
+    # =========================================================================
+    # CHECK 2: Firewall Status
+    # =========================================================================
+    - name: "CHECK 2/6: Verify firewall is running"
+      ansible.builtin.raw: |
+        if /etc/init.d/firewall running 2>/dev/null; then
+          echo "PASS:FIREWALL_RUNNING:"
+        else
+          echo "FAIL:FIREWALL_RUNNING:Firewall is not running"
+        fi
+      register: firewall_check
+      changed_when: false
+      tags: firewall
+
+    # =========================================================================
+    # CHECK 3: HTTPS Configuration
+    # =========================================================================
+    - name: "CHECK 3/6: Verify HTTPS is configured"
+      ansible.builtin.raw: |
+        if [ -f /etc/uhttpd.crt ] && [ -f /etc/uhttpd.key ]; then
+          if uci get uhttpd.main.listen_https >/dev/null 2>&1; then
+            echo "PASS:HTTPS_CONFIG:"
+          else
+            echo "WARN:HTTPS_CONFIG:Certificate exists but HTTPS not configured"
+          fi
+        else
+          echo "WARN:HTTPS_CONFIG:No TLS certificate found"
+        fi
+      register: https_check
+      changed_when: false
+      tags: https
+
+    # =========================================================================
+    # CHECK 4: Rate Limiting
+    # =========================================================================
+    - name: "CHECK 4/6: Verify rate limiting is configured"
+      ansible.builtin.raw: |
+        if [ -f /etc/firewall.rate_limit ]; then
+          echo "PASS:RATE_LIMITING:"
+        else
+          echo "WARN:RATE_LIMITING:Rate limiting not configured"
+        fi
+      register: ratelimit_check
+      changed_when: false
+      tags: ratelimit
+
+    # =========================================================================
+    # CHECK 5: Critical Services
+    # =========================================================================
+    - name: "CHECK 5/6: Verify critical services running"
+      ansible.builtin.raw: |
+        RESULT="PASS"
+        DETAILS=""
+
+        for svc in sshd dnsmasq firewall; do
+          if ! /etc/init.d/${svc} running 2>/dev/null; then
+            RESULT="FAIL"
+            DETAILS="${DETAILS} ${svc}"
+          fi
+        done
+
+        if [ "$RESULT" = "FAIL" ]; then
+          echo "FAIL:CRITICAL_SERVICES:Not running:${DETAILS}"
+        else
+          echo "PASS:CRITICAL_SERVICES:"
+        fi
+      register: services_check
+      changed_when: false
+      tags: services
+
+    # =========================================================================
+    # CHECK 6: Unnecessary Services Disabled
+    # =========================================================================
+    - name: "CHECK 6/6: Verify unnecessary services disabled"
+      ansible.builtin.raw: |
+        RESULT="PASS"
+        DETAILS=""
+
+        for svc in odhcpd; do
+          if /etc/init.d/${svc} enabled 2>/dev/null; then
+            RESULT="WARN"
+            DETAILS="${DETAILS} ${svc}"
+          fi
+        done
+
+        if [ "$RESULT" = "WARN" ]; then
+          echo "WARN:DISABLED_SERVICES:Still enabled:${DETAILS}"
+        else
+          echo "PASS:DISABLED_SERVICES:"
+        fi
+      register: disabled_check
+      changed_when: false
+      tags: services
+
+    # =========================================================================
+    # SUMMARY
+    # =========================================================================
+    - name: Calculate check results
+      ansible.builtin.set_fact:
+        all_checks:
+          - "{{ ssh_check.stdout | trim }}"
+          - "{{ firewall_check.stdout | trim }}"
+          - "{{ https_check.stdout | trim }}"
+          - "{{ ratelimit_check.stdout | trim }}"
+          - "{{ services_check.stdout | trim }}"
+          - "{{ disabled_check.stdout | trim }}"
+
+    - name: Count passed/failed checks
+      ansible.builtin.set_fact:
+        passed_count: "{{ all_checks | select('match', '^PASS:.*') | list | length }}"
+        failed_count: "{{ all_checks | select('match', '^FAIL:.*') | list | length }}"
+        warn_count: "{{ all_checks | select('match', '^WARN:.*') | list | length }}"
+
+    - name: Display security check summary
+      ansible.builtin.debug:
+        msg: |
+          ============================================================
+          SECURITY CHECK SUMMARY - {{ inventory_hostname }}
+          ============================================================
+          Checks Passed: {{ passed_count }}/6
+          Checks Failed: {{ failed_count }}/6
+          Warnings: {{ warn_count }}/6
+
+          Results:
+          {% for check in all_checks %}
+            {{ check }}
+          {% endfor %}
+
+          Status: {{ 'SECURE' if failed_count | int == 0 else 'NEEDS ATTENTION' }}
+          ============================================================
+
+    - name: Fail if any critical checks failed
+      ansible.builtin.fail:
+        msg: "Security check failed: {{ failed_count }} critical issues found"
+      when: failed_count | int > 0
+      tags: verify

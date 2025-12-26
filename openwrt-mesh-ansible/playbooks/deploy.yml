@@ -102,6 +102,10 @@
     - role: firewall_config
       tags: [config, firewall]
 
+    - role: security_hardening
+      tags: [security, hardening]
+      when: security_hardening_enabled | default(true) | bool
+
     - role: usb_storage
       tags: [usb, storage]
       when: lookup('env', 'ENABLE_USB_STORAGE') | default('true', true) | bool
@@ -125,6 +129,9 @@
           - Wireless config → /etc/config/wireless
           - DHCP config → /etc/config/dhcp
           - Firewall config → /etc/config/firewall
+          {% if security_hardening_enabled | default(true) | bool %}
+          - Security Hardening → HTTPS, SSH hardening, rate limiting
+          {% endif %}
           {% if usb_device_detected | default(false) %}
           - USB Storage → {{ usb_device_path | default('N/A') }} mounted at /x00
           - Monitoring → collectd, vnStat, health checks on /x00

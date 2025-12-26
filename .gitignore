@@ -82,6 +82,10 @@ credentials.json
 *.log
 logs/
 
+# Security scan reports
+wifi-reports/
+vuln-reports/
+
 # Temporary files
 *.tmp
 *.temp

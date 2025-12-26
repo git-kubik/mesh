@@ -1,0 +1,512 @@
+---
+# WiFi Security Scanning Playbook using Kali Linux Container
+#
+# Performs wireless security assessment of mesh network SSIDs
+# using the kali-wifi Docker container with wlan2 interface.
+#
+# Run: ansible-playbook playbooks/wifi_security_scan.yml
+#
+# Requirements:
+# - kali-wifi container running with wlan2 interface attached
+# - wlan2 interface supports monitor mode
+#
+# Target Networks:
+# - HA-Mesh (2.4GHz mesh backbone, SAE/WPA3)
+# - HA-Client (5GHz client AP, WPA2-PSK)
+# - HA-Management (2.4GHz management, WPA2-PSK)
+# - HA-Guest (5GHz guest, WPA2-PSK)
+# - HA-IoT (IoT network, WPA2-PSK)
+
+- name: WiFi Security Scan via Kali Container
+  hosts: localhost
+  gather_facts: true
+  vars:
+    kali_container: "kali-wifi"
+    wifi_interface: "wlan2"
+    monitor_interface: "wlan2mon"
+    report_dir: "/home/m/repos/mesh/wifi-reports"
+    scan_duration: 30
+    target_ssids:
+      - { ssid: "HA-Mesh", band: "2.4GHz", expected_encryption: "SAE", purpose: "mesh backbone" }
+      - { ssid: "HA-Client", band: "5GHz", expected_encryption: "WPA2-PSK", purpose: "main client" }
+      - { ssid: "HA-Management", band: "2.4GHz", expected_encryption: "WPA2-PSK", purpose: "admin access" }
+      - { ssid: "HA-Guest", band: "5GHz", expected_encryption: "WPA2-PSK", purpose: "guest network" }
+      - { ssid: "HA-IoT", band: "2.4GHz", expected_encryption: "WPA2-PSK", purpose: "IoT devices" }
+
+  tasks:
+    - name: Create report directory
+      ansible.builtin.file:
+        path: "{{ report_dir }}"
+        state: directory
+        mode: '0755'
+
+    - name: Set report timestamp
+      ansible.builtin.set_fact:
+        report_timestamp: "{{ ansible_date_time.date }}-{{ ansible_date_time.hour }}{{ ansible_date_time.minute }}"
+
+    - name: Verify Kali container is running
+      ansible.builtin.command:
+        cmd: docker ps --filter name={{ kali_container }} --format '{{ '{{' }}.Names{{ '}}' }}'
+      register: kali_status
+      changed_when: false
+      failed_when: kali_container not in kali_status.stdout
+
+    - name: Display scan start
+      ansible.builtin.debug:
+        msg: |
+          ============================================================
+          WIFI SECURITY SCAN STARTING
+          ============================================================
+          Container: {{ kali_container }}
+          Interface: {{ wifi_interface }}
+          Target SSIDs: {{ target_ssids | map(attribute='ssid') | list | join(', ') }}
+          Time: {{ ansible_date_time.iso8601 }}
+          ============================================================
+
+    # =========================================================================
+    # INTERFACE SETUP
+    # =========================================================================
+    - name: "Setup - Check wireless interface exists"
+      ansible.builtin.command:
+        cmd: docker exec {{ kali_container }} iw dev {{ wifi_interface }} info
+      register: iface_check
+      changed_when: false
+      failed_when: false
+
+    - name: "Setup - Display interface info"
+      ansible.builtin.debug:
+        msg: "{{ iface_check.stdout_lines | default(['Interface not found']) }}"
+
+    # =========================================================================
+    # PASSIVE WIFI SCANNING
+    # =========================================================================
+    - name: "Scan - Passive WiFi network discovery"
+      ansible.builtin.command:
+        cmd: >
+          docker exec {{ kali_container }}
+          iw dev {{ wifi_interface }} scan
+      register: wifi_scan_raw
+      changed_when: false
+      timeout: 60
+
+    - name: "Scan - Parse discovered networks (using cached scan)"
+      ansible.builtin.shell:
+        cmd: |
+          echo '{{ wifi_scan_raw.stdout | replace("'", "'\\''") }}' | \
+          awk '
+            /^BSS / { bssid=$2; gsub(/\(.*/, "", bssid) }
+            /SSID:/ { ssid=$2 }
+            /freq:/ { freq=$2 }
+            /signal:/ { signal=$2 }
+            /capability:/ { cap=$0 }
+            /RSN:/ { rsn=1 }
+            /WPA:/ { wpa=1 }
+            /Group cipher:/ { group=$3 }
+            /Pairwise ciphers:/ { pairwise=$3 }
+            /Authentication suites:/ { auth=$3 }
+            /^$/ || /^BSS / {
+              if (ssid != "" && bssid != "") {
+                sec = "OPEN"
+                if (rsn) sec = "WPA2"
+                if (wpa && !rsn) sec = "WPA"
+                if (auth == "SAE") sec = "WPA3-SAE"
+                printf "%s|%s|%s|%s|%s\n", ssid, bssid, freq, signal, sec
+              }
+              ssid=""; bssid=""; freq=""; signal=""; rsn=0; wpa=0; auth=""
+            }
+          ' | sort -u
+      register: parsed_networks
+      changed_when: false
+      timeout: 30
+
+    - name: "Scan - Filter for target SSIDs"
+      ansible.builtin.set_fact:
+        discovered_networks: "{{ parsed_networks.stdout_lines | default([]) }}"
+        target_network_results: []
+
+    # =========================================================================
+    # SECURITY ANALYSIS PER NETWORK
+    # =========================================================================
+    # Note: We reuse wifi_scan_raw from above instead of scanning again
+    - name: "Analysis - Check each target SSID"
+      ansible.builtin.shell:
+        cmd: |
+          echo '{{ wifi_scan_raw.stdout | replace("'", "'\\''") }}' | \
+          awk -v target="{{ item.ssid }}" '
+            BEGIN { found=0; printing=0 }
+            /^BSS / {
+              if (printing) { print "---END---" }
+              printing=0; bss=$0
+            }
+            /SSID:/ && $2 == target { found=1; printing=1; print bss }
+            printing { print }
+            END { if (printing) print "---END---" }
+          '
+      loop: "{{ target_ssids }}"
+      register: ssid_details
+      changed_when: false
+      timeout: 30
+      ignore_errors: true
+
+    - name: "Analysis - WPS vulnerability check"
+      ansible.builtin.command:
+        cmd: >
+          docker exec {{ kali_container }}
+          wash -i {{ wifi_interface }} -s -n 2>/dev/null || echo "WPS scan not available"
+      register: wps_scan
+      changed_when: false
+      timeout: 30
+      ignore_errors: true
+
+    # =========================================================================
+    # CLIENT DETECTION
+    # =========================================================================
+    - name: "Clients - Scan for connected clients (passive)"
+      ansible.builtin.shell:
+        cmd: |
+          # Use iw to detect stations if in managed mode connected to network
+          docker exec {{ kali_container }} iw dev {{ wifi_interface }} station dump 2>/dev/null || \
+          echo "Station dump not available (not connected to AP)"
+      register: client_scan
+      changed_when: false
+      timeout: 30
+
+    # =========================================================================
+    # SIGNAL STRENGTH ANALYSIS
+    # =========================================================================
+    - name: "Signal - Measure signal strength per AP (using cached scan)"
+      ansible.builtin.shell:
+        cmd: |
+          echo "=== Signal Strength Analysis ==="
+          echo '{{ wifi_scan_raw.stdout | replace("'", "'\\''") }}' | \
+          grep -E "SSID: HA-|signal:" | \
+          paste - - | \
+          awk '{
+            for(i=1;i<=NF;i++) {
+              if($i=="SSID:") ssid=$(i+1)
+              if($i=="signal:") signal=$(i+1)
+            }
+            if(ssid ~ /^HA-/) printf "%-20s %s dBm\n", ssid, signal
+          }' | sort
+      register: signal_analysis
+      changed_when: false
+      timeout: 30
+
+    # =========================================================================
+    # ENCRYPTION VERIFICATION
+    # =========================================================================
+    - name: "Encryption - Verify security settings (using cached scan)"
+      ansible.builtin.shell:
+        cmd: |
+          echo "=== Encryption Analysis ==="
+          echo '{{ wifi_scan_raw.stdout | replace("'", "'\\''") }}' | \
+          awk '
+            function output() {
+              if (ssid ~ /^HA-/) {
+                enc = "OPEN"
+                if (rsn && auth == "SAE") enc = "WPA3-SAE"
+                else if (rsn && auth == "PSK") enc = "WPA2-PSK"
+                else if (rsn && auth == "FT/PSK") enc = "WPA2-FT"
+                else if (wpa) enc = "WPA-PSK"
+                printf "%-20s %-12s Group:%-8s Pairwise:%-8s Auth:%s\n", ssid, enc, group, pairwise, auth
+              }
+              ssid=""; rsn=0; wpa=0; group=""; pairwise=""; auth=""
+            }
+            /^BSS / { output(); bssid=$2; gsub(/\(.*/, "", bssid) }
+            /SSID:/ { ssid=$2 }
+            /RSN:/ { rsn=1 }
+            /WPA:/ { wpa=1 }
+            /Group cipher:/ { group=$NF }
+            /Pairwise ciphers:/ { pairwise=$NF }
+            /Authentication suites:/ { auth=$NF }
+            END { output() }
+          ' | sort -u
+      register: encryption_analysis
+      changed_when: false
+      timeout: 30
+
+    # =========================================================================
+    # CHANNEL ANALYSIS
+    # =========================================================================
+    - name: "Channel - Analyze channel usage (using cached scan)"
+      ansible.builtin.shell:
+        cmd: |
+          echo "=== Channel Usage Analysis ==="
+          echo '{{ wifi_scan_raw.stdout | replace("'", "'\\''") }}' | \
+          awk '
+            function output() {
+              if (ssid ~ /^HA-/) {
+                printf "%-20s Freq:%-10s Channel:%-4s Band:%s\n", ssid, freq" MHz", ch, band
+              }
+              ssid=""; freq=""; ch=""; band=""
+            }
+            /^BSS / { output() }
+            /SSID:/ { ssid=$2 }
+            /freq:/ {
+              freq=$2
+              if (freq < 3000) band="2.4GHz"
+              else if (freq < 6000) band="5GHz"
+              else band="6GHz"
+              # Calculate channel from frequency
+              if (freq < 3000) ch = int((freq - 2407) / 5)
+              else ch = int((freq - 5000) / 5)
+            }
+            /primary channel:/ { ch=$NF }
+            END { output() }
+          ' | sort -u
+      register: channel_analysis
+      changed_when: false
+      timeout: 30
+
+    # =========================================================================
+    # MESH-SPECIFIC CHECKS
+    # =========================================================================
+    - name: "Mesh - Check mesh network properties (using cached scan)"
+      ansible.builtin.shell:
+        cmd: |
+          echo "=== Mesh Network Analysis ==="
+          echo '{{ wifi_scan_raw.stdout | replace("'", "'\\''") }}' | \
+          awk '
+            function output() {
+              if (mesh) {
+                print "SSID:", ssid, "BSSID:", bssid
+                if (meshid) print "  Mesh ID:", meshid
+                if (formation) print " ", formation
+                if (capability) print " ", capability
+              }
+              mesh=0; meshid=""; formation=""; capability=""; ssid=""
+            }
+            /^BSS / { output(); bssid=$2; gsub(/\(.*/, "", bssid) }
+            /SSID: HA-Mesh/ { mesh=1; ssid="HA-Mesh" }
+            mesh && /Mesh ID:/ { meshid=$3 }
+            mesh && /Mesh Formation/ { formation=$0 }
+            mesh && /Mesh Capability/ { capability=$0 }
+            END { output() }
+          '
+          # Note: HA-Mesh uses 2.4GHz - may not be visible if wlan2 is on 5GHz
+          echo "(Note: HA-Mesh operates on 2.4GHz with SAE/WPA3)"
+      register: mesh_analysis
+      changed_when: false
+      timeout: 30
+
+    # =========================================================================
+    # VULNERABILITY ASSESSMENT
+    # =========================================================================
+    - name: "Vuln - Check for common WiFi vulnerabilities (using cached scan)"
+      ansible.builtin.shell:
+        cmd: |
+          SCAN_DATA='{{ wifi_scan_raw.stdout | replace("'", "'\\''") }}'
+
+          echo "=== WiFi Vulnerability Assessment ==="
+          echo ""
+
+          # Check for WEP (should not exist)
+          echo "[*] Checking for WEP networks..."
+          wep=$(echo "$SCAN_DATA" | grep -c "WEP" || echo "0")
+          if [ "$wep" -gt 0 ]; then
+            echo "  [!] CRITICAL: WEP networks detected - highly insecure!"
+          else
+            echo "  [+] No WEP networks found"
+          fi
+
+          # Check for Open networks (HA- prefixed should all be encrypted)
+          echo ""
+          echo "[*] Checking for Open HA-* networks..."
+          echo "$SCAN_DATA" | \
+          awk '/SSID: HA-/ { ssid=$2; encrypted=0 }
+               /RSN:|WPA:/ { encrypted=1 }
+               /^$/ { if (ssid && !encrypted) print "  [!] WARNING: Open network:", ssid; ssid="" }'
+          echo "  [+] Check complete"
+
+          # Check for WPA (not WPA2/WPA3)
+          echo ""
+          echo "[*] Checking for WPA-only (weak) networks..."
+          echo "$SCAN_DATA" | \
+          awk '/SSID: HA-/ { ssid=$2; wpa=0; rsn=0 }
+               /WPA:/ { wpa=1 }
+               /RSN:/ { rsn=1 }
+               /^$/ { if (ssid && wpa && !rsn) print "  [!] WARNING: WPA-only:", ssid; ssid="" }'
+          echo "  [+] Check complete"
+
+          # Check mesh uses SAE (WPA3)
+          echo ""
+          echo "[*] Checking mesh backbone security..."
+          mesh_auth=$(echo "$SCAN_DATA" | \
+            awk '/SSID: HA-Mesh/ { capture=1 }
+                 capture && /Authentication suites:/ { print $3; exit }')
+          if [ "$mesh_auth" = "SAE" ]; then
+            echo "  [+] Mesh uses WPA3-SAE (secure)"
+          else
+            echo "  [!] WARNING: Mesh not using SAE, found: $mesh_auth"
+          fi
+
+          # Check for PMKID vulnerability exposure
+          echo ""
+          echo "[*] Checking RSN capabilities..."
+          echo "$SCAN_DATA" | \
+          awk '/SSID: HA-/ { ssid=$2 }
+               /RSN:/ { rsn=1 }
+               /PMKSA/ { if (rsn) print "  [i] PMKSA caching enabled:", ssid }
+               /^$/ { rsn=0; ssid="" }'
+          echo "  [+] RSN check complete"
+      register: vuln_assessment
+      changed_when: false
+      timeout: 60
+
+    # =========================================================================
+    # ROGUE AP DETECTION
+    # =========================================================================
+    - name: "Rogue - Check for rogue/evil twin APs (using cached scan)"
+      ansible.builtin.shell:
+        cmd: |
+          echo "=== Rogue AP Detection ==="
+          echo ""
+          echo "[*] Checking for duplicate SSIDs with different BSSIDs..."
+
+          # Get all HA-* networks and check for unexpected BSSIDs
+          echo '{{ wifi_scan_raw.stdout | replace("'", "'\\''") }}' | \
+          awk '
+            /^BSS / {
+              # Process previous record
+              if (ssid ~ /^HA-/) {
+                count[ssid]++
+                bssids[ssid] = bssids[ssid] " " bssid
+              }
+              # Start new record
+              bssid=$2; gsub(/\(.*/, "", bssid)
+              ssid=""
+            }
+            /SSID:/ { ssid=$2 }
+            END {
+              # Process last record
+              if (ssid ~ /^HA-/) {
+                count[ssid]++
+                bssids[ssid] = bssids[ssid] " " bssid
+              }
+              # Output results
+              for (s in count) {
+                # Expected: 3 APs per SSID (one per mesh node)
+                if (count[s] > 3) {
+                  print "[!] WARNING: " s " has " count[s] " APs (expected max 3)"
+                  print "    BSSIDs:" bssids[s]
+                } else {
+                  print "[+] " s ": " count[s] " AP(s) detected"
+                }
+              }
+            }
+          '
+      register: rogue_detection
+      changed_when: false
+      timeout: 30
+
+    # =========================================================================
+    # GENERATE REPORTS
+    # =========================================================================
+    - name: Generate text report
+      ansible.builtin.copy:
+        content: |
+          ============================================================
+          WIFI SECURITY SCAN REPORT
+          ============================================================
+          Generated: {{ ansible_date_time.iso8601 }}
+          Scanner: {{ kali_container }}
+          Interface: {{ wifi_interface }}
+
+          ============================================================
+          DISCOVERED NETWORKS
+          ============================================================
+          {{ parsed_networks.stdout | default('No networks found') }}
+
+          ============================================================
+          SIGNAL STRENGTH
+          ============================================================
+          {{ signal_analysis.stdout | default('Analysis not available') }}
+
+          ============================================================
+          ENCRYPTION ANALYSIS
+          ============================================================
+          {{ encryption_analysis.stdout | default('Analysis not available') }}
+
+          ============================================================
+          CHANNEL USAGE
+          ============================================================
+          {{ channel_analysis.stdout | default('Analysis not available') }}
+
+          ============================================================
+          MESH NETWORK ANALYSIS
+          ============================================================
+          {{ mesh_analysis.stdout | default('Analysis not available') }}
+
+          ============================================================
+          VULNERABILITY ASSESSMENT
+          ============================================================
+          {{ vuln_assessment.stdout | default('Assessment not available') }}
+
+          ============================================================
+          ROGUE AP DETECTION
+          ============================================================
+          {{ rogue_detection.stdout | default('Detection not available') }}
+
+          ============================================================
+          WPS SCAN
+          ============================================================
+          {{ wps_scan.stdout | default('Scan not available') }}
+
+          ============================================================
+          END OF REPORT
+          ============================================================
+        dest: "{{ report_dir }}/wifi-scan-{{ report_timestamp }}.txt"
+        mode: '0644'
+
+    - name: Generate JSON report
+      ansible.builtin.copy:
+        content: |
+          {
+            "metadata": {
+              "timestamp": "{{ ansible_date_time.iso8601 }}",
+              "scanner": "{{ kali_container }}",
+              "interface": "{{ wifi_interface }}",
+              "target_ssids": {{ target_ssids | to_json }}
+            },
+            "discovered_networks": {{ discovered_networks | to_json }},
+            "signal_analysis": {{ signal_analysis.stdout_lines | default([]) | to_json }},
+            "encryption_analysis": {{ encryption_analysis.stdout_lines | default([]) | to_json }},
+            "channel_analysis": {{ channel_analysis.stdout_lines | default([]) | to_json }},
+            "mesh_analysis": {{ mesh_analysis.stdout_lines | default([]) | to_json }},
+            "vulnerability_assessment": {{ vuln_assessment.stdout_lines | default([]) | to_json }},
+            "rogue_detection": {{ rogue_detection.stdout_lines | default([]) | to_json }},
+            "wps_scan": {{ wps_scan.stdout_lines | default([]) | to_json }}
+          }
+        dest: "{{ report_dir }}/wifi-scan-{{ report_timestamp }}.json"
+        mode: '0644'
+
+    # =========================================================================
+    # SUMMARY
+    # =========================================================================
+    - name: Display scan summary
+      ansible.builtin.debug:
+        msg: |
+          ============================================================
+          WIFI SECURITY SCAN COMPLETE
+          ============================================================
+
+          DISCOVERED HA-* NETWORKS:
+          {{ parsed_networks.stdout_lines | select('match', '.*HA-.*') | list | join('\n') | default('None found') }}
+
+          SIGNAL STRENGTH:
+          {{ signal_analysis.stdout | default('Not available') }}
+
+          ENCRYPTION STATUS:
+          {{ encryption_analysis.stdout | default('Not available') }}
+
+          VULNERABILITY SUMMARY:
+          {{ vuln_assessment.stdout | default('Not available') }}
+
+          ROGUE AP CHECK:
+          {{ rogue_detection.stdout | default('Not available') }}
+
+          ============================================================
+          Reports saved to:
+            Text: {{ report_dir }}/wifi-scan-{{ report_timestamp }}.txt
+            JSON: {{ report_dir }}/wifi-scan-{{ report_timestamp }}.json
+          ============================================================

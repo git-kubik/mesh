@@ -1,0 +1,81 @@
+---
+# Security Hardening - Service Hardening
+#
+# Disables unnecessary services to reduce attack surface.
+# Verifies only required services are running.
+
+- name: Service Hardening - Get list of enabled services
+  ansible.builtin.raw: |
+    for svc in /etc/init.d/*; do
+      if [ -x "$svc" ]; then
+        name=$(basename "$svc")
+        if "$svc" enabled 2>/dev/null; then
+          echo "enabled: $name"
+        fi
+      fi
+    done
+  register: enabled_services
+  changed_when: false
+
+- name: Service Hardening - Disable unnecessary services
+  ansible.builtin.raw: |
+    service_name="{{ item }}"
+    if [ -x "/etc/init.d/${service_name}" ]; then
+      if /etc/init.d/${service_name} enabled 2>/dev/null; then
+        /etc/init.d/${service_name} stop 2>/dev/null || true
+        /etc/init.d/${service_name} disable
+        echo "Disabled: ${service_name}"
+      else
+        echo "Already disabled: ${service_name}"
+      fi
+    else
+      echo "Service not found: ${service_name}"
+    fi
+  register: disable_result
+  changed_when: "'Disabled:' in disable_result.stdout"
+  loop: "{{ security_disable_services }}"
+
+- name: Service Hardening - Verify critical services are running
+  ansible.builtin.raw: |
+    CRITICAL_SERVICES="sshd dnsmasq network firewall"
+    FAILED=""
+
+    for svc in $CRITICAL_SERVICES; do
+      if [ -x "/etc/init.d/${svc}" ]; then
+        if /etc/init.d/${svc} running 2>/dev/null; then
+          echo "OK: ${svc} is running"
+        else
+          echo "WARNING: ${svc} is NOT running"
+          FAILED="${FAILED} ${svc}"
+        fi
+      fi
+    done
+
+    if [ -n "$FAILED" ]; then
+      echo "FAILED_SERVICES:${FAILED}"
+    fi
+  register: service_check
+  changed_when: false
+  failed_when: "'FAILED_SERVICES' in service_check.stdout and security_validation_fail_on_error | bool"
+
+- name: Service Hardening - Check for unexpected listening ports
+  ansible.builtin.raw: |
+    echo "=== Listening TCP Ports ==="
+    netstat -tlnp 2>/dev/null || ss -tlnp
+    echo ""
+    echo "=== Listening UDP Ports ==="
+    netstat -ulnp 2>/dev/null || ss -ulnp
+  register: listening_ports
+  changed_when: false
+
+- name: Service Hardening - Display service status
+  ansible.builtin.debug:
+    msg: |
+      Service Hardening Summary:
+        Disabled Services: {{ security_disable_services | join(', ') }}
+
+      Critical Service Status:
+      {{ service_check.stdout | default('Unable to check services') }}
+
+      Listening Ports:
+      {{ listening_ports.stdout | default('Unable to check ports') }}

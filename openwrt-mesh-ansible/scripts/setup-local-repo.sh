@@ -57,13 +57,18 @@ LOG_DIR="$(pwd)/logs"
 LOG_FILE="${LOG_DIR}/repo-setup-$(date +%Y%m%d-%H%M%S).log"
 mkdir -p "${LOG_DIR}"
 
-# Download configuration
-MAX_RETRIES=3
-RETRY_DELAY=2           # Initial delay in seconds
-RATE_LIMIT_DELAY=0.1    # Delay between downloads (seconds) - reduced for speed
-MAX_PARALLEL=3          # Max parallel downloads
-WGET_TIMEOUT=30         # Connection timeout
-CACHE_MAX_AGE=86400     # Skip remote check if local file is newer than this (seconds, 86400=24h)
+# Download configuration (from .env with defaults)
+MAX_PARALLEL="${REPO_MAX_PARALLEL:-5}"            # Parallel downloads (1 = sequential)
+RATE_LIMIT_DELAY="${REPO_RATE_LIMIT_DELAY:-0.1}"  # Delay between downloads (seconds)
+WGET_TIMEOUT="${REPO_WGET_TIMEOUT:-30}"           # Connection timeout
+MAX_RETRIES="${REPO_MAX_RETRIES:-3}"              # Retry attempts per file
+RETRY_DELAY=2                                     # Initial retry delay (exponential backoff)
+CACHE_MAX_AGE="${REPO_CACHE_MAX_AGE:-86400}"      # Skip remote check if local file is newer (seconds)
+
+# Temp files for parallel download tracking
+DOWNLOAD_SUCCESS_FILE=$(mktemp)
+DOWNLOAD_FAIL_FILE=$(mktemp)
+trap 'rm -f "$DOWNLOAD_SUCCESS_FILE" "$DOWNLOAD_FAIL_FILE"' EXIT
 
 # Colors for output
 GREEN='\033[0;32m'
@@ -229,10 +234,11 @@ echo "Target: ${TARGET}"
 echo "Architecture: ${ARCH}"
 echo "Repository: ${REPO_DIR}"
 echo ""
-echo "Download Configuration:"
-echo "  Max retries: ${MAX_RETRIES}"
+echo "Download Configuration (from .env):"
+echo "  Parallel downloads: ${MAX_PARALLEL}"
 echo "  Rate limit: ${RATE_LIMIT_DELAY}s between downloads"
 echo "  Timeout: ${WGET_TIMEOUT}s per attempt"
+echo "  Max retries: ${MAX_RETRIES}"
 echo ""
 
 # Create directory structure
@@ -308,8 +314,8 @@ download_package() {
     local package=$1
     local found=false
 
-    # Skip luci-i18n packages (create placeholder)
-    if [[ "$package" == luci-i18n-* ]]; then
+    # Skip luci-i18n and tesseract-data packages (create placeholder)
+    if [[ "$package" == luci-i18n-* || "$package" == tesseract-data-* ]]; then
         for feed in base luci packages routing telephony; do
             if [ -f "${feed}/Packages" ]; then
                 if grep -q "^Package: ${package}$" "${feed}/Packages"; then
@@ -405,6 +411,34 @@ parse_packages_checksums() {
     ' "$packages_file"
 }
 
+# Parallel download worker function
+# Args: base_url output_dir basename_file timeout retries success_file fail_file log_file
+download_one_file() {
+    local base_url=$1
+    local output_dir=$2
+    local basename_file=$3
+    local timeout=$4
+    local retries=$5
+    local success_file=$6
+    local fail_file=$7
+    local log_file=$8
+
+    local output_file="${output_dir}/${basename_file}"
+    local package_name=$(echo "$basename_file" | sed 's/_.*$//')
+
+    if wget --timeout="$timeout" --tries="$retries" -q -O "$output_file" "${base_url}/${basename_file}"; then
+        echo "1" >> "$success_file"
+        echo "$(date '+%Y-%m-%d %H:%M:%S') - SUCCESS: ${package_name}" >> "$log_file"
+        echo -e "    \033[0;32m✓\033[0m ${package_name}"
+    else
+        echo "1" >> "$fail_file"
+        echo "$(date '+%Y-%m-%d %H:%M:%S') - FAILED: ${package_name}" >> "$log_file"
+        echo -e "    \033[0;31m✗\033[0m ${package_name}"
+        rm -f "$output_file"  # Remove partial download
+    fi
+}
+export -f download_one_file
+
 # Download all packages from a feed using checksum-based sync
 download_all_packages_from_feed() {
     local feed=$1
@@ -440,8 +474,8 @@ download_all_packages_from_feed() {
 
         package_count=$((package_count + 1))
 
-        # Check if this is a luci-i18n package (create placeholder instead of downloading)
-        if [[ "$package_name" == luci-i18n-* ]]; then
+        # Check if this is a luci-i18n or tesseract-data package (create placeholder instead of downloading)
+        if [[ "$package_name" == luci-i18n-* || "$package_name" == tesseract-data-* ]]; then
             if [ ! -f "$output_file" ]; then
                 touch "$output_file"
                 PLACEHOLDER_FILES=$((PLACEHOLDER_FILES + 1))
@@ -468,47 +502,37 @@ download_all_packages_from_feed() {
     local need_download=$(wc -l < "$to_download_file")
     echo "  ${feed}: ${skip_count} up-to-date, ${need_download} need downloading"
 
-    # Download only the files that need updating
+    # Download files in parallel
     if [ "$need_download" -gt 0 ]; then
-        while IFS=: read -r basename_file expected_sha256; do
-            if [ -z "$basename_file" ]; then continue; fi
+        echo "  ${feed}: Downloading with ${MAX_PARALLEL} parallel connections..."
 
-            local output_file="${feed}/${basename_file}"
-            local package_name=$(echo "$basename_file" | sed 's/_.*$//')
+        # Reset tracking files
+        true > "$DOWNLOAD_SUCCESS_FILE"
+        true > "$DOWNLOAD_FAIL_FILE"
 
-            download_count=$((download_count + 1))
-            TOTAL_DOWNLOADS=$((TOTAL_DOWNLOADS + 1))
+        # Extract just filenames for parallel download
+        local files_only=$(mktemp)
+        cut -d: -f1 "$to_download_file" > "$files_only"
 
-            # Rate limiting
-            sleep $RATE_LIMIT_DELAY
+        # Run parallel downloads
+        local feed_url="${BASE_URL}/packages/${ARCH}/${feed}"
+        local output_dir="$(pwd)/${feed}"
 
-            # Download the file
-            if wget --timeout=$WGET_TIMEOUT --tries=3 -q -O "$output_file" \
-                "${BASE_URL}/packages/${ARCH}/${feed}/${basename_file}"; then
-                SUCCESSFUL_DOWNLOADS=$((SUCCESSFUL_DOWNLOADS + 1))
-                echo "$(date '+%Y-%m-%d %H:%M:%S') - SUCCESS: ${package_name}" >> "${LOG_FILE}"
-            else
-                FAILED_DOWNLOADS=$((FAILED_DOWNLOADS + 1))
-                echo -e "      ${RED}✗ Failed: ${package_name}${NC}" >&2
-                echo "$(date '+%Y-%m-%d %H:%M:%S') - FAILED: ${package_name}" >> "${LOG_FILE}"
-            fi
+        # shellcheck disable=SC2016  # Single quotes intentional - bash -c expands $1-$8 at runtime
+        xargs -P "$MAX_PARALLEL" -I {} bash -c \
+            'download_one_file "$1" "$2" "$3" "$4" "$5" "$6" "$7" "$8"' _ \
+            "$feed_url" "$output_dir" {} "$WGET_TIMEOUT" "$MAX_RETRIES" \
+            "$DOWNLOAD_SUCCESS_FILE" "$DOWNLOAD_FAIL_FILE" "$LOG_FILE" < "$files_only"
 
-            # Progress every 50 downloads
-            if [ $((download_count % 50)) -eq 0 ]; then
-                local elapsed=$(($(date +%s) - feed_start_time))
-                local rate=0
-                local eta="--"
-                if [ $elapsed -gt 0 ]; then
-                    rate=$((download_count * 100 / elapsed))
-                    rate_int=$((rate / 100))
-                    if [ $rate_int -gt 0 ]; then
-                        local remaining=$(((need_download - download_count) * 100 / rate))
-                        eta=$(format_duration $remaining)
-                    fi
-                fi
-                echo "    Downloading: ${download_count}/${need_download} (ETA: ${eta})"
-            fi
-        done < "$to_download_file"
+        rm -f "$files_only"
+
+        # Count results
+        local success_count=$(wc -l < "$DOWNLOAD_SUCCESS_FILE" 2>/dev/null || echo 0)
+        local fail_count=$(wc -l < "$DOWNLOAD_FAIL_FILE" 2>/dev/null || echo 0)
+        SUCCESSFUL_DOWNLOADS=$((SUCCESSFUL_DOWNLOADS + success_count))
+        FAILED_DOWNLOADS=$((FAILED_DOWNLOADS + fail_count))
+        TOTAL_DOWNLOADS=$((TOTAL_DOWNLOADS + need_download))
+        download_count=$need_download
     fi
     rm -f "$to_download_file"
 
@@ -569,42 +593,36 @@ download_all_kmods() {
     local need_download=$(wc -l < "$to_download_file")
     echo "  kmods: ${skip_count} up-to-date, ${need_download} need downloading"
 
-    # Download only the files that need updating
+    # Download files in parallel
     if [ "$need_download" -gt 0 ]; then
-        while IFS=: read -r basename_file expected_sha256; do
-            if [ -z "$basename_file" ]; then continue; fi
+        echo "  kmods: Downloading with ${MAX_PARALLEL} parallel connections..."
 
-            local output_file="${basename_file}"
-            local package_name=$(echo "$basename_file" | sed 's/_.*$//')
+        # Reset tracking files
+        true > "$DOWNLOAD_SUCCESS_FILE"
+        true > "$DOWNLOAD_FAIL_FILE"
 
-            download_count=$((download_count + 1))
-            TOTAL_DOWNLOADS=$((TOTAL_DOWNLOADS + 1))
+        # Extract just filenames for parallel download
+        local files_only=$(mktemp)
+        cut -d: -f1 "$to_download_file" > "$files_only"
 
-            # Rate limiting
-            sleep $RATE_LIMIT_DELAY
+        # Run parallel downloads
+        local output_dir="$(pwd)"
 
-            # Download the file
-            if wget --timeout=$WGET_TIMEOUT --tries=3 -q -O "$output_file" \
-                "${KMODS_URL}/${basename_file}"; then
-                SUCCESSFUL_DOWNLOADS=$((SUCCESSFUL_DOWNLOADS + 1))
-                echo "$(date '+%Y-%m-%d %H:%M:%S') - SUCCESS: ${package_name}" >> "${LOG_FILE}"
-            else
-                FAILED_DOWNLOADS=$((FAILED_DOWNLOADS + 1))
-                echo -e "      ${RED}✗ Failed: ${package_name}${NC}" >&2
-                echo "$(date '+%Y-%m-%d %H:%M:%S') - FAILED: ${package_name}" >> "${LOG_FILE}"
-            fi
+        # shellcheck disable=SC2016  # Single quotes intentional - bash -c expands $1-$8 at runtime
+        xargs -P "$MAX_PARALLEL" -I {} bash -c \
+            'download_one_file "$1" "$2" "$3" "$4" "$5" "$6" "$7" "$8"' _ \
+            "$KMODS_URL" "$output_dir" {} "$WGET_TIMEOUT" "$MAX_RETRIES" \
+            "$DOWNLOAD_SUCCESS_FILE" "$DOWNLOAD_FAIL_FILE" "$LOG_FILE" < "$files_only"
 
-            # Progress every 50 downloads
-            if [ $((download_count % 50)) -eq 0 ]; then
-                local elapsed=$(($(date +%s) - kmods_start_time))
-                local eta="--"
-                if [ $elapsed -gt 0 ] && [ $download_count -gt 0 ]; then
-                    local remaining=$(((need_download - download_count) * elapsed / download_count))
-                    eta=$(format_duration $remaining)
-                fi
-                echo "    Downloading: ${download_count}/${need_download} (ETA: ${eta})"
-            fi
-        done < "$to_download_file"
+        rm -f "$files_only"
+
+        # Count results
+        local success_count=$(wc -l < "$DOWNLOAD_SUCCESS_FILE" 2>/dev/null || echo 0)
+        local fail_count=$(wc -l < "$DOWNLOAD_FAIL_FILE" 2>/dev/null || echo 0)
+        SUCCESSFUL_DOWNLOADS=$((SUCCESSFUL_DOWNLOADS + success_count))
+        FAILED_DOWNLOADS=$((FAILED_DOWNLOADS + fail_count))
+        TOTAL_DOWNLOADS=$((TOTAL_DOWNLOADS + need_download))
+        download_count=$need_download
     fi
     rm -f "$to_download_file"
 
@@ -729,7 +747,7 @@ echo -e "${GREEN}Download Statistics:${NC}"
 echo "  Total attempted: ${TOTAL_DOWNLOADS}"
 echo "  Successful: ${SUCCESSFUL_DOWNLOADS}"
 echo "  Skipped (cached): ${SKIPPED_DOWNLOADS}"
-echo "  Placeholders (luci-i18n-*): ${PLACEHOLDER_FILES}"
+echo "  Placeholders (luci-i18n-*, tesseract-data-*): ${PLACEHOLDER_FILES}"
 if [ ${FAILED_DOWNLOADS} -gt 0 ]; then
     echo -e "  ${RED}Failed: ${FAILED_DOWNLOADS}${NC}"
 else
@@ -762,7 +780,7 @@ echo ""
     echo "  Total attempted: ${TOTAL_DOWNLOADS}"
     echo "  Successful: ${SUCCESSFUL_DOWNLOADS}"
     echo "  Skipped (cached): ${SKIPPED_DOWNLOADS}"
-    echo "  Placeholders (luci-i18n-*): ${PLACEHOLDER_FILES}"
+    echo "  Placeholders (luci-i18n-*, tesseract-data-*): ${PLACEHOLDER_FILES}"
     echo "  Failed: ${FAILED_DOWNLOADS}"
     echo ""
     if [ ${FAILED_DOWNLOADS} -gt 0 ]; then

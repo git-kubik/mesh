@@ -20,3 +20,23 @@
     src: batman-hop-penalty.hotplug.j2
     dest: /etc/hotplug.d/iface/50-batman-hop-penalty
     mode: '0755'
+
+- name: Deploy ARP cache settings for management network stability
+  ansible.builtin.copy:
+    content: |
+      # ARP cache settings for management network (br-mgmt)
+      # Longer times prevent intermittent connectivity in multi-switch topologies
+      net.ipv4.neigh.br-mgmt.gc_stale_time = {{ arp_gc_stale_time }}
+      net.ipv4.neigh.br-mgmt.base_reachable_time_ms = {{ arp_base_reachable_time_ms }}
+    dest: /etc/sysctl.d/90-arp-cache.conf
+    mode: '0644'
+
+- name: Apply ARP cache settings if br-mgmt interface exists
+  ansible.builtin.raw: |
+    if ip link show br-mgmt >/dev/null 2>&1; then
+      sysctl -p /etc/sysctl.d/90-arp-cache.conf 2>/dev/null || true
+      echo "ARP cache settings applied"
+    else
+      echo "br-mgmt not yet created - settings will apply on boot"
+    fi
+  changed_when: false

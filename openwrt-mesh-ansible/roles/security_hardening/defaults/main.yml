@@ -1,0 +1,115 @@
+---
+# Security Hardening Role - Default Variables
+#
+# This role implements security hardening for OpenWrt mesh nodes including:
+# - HTTPS/TLS configuration with self-signed certificates
+# - HTTP to HTTPS redirect
+# - SSH hardening (connection limits, timeouts)
+# - Rate limiting (SSH brute force, ICMP flood protection)
+# - Service hardening (disable unnecessary services)
+# - Security logging configuration
+# - Validation and reporting
+
+# =============================================================================
+# MASTER SWITCH
+# =============================================================================
+# Enable/disable security hardening role entirely
+security_hardening_enabled: "{{ lookup('env', 'SECURITY_HARDENING_ENABLED') | default('true', true) }}"
+
+# =============================================================================
+# HTTPS/TLS CONFIGURATION
+# =============================================================================
+# Enable HTTPS with self-signed certificates
+security_https_enabled: "{{ lookup('env', 'SECURITY_HTTPS_ENABLED') | default('true', true) }}"
+
+# Certificate validity period (days) - default 10 years
+security_tls_cert_days: "{{ lookup('env', 'SECURITY_TLS_CERT_DAYS') | default('3650', true) }}"
+
+# Certificate parameters
+security_tls_cert_country: "{{ lookup('env', 'SECURITY_TLS_CERT_COUNTRY') | default('AU', true) }}"
+security_tls_cert_state: "{{ lookup('env', 'SECURITY_TLS_CERT_STATE') | default('State', true) }}"
+security_tls_cert_locality: "{{ lookup('env', 'SECURITY_TLS_CERT_LOCALITY') | default('City', true) }}"
+security_tls_cert_org: "{{ lookup('env', 'SECURITY_TLS_CERT_ORG') | default('Mesh Network', true) }}"
+security_tls_cert_ou: "{{ lookup('env', 'SECURITY_TLS_CERT_OU') | default('IT', true) }}"
+
+# =============================================================================
+# HTTP REDIRECT CONFIGURATION
+# =============================================================================
+# Redirect HTTP to HTTPS (requires HTTPS enabled)
+security_http_redirect_enabled: "{{ lookup('env', 'SECURITY_HTTP_REDIRECT_ENABLED') | default('true', true) }}"
+
+# DEPRECATED: HTTP security headers are NOT supported by uhttpd
+# This variable is kept for backward compatibility but has no effect.
+# uhttpd does not provide a mechanism to add custom HTTP headers.
+# See docs/security/security-hardening.md for details.
+security_http_headers_enabled: false
+
+# =============================================================================
+# SSH HARDENING
+# =============================================================================
+# Enable SSH hardening
+security_ssh_hardening_enabled: "{{ lookup('env', 'SECURITY_SSH_HARDENING_ENABLED') | default('true', true) }}"
+
+# Maximum authentication attempts before disconnect
+security_ssh_max_auth_tries: "{{ lookup('env', 'SECURITY_SSH_MAX_AUTH_TRIES') | default('3', true) }}"
+
+# Time allowed for successful authentication (seconds)
+security_ssh_login_grace_time: "{{ lookup('env', 'SECURITY_SSH_LOGIN_GRACE_TIME') | default('30', true) }}"
+
+# Maximum concurrent sessions per connection
+security_ssh_max_sessions: "{{ lookup('env', 'SECURITY_SSH_MAX_SESSIONS') | default('5', true) }}"
+
+# Client alive interval (seconds) - detect dead connections
+security_ssh_client_alive_interval: "{{ lookup('env', 'SECURITY_SSH_CLIENT_ALIVE_INTERVAL') | default('300', true) }}"
+
+# Number of client alive messages before disconnect
+security_ssh_client_alive_count_max: "{{ lookup('env', 'SECURITY_SSH_CLIENT_ALIVE_COUNT_MAX') | default('2', true) }}"
+
+# =============================================================================
+# RATE LIMITING
+# =============================================================================
+# Enable iptables rate limiting
+security_rate_limiting_enabled: "{{ lookup('env', 'SECURITY_RATE_LIMITING_ENABLED') | default('true', true) }}"
+
+# SSH connection rate limit (connections per minute per IP)
+security_rate_limit_ssh_per_minute: "{{ lookup('env', 'SECURITY_RATE_LIMIT_SSH') | default('3', true) }}"
+
+# ICMP rate limit (pings per second)
+security_rate_limit_icmp_per_second: "{{ lookup('env', 'SECURITY_RATE_LIMIT_ICMP') | default('10', true) }}"
+
+# New connection rate limit per IP (per minute)
+security_rate_limit_new_conn_per_minute: "{{ lookup('env', 'SECURITY_RATE_LIMIT_NEW_CONN') | default('60', true) }}"
+
+# =============================================================================
+# SERVICE HARDENING
+# =============================================================================
+# Enable service hardening
+security_service_hardening_enabled: "{{ lookup('env', 'SECURITY_SERVICE_HARDENING_ENABLED') | default('true', true) }}"
+
+# Services to disable (list)
+security_disable_services:
+  - odhcpd  # IPv6 DHCP - not used in this network
+
+# =============================================================================
+# SECURITY LOGGING
+# =============================================================================
+# Enable local security logging
+security_syslog_local_enabled: "{{ lookup('env', 'SECURITY_SYSLOG_LOCAL_ENABLED') | default('true', true) }}"
+
+# Enable remote syslog (future feature)
+security_syslog_remote_enabled: "{{ lookup('env', 'SECURITY_SYSLOG_REMOTE_ENABLED') | default('false', true) }}"
+
+# Remote syslog server (IP:port)
+security_syslog_server: "{{ lookup('env', 'SECURITY_SYSLOG_SERVER') | default('', true) }}"
+
+# Log level for security events
+security_syslog_level: "{{ lookup('env', 'SECURITY_SYSLOG_LEVEL') | default('warning', true) }}"
+
+# =============================================================================
+# VALIDATION
+# =============================================================================
+# Enable security validation checks
+security_validation_enabled: "{{ lookup('env', 'SECURITY_VALIDATION_ENABLED') | default('true', true) }}"
+
+# Fail playbook if validation fails
+security_validation_fail_on_error: "{{ lookup('env', 'SECURITY_VALIDATION_FAIL_ON_ERROR') | default('false', true) }}"

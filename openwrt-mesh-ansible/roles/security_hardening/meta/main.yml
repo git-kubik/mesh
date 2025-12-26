@@ -1,0 +1,41 @@
+---
+# Security Hardening Role - Metadata
+#
+# This role implements comprehensive security hardening for OpenWrt mesh nodes.
+
+galaxy_info:
+  author: "Mesh Network Team"
+  description: "Security hardening for OpenWrt mesh network nodes"
+  company: "Internal"
+  license: "MIT"
+
+  min_ansible_version: "2.9"
+
+  platforms:
+    - name: OpenWrt
+      versions:
+        - "23.05"
+        - "24.x"
+
+  galaxy_tags:
+    - security
+    - openwrt
+    - mesh
+    - hardening
+    - https
+    - ssh
+    - firewall
+
+dependencies:
+  # This role should run after network and firewall are configured
+  # but has no hard dependencies - all security features are self-contained
+  []
+
+# Role variables summary:
+# - security_hardening_enabled: Master switch (default: true)
+# - security_https_enabled: Enable HTTPS with self-signed certs (default: true)
+# - security_ssh_hardening_enabled: Enable SSH hardening (default: true)
+# - security_rate_limiting_enabled: Enable rate limiting (default: true)
+# - security_service_hardening_enabled: Enable service hardening (default: true)
+# - security_syslog_local_enabled: Enable local security logging (default: true)
+# - security_validation_enabled: Enable validation checks (default: true)

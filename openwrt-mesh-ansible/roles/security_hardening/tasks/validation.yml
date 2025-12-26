@@ -1,0 +1,154 @@
+---
+# Security Hardening - Validation
+#
+# Performs security validation checks to verify hardening was applied correctly.
+# Generates a security status report.
+
+- name: Validation - Check SSH configuration
+  ansible.builtin.raw: |
+    echo "=== SSH Configuration ==="
+    if [ -f /etc/ssh/sshd_config ]; then
+      echo "SSH Type: OpenSSH"
+      grep -E "^(PermitRootLogin|PasswordAuthentication|PubkeyAuthentication|MaxAuthTries|LoginGraceTime)" /etc/ssh/sshd_config
+
+      # Check if password auth is disabled
+      if grep -q "^PasswordAuthentication no" /etc/ssh/sshd_config; then
+        echo "PASS: Password authentication disabled"
+      else
+        echo "WARN: Password authentication may be enabled"
+      fi
+
+      # Check if pubkey auth is enabled
+      if grep -q "^PubkeyAuthentication yes" /etc/ssh/sshd_config; then
+        echo "PASS: Public key authentication enabled"
+      else
+        echo "WARN: Public key authentication may not be enabled"
+      fi
+    else
+      echo "SSH Type: Dropbear or Unknown"
+    fi
+  register: ssh_validation
+  changed_when: false
+
+- name: Validation - Check HTTPS configuration
+  ansible.builtin.raw: |
+    echo "=== HTTPS Configuration ==="
+    if [ -f /etc/uhttpd.crt ] && [ -f /etc/uhttpd.key ]; then
+      echo "PASS: TLS certificate exists"
+      openssl x509 -in /etc/uhttpd.crt -noout -dates 2>/dev/null || echo "WARN: Cannot read certificate"
+    else
+      echo "WARN: TLS certificate not found"
+    fi
+
+    # Check if HTTPS is configured in uHTTPd
+    if uci get uhttpd.main.listen_https >/dev/null 2>&1; then
+      echo "PASS: HTTPS listener configured"
+      uci get uhttpd.main.listen_https
+    else
+      echo "WARN: HTTPS listener not configured"
+    fi
+  register: https_validation
+  changed_when: false
+
+- name: Validation - Check firewall configuration
+  ansible.builtin.raw: |
+    echo "=== Firewall Configuration ==="
+
+    # Check if firewall is running
+    if /etc/init.d/firewall running 2>/dev/null; then
+      echo "PASS: Firewall is running"
+    else
+      echo "FAIL: Firewall is NOT running"
+    fi
+
+    # Check zone isolation
+    echo ""
+    echo "Zone Configuration:"
+    for zone in lan wan iot guest management; do
+      input=$(uci get firewall.${zone}.input 2>/dev/null || echo "N/A")
+      forward=$(uci get firewall.${zone}.forward 2>/dev/null || echo "N/A")
+      echo "  ${zone}: input=${input}, forward=${forward}"
+    done
+
+    # Check rate limiting rules
+    echo ""
+    echo "Rate Limiting:"
+    if [ -f /etc/firewall.rate_limit ]; then
+      echo "PASS: Rate limiting rules file exists"
+    else
+      echo "WARN: Rate limiting rules file not found"
+    fi
+  register: firewall_validation
+  changed_when: false
+
+- name: Validation - Check service status
+  ansible.builtin.raw: |
+    echo "=== Service Status ==="
+
+    # Check disabled services
+    {% for svc in security_disable_services %}
+    if /etc/init.d/{{ svc }} enabled 2>/dev/null; then
+      echo "WARN: {{ svc }} is still enabled"
+    else
+      echo "PASS: {{ svc }} is disabled"
+    fi
+    {% endfor %}
+
+    # Check critical services
+    for svc in sshd dnsmasq firewall; do
+      if /etc/init.d/${svc} running 2>/dev/null; then
+        echo "PASS: ${svc} is running"
+      else
+        echo "WARN: ${svc} is NOT running"
+      fi
+    done
+  register: service_validation
+  changed_when: false
+
+- name: Validation - Check listening ports
+  ansible.builtin.raw: |
+    echo "=== Listening Ports ==="
+    netstat -tlnp 2>/dev/null | grep -E "^tcp" || ss -tlnp
+  register: ports_validation
+  changed_when: false
+
+- name: Validation - Generate security report
+  ansible.builtin.raw: |
+    REPORT_FILE="/tmp/security-report-$(date +%Y%m%d-%H%M%S).json"
+
+    cat > "$REPORT_FILE" << EOF
+    {
+      "timestamp": "$(date -Iseconds)",
+      "hostname": "$(uci get system.@system[0].hostname)",
+      "checks": {
+        "ssh_hardening": $(grep -c "PASS" /tmp/.ssh_check 2>/dev/null || echo "0"),
+        "https_enabled": $([ -f /etc/uhttpd.crt ] && echo "true" || echo "false"),
+        "firewall_running": $(/etc/init.d/firewall running 2>/dev/null && echo "true" || echo "false"),
+        "rate_limiting": $([ -f /etc/firewall.rate_limit ] && echo "true" || echo "false")
+      }
+    }
+    EOF
+
+    echo "Security report saved to: $REPORT_FILE"
+    cat "$REPORT_FILE"
+  register: security_report
+  changed_when: false
+
+- name: Validation - Display summary
+  ansible.builtin.debug:
+    msg: |
+      ============================================================
+      SECURITY VALIDATION REPORT - {{ inventory_hostname }}
+      ============================================================
+
+      {{ ssh_validation.stdout }}
+
+      {{ https_validation.stdout }}
+
+      {{ firewall_validation.stdout }}
+
+      {{ service_validation.stdout }}
+
+      {{ ports_validation.stdout }}
+
+      ============================================================

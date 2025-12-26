@@ -434,6 +434,72 @@ This page covers frequently encountered problems and their solutions.
    nslookup google.com 1.1.1.1
    ```
 
+## Management Network Issues
+
+### Intermittent Connectivity to Nodes
+
+**Symptom**: Pings to node management IPs (10.11.10.x) sometimes fail, then work again. SSH sessions drop randomly.
+
+**Cause**: In multi-switch topologies, short ARP cache times (default 30-60 seconds) can cause race conditions during MAC/ARP relearning, leading to brief connectivity outages.
+
+**Solution**: Increase ARP cache times on all mesh nodes:
+
+```bash
+# Check current settings
+cat /proc/sys/net/ipv4/neigh/br-mgmt/gc_stale_time
+cat /proc/sys/net/ipv4/neigh/br-mgmt/base_reachable_time_ms
+
+# Apply fix (if not deployed via Ansible)
+sysctl -w net.ipv4.neigh.br-mgmt.gc_stale_time=300
+sysctl -w net.ipv4.neigh.br-mgmt.base_reachable_time_ms=120000
+
+# Make persistent
+cat >> /etc/sysctl.conf << 'EOF'
+# ARP cache settings for management network (br-mgmt)
+net.ipv4.neigh.br-mgmt.gc_stale_time = 300
+net.ipv4.neigh.br-mgmt.base_reachable_time_ms = 120000
+EOF
+```
+
+**Note**: This fix is automatically applied by Ansible during deployment (see `group_vars/all.yml` for configuration).
+
+**Verification**:
+
+```bash
+# Test all nodes from management network
+for ip in 10.11.10.1 10.11.10.2 10.11.10.3; do
+  ping -c 10 $ip
+done
+# All should show 0% packet loss
+```
+
+### Can't Reach Node from Different Switch
+
+**Symptom**: Devices on Switch B can't reach Node 1 (connected to Switch A), but can reach other nodes.
+
+**Solutions**:
+
+1. **Check switch VLAN 10 configuration**:
+   - VLAN 10 must be properly trunked between switches
+   - Management traffic uses VLAN 10
+
+2. **Verify BLA (Bridge Loop Avoidance) is working**:
+
+   ```bash
+   batctl cl   # Check claim table
+   batctl bl   # Check backbone table
+   ```
+
+3. **Check ARP cache settings** (see above)
+
+4. **Verify the path**:
+
+   ```bash
+   # On the affected device
+   ip neigh show | grep 10.11.10
+   # Check if MAC addresses are correct
+   ```
+
 ## Performance Issues
 
 ### Slow Network Speeds

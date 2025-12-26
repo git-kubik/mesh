@@ -43,7 +43,8 @@ This document describes the physical and logical network topology of the mesh ne
 | Component | Model | Quantity |
 |-----------|-------|----------|
 | Router | D-Link DIR-1960 A1 | 3 |
-| Managed Switch | TP-Link TL-SG105PE | 2 |
+| Managed Switch | TP-Link TL-SG108E | 2 |
+| Managed Switch (PoE) | TP-Link TL-SG108PE | 1 |
 | Ethernet Cable | Cat6 | ~10 |
 
 ### Port Allocation Per Node
@@ -129,8 +130,9 @@ LAN4 connections: Node1 ↔ Node2 ↔ Node3 ↔ Node1 (via Switch B)
 10.11.10.1       Node1 (VLAN interface)
 10.11.10.2       Node2 (VLAN interface)
 10.11.10.3       Node3 (VLAN interface)
-10.11.10.10      Switch A
-10.11.10.11      Switch B
+10.11.10.11      Switch A (LAN3 - all VLANs)
+10.11.10.12      Switch B (LAN3 - all VLANs)
+10.11.10.13      Switch C (LAN4 - mesh VLAN only)
 10.11.10.100-149 DHCP pool
 ```
 
@@ -306,25 +308,47 @@ Both switches fail:
 
 ## Switch Configuration
 
-### Switch A (TP-Link TL-SG105PE)
+Three TP-Link TL-SG108E managed switches provide wired mesh backbone and VLAN trunking.
 
-| Port | VLAN 100 | VLAN 10 | Description |
-|------|----------|---------|-------------|
-| 1 | Tagged | Tagged | Node1 LAN3 |
-| 2 | Tagged | Tagged | Node2 LAN3 |
-| 3 | Tagged | Tagged | Node3 LAN3 |
-| 4 | - | Untagged | Management access |
-| 5 | - | - | Spare |
+### Switch A (10.11.10.11) - LAN3 Primary
 
-### Switch B (TP-Link TL-SG105PE)
+All VLANs trunked through this switch for client traffic.
 
-| Port | VLAN 100 | VLAN 10 | Description |
-|------|----------|---------|-------------|
-| 1 | Tagged | Tagged | Node1 LAN4 |
-| 2 | Tagged | Tagged | Node2 LAN4 |
-| 3 | Tagged | Tagged | Node3 LAN4 |
-| 4 | - | Untagged | Management access |
-| 5 | - | - | Spare |
+| Port | VLAN 1 | VLAN 10 | VLAN 30 | VLAN 100 | VLAN 200 | Description |
+|------|--------|---------|---------|----------|----------|-------------|
+| 1 | U | T | T | T | T | Node1 LAN3 (trunk) |
+| 2 | U | T | T | T | T | Node2 LAN3 (trunk) |
+| 3 | U | T | T | T | T | Node3 LAN3 (trunk) |
+| 4 | U | T | - | - | - | Management access |
+| 5 | U | T | T | - | T | Trunk port (workstation) |
+| 6 | U | T | - | - | - | Link to Switch C |
+| 7-8 | U | - | T | - | - | IoT devices |
+
+### Switch B (10.11.10.12) - LAN3 Secondary - TL-SG108PE (PoE)
+
+Redundant path for all VLANs. PoE-capable for powering devices.
+
+| Port | VLAN 1 | VLAN 10 | VLAN 30 | VLAN 100 | VLAN 200 | Description |
+|------|--------|---------|---------|----------|----------|-------------|
+| 1 | U | T | T | T | T | Node1 LAN3 (trunk) |
+| 2 | U | T | T | T | T | Node2 LAN3 (trunk) |
+| 3 | U | T | T | T | T | Node3 LAN3 (trunk) |
+| 4 | U | T | - | - | - | Management access |
+| 5-8 | U | - | T | - | - | IoT devices |
+
+### Switch C (10.11.10.13) - LAN4 Mesh Only
+
+Carries ONLY mesh backbone VLAN to prevent L2 loops (BLA design).
+
+| Port | VLAN 1 | VLAN 10 | VLAN 100 | Description |
+|------|--------|---------|----------|-------------|
+| 1 | U | - | T | Node1 LAN4 (mesh) |
+| 2 | U | - | T | Node2 LAN4 (mesh) |
+| 3 | U | - | T | Node3 LAN4 (mesh) |
+| 4 | U | U | - | Link from Switch A |
+| 5-8 | U | - | - | Spare |
+
+**Legend**: U = Untagged, T = Tagged, - = Not member
 
 ## Firewall Zones
 
@@ -384,11 +408,11 @@ Both switches fail:
 │        ═══ Wired Mesh Backbone (VLAN 100)                                                      │
 │        ··· Wireless Mesh Backup (802.11s)                                                      │
 │                                                                                                 │
-│  ┌────────────────┐                    ┌────────────────┐                                       │
-│  │   SWITCH A     │                    │   SWITCH B     │                                       │
-│  │  10.11.10.10   │                    │  10.11.10.11   │                                       │
-│  │   (VLAN 100)   │                    │   (VLAN 100)   │                                       │
-│  └────────────────┘                    └────────────────┘                                       │
+│  ┌────────────────┐    ┌────────────────┐    ┌────────────────┐                               │
+│  │   SWITCH A     │    │   SWITCH B     │    │   SWITCH C     │                               │
+│  │  10.11.10.11   │    │  10.11.10.12   │    │  10.11.10.13   │                               │
+│  │  (All VLANs)   │    │  (All VLANs)   │    │ (Mesh VLAN 100)│                               │
+│  └────────────────┘    └────────────────┘    └────────────────┘                               │
 │                                                                                                 │
 └─────────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -411,3 +435,37 @@ Both switches fail:
 2. **More nodes**: Add Node4 to ring topology
 3. **More WiFi capacity**: Add dedicated APs to mesh
 4. **More bandwidth**: Upgrade to 2.5G/10G switches
+
+## Network Tuning
+
+### ARP Cache Configuration
+
+In multi-switch topologies, short ARP cache times can cause intermittent connectivity issues during MAC/ARP relearning. The mesh nodes are configured with extended ARP cache times for the management bridge:
+
+| Setting | Default | Configured | Purpose |
+|---------|---------|------------|---------|
+| `gc_stale_time` | 60s | 300s | Time before ARP entries become stale |
+| `base_reachable_time_ms` | 30000ms | 120000ms | Base reachable time for neighbors |
+
+These settings apply to `br-mgmt` (management bridge) and prevent race conditions when:
+
+- Switches update their MAC address tables
+- Traffic routes between Switch A and Switch B paths
+- BLA (Bridge Loop Avoidance) recalculates claim tables
+
+**Configuration Location**: `group_vars/all.yml`
+
+```yaml
+# ARP Cache Configuration
+arp_gc_stale_time: 300
+arp_base_reachable_time_ms: 120000
+```
+
+**Verification**:
+
+```bash
+cat /proc/sys/net/ipv4/neigh/br-mgmt/gc_stale_time      # Should show 300
+cat /proc/sys/net/ipv4/neigh/br-mgmt/base_reachable_time_ms  # Should show 120000
+```
+
+See [Troubleshooting: Intermittent Connectivity](../troubleshooting/common-issues.md#intermittent-connectivity-to-nodes) for more details.

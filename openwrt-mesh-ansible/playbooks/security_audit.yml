@@ -1,0 +1,316 @@
+---
+# Security Audit Playbook
+#
+# Performs comprehensive security scanning and validation of mesh network nodes.
+# Generates detailed JSON reports for each node.
+#
+# Usage:
+#   ansible-playbook playbooks/security_audit.yml
+#   ansible-playbook playbooks/security_audit.yml --limit node1
+#   ansible-playbook playbooks/security_audit.yml -e "audit_report_dir=/path/to/reports"
+#
+# Reports are saved to: {{ audit_report_dir }}/security-audit-<hostname>-<timestamp>.json
+
+- name: Security Audit - Mesh Network
+  hosts: mesh_nodes
+  gather_facts: false
+  vars:
+    audit_report_dir: "/tmp/security-audits"
+    audit_timestamp: "{{ lookup('pipe', 'date +%Y%m%d-%H%M%S') }}"
+
+  pre_tasks:
+    - name: Load environment variables
+      ansible.builtin.include_tasks: ../roles/common/tasks/load_env_vars.yml
+      tags: always
+
+  tasks:
+    # =========================================================================
+    # PHASE 1: System Information
+    # =========================================================================
+    - name: "AUDIT 1/10: Collect system information"
+      ansible.builtin.raw: |
+        echo "{"
+        echo "  \"hostname\": \"$(uci get system.@system[0].hostname)\","
+        echo "  \"model\": \"$(cat /tmp/sysinfo/model 2>/dev/null || echo 'unknown')\","
+        echo "  \"openwrt_version\": \"$(cat /etc/openwrt_release | grep DISTRIB_RELEASE | cut -d= -f2 | tr -d \"'\")\","
+        echo "  \"kernel\": \"$(uname -r)\","
+        echo "  \"uptime\": \"$(uptime)\""
+        echo "}"
+      register: system_info
+      changed_when: false
+      tags: system
+
+    # =========================================================================
+    # PHASE 2: SSH Security Audit
+    # =========================================================================
+    - name: "AUDIT 2/10: Check SSH configuration"
+      ansible.builtin.raw: |
+        echo "{"
+        echo "  \"ssh_type\": \"$([ -f /etc/ssh/sshd_config ] && echo 'openssh' || echo 'dropbear')\","
+
+        if [ -f /etc/ssh/sshd_config ]; then
+          echo "  \"password_auth\": \"$(grep -q '^PasswordAuthentication no' /etc/ssh/sshd_config && echo 'disabled' || echo 'enabled')\","
+          echo "  \"pubkey_auth\": \"$(grep -q '^PubkeyAuthentication yes' /etc/ssh/sshd_config && echo 'enabled' || echo 'disabled')\","
+          echo "  \"root_login\": \"$(grep '^PermitRootLogin' /etc/ssh/sshd_config | awk '{print $2}')\","
+          echo "  \"max_auth_tries\": \"$(grep '^MaxAuthTries' /etc/ssh/sshd_config | awk '{print $2}' || echo 'default')\","
+          echo "  \"x11_forwarding\": \"$(grep -q '^X11Forwarding no' /etc/ssh/sshd_config && echo 'disabled' || echo 'enabled')\""
+        else
+          echo "  \"dropbear_config\": \"$(uci show dropbear 2>/dev/null | grep -E 'Port|PasswordAuth' | tr '\n' ' ')\""
+        fi
+
+        echo "}"
+      register: ssh_audit
+      changed_when: false
+      tags: ssh
+
+    # =========================================================================
+    # PHASE 3: HTTPS/TLS Audit
+    # =========================================================================
+    - name: "AUDIT 3/10: Check HTTPS/TLS configuration"
+      ansible.builtin.raw: |
+        echo "{"
+        if [ -f /etc/uhttpd.crt ]; then
+          echo "  \"certificate_exists\": true,"
+          echo "  \"certificate_info\": \"$(openssl x509 -in /etc/uhttpd.crt -noout -subject -dates 2>/dev/null | tr '\n' ' ')\","
+          echo "  \"https_configured\": $(uci get uhttpd.main.listen_https >/dev/null 2>&1 && echo 'true' || echo 'false'),"
+          echo "  \"http_redirect\": $(uci get uhttpd.main.redirect_https 2>/dev/null || echo 'false')"
+        else
+          echo "  \"certificate_exists\": false,"
+          echo "  \"https_configured\": false"
+        fi
+        echo "}"
+      register: https_audit
+      changed_when: false
+      tags: https
+
+    # =========================================================================
+    # PHASE 4: Firewall Audit
+    # =========================================================================
+    - name: "AUDIT 4/10: Check firewall configuration"
+      ansible.builtin.raw: |
+        echo "{"
+        echo "  \"firewall_running\": $(/etc/init.d/firewall running 2>/dev/null && echo 'true' || echo 'false'),"
+        echo "  \"zones\": ["
+
+        first=true
+        for zone in $(uci show firewall | grep "=zone" | cut -d'=' -f1); do
+          zone_name=$(uci get "${zone}.name" 2>/dev/null)
+          input=$(uci get "${zone}.input" 2>/dev/null)
+          output=$(uci get "${zone}.output" 2>/dev/null)
+          forward=$(uci get "${zone}.forward" 2>/dev/null)
+
+          if [ "$first" = "true" ]; then
+            first=false
+          else
+            echo "    ,"
+          fi
+          echo "    {\"name\": \"$zone_name\", \"input\": \"$input\", \"output\": \"$output\", \"forward\": \"$forward\"}"
+        done
+
+        echo "  ],"
+        echo "  \"rate_limiting\": $([ -f /etc/firewall.rate_limit ] && echo 'true' || echo 'false'),"
+        echo "  \"synflood_protection\": $(uci get firewall.@defaults[0].synflood_protect 2>/dev/null || echo 'false')"
+        echo "}"
+      register: firewall_audit
+      changed_when: false
+      tags: firewall
+
+    # =========================================================================
+    # PHASE 5: Wireless Security Audit
+    # =========================================================================
+    - name: "AUDIT 5/10: Check wireless security"
+      ansible.builtin.raw: |
+        echo "{"
+        echo "  \"wireless_interfaces\": ["
+
+        first=true
+        for iface in $(uci show wireless | grep "=wifi-iface" | cut -d'=' -f1); do
+          ssid=$(uci get "${iface}.ssid" 2>/dev/null)
+          encryption=$(uci get "${iface}.encryption" 2>/dev/null)
+          mode=$(uci get "${iface}.mode" 2>/dev/null)
+          disabled=$(uci get "${iface}.disabled" 2>/dev/null || echo '0')
+
+          if [ "$first" = "true" ]; then
+            first=false
+          else
+            echo "    ,"
+          fi
+          echo "    {\"ssid\": \"$ssid\", \"encryption\": \"$encryption\", \"mode\": \"$mode\", \"disabled\": \"$disabled\"}"
+        done
+
+        echo "  ]"
+        echo "}"
+      register: wireless_audit
+      changed_when: false
+      tags: wireless
+
+    # =========================================================================
+    # PHASE 6: Service Audit
+    # =========================================================================
+    - name: "AUDIT 6/10: Check running services"
+      ansible.builtin.raw: |
+        echo "{"
+        echo "  \"running_services\": ["
+
+        first=true
+        for svc in /etc/init.d/*; do
+          if [ -x "$svc" ]; then
+            name=$(basename "$svc")
+            if "$svc" running 2>/dev/null; then
+              if [ "$first" = "true" ]; then
+                first=false
+              else
+                echo "    ,"
+              fi
+              echo "    \"$name\""
+            fi
+          fi
+        done
+
+        echo "  ],"
+        echo "  \"disabled_services\": ["
+
+        first=true
+        for svc in odhcpd; do
+          if ! /etc/init.d/${svc} enabled 2>/dev/null; then
+            if [ "$first" = "true" ]; then
+              first=false
+            else
+              echo "    ,"
+            fi
+            echo "    \"$svc\""
+          fi
+        done
+
+        echo "  ]"
+        echo "}"
+      register: service_audit
+      changed_when: false
+      tags: services
+
+    # =========================================================================
+    # PHASE 7: Port Scan
+    # =========================================================================
+    - name: "AUDIT 7/10: Check listening ports"
+      ansible.builtin.raw: |
+        echo "{"
+        echo "  \"tcp_ports\": ["
+
+        first=true
+        netstat -tlnp 2>/dev/null | grep "^tcp" | while read proto recvq sendq local foreign state pid; do
+          port=$(echo "$local" | sed 's/.*://')
+          if [ "$first" = "true" ]; then
+            first=false
+          else
+            echo "    ,"
+          fi
+          echo "    {\"port\": $port, \"state\": \"$state\", \"process\": \"$pid\"}"
+        done
+
+        echo "  ],"
+        echo "  \"udp_ports\": ["
+
+        first=true
+        netstat -ulnp 2>/dev/null | grep "^udp" | while read proto recvq sendq local foreign pid; do
+          port=$(echo "$local" | sed 's/.*://')
+          if [ "$first" = "true" ]; then
+            first=false
+          else
+            echo "    ,"
+          fi
+          echo "    {\"port\": $port, \"process\": \"$pid\"}"
+        done
+
+        echo "  ]"
+        echo "}"
+      register: ports_audit
+      changed_when: false
+      tags: ports
+
+    # =========================================================================
+    # PHASE 8: Package Audit
+    # =========================================================================
+    - name: "AUDIT 8/10: Check installed packages"
+      ansible.builtin.raw: |
+        echo "{"
+        echo "  \"total_packages\": $(opkg list-installed | wc -l),"
+        echo "  \"security_packages\": ["
+
+        for pkg in openssh-server openssh-keygen wpad-mesh-mbedtls; do
+          if opkg list-installed | grep -q "^${pkg} "; then
+            version=$(opkg list-installed | grep "^${pkg} " | awk '{print $3}')
+            echo "    {\"name\": \"$pkg\", \"version\": \"$version\"},"
+          fi
+        done
+
+        echo "    {\"end\": true}"
+        echo "  ]"
+        echo "}"
+      register: package_audit
+      changed_when: false
+      tags: packages
+
+    # =========================================================================
+    # PHASE 9: Network Security Audit
+    # =========================================================================
+    - name: "AUDIT 9/10: Check network security"
+      ansible.builtin.raw: |
+        echo "{"
+        echo "  \"batman_adv\": {"
+        echo "    \"bla_enabled\": $(batctl meshif bat0 bridge_loop_avoidance 2>/dev/null || echo 'unknown'),"
+        echo "    \"dat_enabled\": $(batctl meshif bat0 distributed_arp_table 2>/dev/null || echo 'unknown'),"
+        echo "    \"gw_mode\": \"$(batctl meshif bat0 gw_mode 2>/dev/null || echo 'unknown')\""
+        echo "  },"
+        echo "  \"arp_cache\": {"
+        echo "    \"gc_stale_time\": $(cat /proc/sys/net/ipv4/neigh/br-mgmt/gc_stale_time 2>/dev/null || echo 'N/A'),"
+        echo "    \"base_reachable_time\": $(cat /proc/sys/net/ipv4/neigh/br-mgmt/base_reachable_time_ms 2>/dev/null || echo 'N/A')"
+        echo "  }"
+        echo "}"
+      register: network_audit
+      changed_when: false
+      tags: network
+
+    # =========================================================================
+    # PHASE 10: Generate Final Report
+    # =========================================================================
+    - name: "AUDIT 10/10: Generate security report"
+      ansible.builtin.set_fact:
+        security_report:
+          timestamp: "{{ audit_timestamp }}"
+          hostname: "{{ inventory_hostname }}"
+          system: "{{ system_info.stdout | from_json }}"
+          ssh: "{{ ssh_audit.stdout | from_json }}"
+          https: "{{ https_audit.stdout | from_json }}"
+          firewall: "{{ firewall_audit.stdout | from_json }}"
+          wireless: "{{ wireless_audit.stdout | from_json }}"
+          services: "{{ service_audit.stdout | from_json }}"
+          ports: "{{ ports_audit.stdout | from_json }}"
+          network: "{{ network_audit.stdout | from_json }}"
+      tags: report
+
+    - name: Display security audit summary
+      ansible.builtin.debug:
+        msg: |
+          ============================================================
+          SECURITY AUDIT REPORT - {{ inventory_hostname }}
+          ============================================================
+          Timestamp: {{ audit_timestamp }}
+
+          SSH Security:
+            - Type: {{ (ssh_audit.stdout | from_json).ssh_type | default('unknown') }}
+            - Password Auth: {{ (ssh_audit.stdout | from_json).password_auth | default('unknown') }}
+            - PubKey Auth: {{ (ssh_audit.stdout | from_json).pubkey_auth | default('unknown') }}
+
+          HTTPS/TLS:
+            - Certificate: {{ (https_audit.stdout | from_json).certificate_exists | default(false) }}
+            - HTTPS Configured: {{ (https_audit.stdout | from_json).https_configured | default(false) }}
+
+          Firewall:
+            - Running: {{ (firewall_audit.stdout | from_json).firewall_running | default(false) }}
+            - Rate Limiting: {{ (firewall_audit.stdout | from_json).rate_limiting | default(false) }}
+
+          Network:
+            - BLA Enabled: {{ (network_audit.stdout | from_json).batman_adv.bla_enabled | default('unknown') }}
+
+          ============================================================
+      tags: report

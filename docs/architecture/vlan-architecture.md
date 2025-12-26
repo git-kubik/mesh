@@ -344,10 +344,11 @@ All network passwords should be:
 
 ## Switch Integration
 
-VLANs are trunked through managed switches for wired connectivity:
+VLANs are trunked through three TP-Link managed switches:
 
-- **Switch A (LAN3)**: Carries ALL VLANs (10, 20, 30, 100, 200)
-- **Switch C (LAN4)**: Carries ONLY Mesh VLAN 100 (loop prevention)
+- **Switch A (10.11.10.11)** - TL-SG108E - LAN3: All VLANs (10, 30, 100, 200) - primary client traffic
+- **Switch B (10.11.10.12)** - TL-SG108PE (PoE) - LAN3: All VLANs (10, 30, 100, 200) - redundant path
+- **Switch C (10.11.10.13)** - TL-SG108E - LAN4: Mesh VLAN 100 only - prevents L2 loops (BLA design)
 
 See [Switch Integration](switch-integration.md) for detailed configuration.
 

@@ -61,6 +61,7 @@ def all_role_names() -> List[str]:
         "dhcp_config",
         "firewall_config",
         "usb_storage",
+        "security_hardening",
     ]
 
 
@@ -91,6 +92,7 @@ def roles_with_templates() -> Dict[str, str]:
         "wireless_config": "wireless.j2",
         "dhcp_config": "dhcp.j2",
         "firewall_config": "firewall.j2",
+        "security_hardening": "uhttpd.j2",
     }
 
 

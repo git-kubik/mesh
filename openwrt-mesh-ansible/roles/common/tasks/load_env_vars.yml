@@ -66,6 +66,10 @@
     # Legacy hop penalty (deprecated)
     batman_hop_penalty: "{{ lookup('env', 'BATMAN_HOP_PENALTY') | default('15', true) | int }}"
 
+    # ARP Cache Configuration (Management Network Stability)
+    arp_gc_stale_time: "{{ lookup('env', 'ARP_GC_STALE_TIME') | default('300', true) | int }}"
+    arp_base_reachable_time_ms: "{{ lookup('env', 'ARP_BASE_REACHABLE_TIME_MS') | default('120000', true) | int }}"
+
     # Wireless Mesh Configuration (2.4GHz - Backbone)
     mesh_id: "{{ lookup('env', 'MESH_ID') | default('HA-Mesh', true) }}"
     mesh_encryption: "{{ lookup('env', 'MESH_ENCRYPTION') | default('sae', true) }}"
