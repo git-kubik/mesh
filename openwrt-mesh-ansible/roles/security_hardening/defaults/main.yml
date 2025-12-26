@@ -103,7 +103,8 @@ security_syslog_remote_enabled: "{{ lookup('env', 'SECURITY_SYSLOG_REMOTE_ENABLE
 security_syslog_server: "{{ lookup('env', 'SECURITY_SYSLOG_SERVER') | default('', true) }}"
 
 # Log level for security events
-security_syslog_level: "{{ lookup('env', 'SECURITY_SYSLOG_LEVEL') | default('warning', true) }}"
+# OpenWrt log levels: 0=emerg, 1=alert, 2=crit, 3=err, 4=warning, 5=notice, 6=info, 7=debug
+security_syslog_level: "{{ lookup('env', 'SECURITY_SYSLOG_LEVEL') | default('4', true) }}"
 
 # =============================================================================
 # VALIDATION

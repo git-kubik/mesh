@@ -58,6 +58,7 @@ endif
         snapshot snapshot-all snapshot-diff \
         image-build image-build-all image-clean image-shell image-info \
         factory-reset sysupgrade \
+        validate validate-smoke validate-full validate-json validate-verbose \
         test test-quick test-wireless test-full test-destructive test-infrastructure
 
 help:
@@ -277,7 +278,19 @@ help:
 	@echo "  Config is ALWAYS wiped (sysupgrade -n)"
 	@echo ""
 	@echo "================================================================================"
-	@echo "LIVE NETWORK TESTING (Validate Mesh is Working)"
+	@echo "NETWORK VALIDATION (Unified Framework)"
+	@echo "================================================================================"
+	@echo "  make validate                   - Standard validation (~3min, recommended)"
+	@echo "                                    Checks: connectivity, SSH, batman, VLANs"
+	@echo "  make validate-smoke             - Quick smoke test (~30s)"
+	@echo "                                    Checks: ping, SSH, batman module"
+	@echo "  make validate-full              - Comprehensive validation (~10min)"
+	@echo "                                    Checks: all above + services, security, WAN"
+	@echo "  make validate-json              - Output JSON (for monitoring/CI)"
+	@echo "  make validate-verbose           - Show detailed node-level results"
+	@echo ""
+	@echo "================================================================================"
+	@echo "LIVE NETWORK TESTING (pytest-based)"
 	@echo "================================================================================"
 	@echo "  make test                       - Run standard live tests (recommended)"
 	@echo "  make test-quick                 - Run quick connectivity tests only"
@@ -1261,6 +1274,44 @@ endif
 			exit 1; \
 		fi; \
 	fi"
+
+# ============================================================================
+# Network Validation Framework
+# ============================================================================
+# Unified validation framework to prove the mesh network is functioning
+# Uses tiered checks: smoke (30s), standard (3min), comprehensive (10min)
+# See validate/ package for implementation details
+
+# Standard validation (Tier 2) - recommended for post-deployment
+# Checks: connectivity, SSH, batman-adv, topology, VLANs
+# Usage: make validate
+validate:
+	@echo "=== Mesh Network Validation (Standard) ==="
+	@cd .. && uv run python -m validate standard
+
+# Quick smoke test (Tier 1) - fast health check
+# Checks: ping, SSH, batman module loaded
+# Usage: make validate-smoke
+validate-smoke:
+	@echo "=== Mesh Network Validation (Smoke) ==="
+	@cd .. && uv run python -m validate smoke
+
+# Comprehensive validation (Tier 3) - full functional test
+# Checks: all Tier 2 + services, security, WAN, infrastructure
+# Usage: make validate-full
+validate-full:
+	@echo "=== Mesh Network Validation (Comprehensive) ==="
+	@cd .. && uv run python -m validate comprehensive
+
+# Validation with JSON output (for monitoring/CI)
+# Usage: make validate-json
+validate-json:
+	@cd .. && uv run python -m validate standard --json
+
+# Verbose validation showing node details
+# Usage: make validate-verbose
+validate-verbose:
+	@cd .. && uv run python -m validate standard --verbose
 
 # ============================================================================
 # Live Network Testing
