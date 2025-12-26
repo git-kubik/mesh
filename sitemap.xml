@@ -2,202 +2,210 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://git-kubik.github.io/mesh/</loc>
-         <lastmod>2025-12-20</lastmod>
+         <lastmod>2025-12-26</lastmod>
     </url>
     <url>
          <loc>https://git-kubik.github.io/mesh/philosophy/</loc>
-         <lastmod>2025-12-20</lastmod>
+         <lastmod>2025-12-26</lastmod>
+    </url>
+    <url>
+         <loc>https://git-kubik.github.io/mesh/raspberry-pi-image-creation/</loc>
+         <lastmod>2025-12-26</lastmod>
     </url>
     <url>
          <loc>https://git-kubik.github.io/mesh/_archive/PROJECT-MANAGEMENT/</loc>
-         <lastmod>2025-12-20</lastmod>
+         <lastmod>2025-12-26</lastmod>
     </url>
     <url>
          <loc>https://git-kubik.github.io/mesh/_archive/PROJECT-STATUS/</loc>
-         <lastmod>2025-12-20</lastmod>
+         <lastmod>2025-12-26</lastmod>
     </url>
     <url>
          <loc>https://git-kubik.github.io/mesh/_archive/STATUS-UPDATE/</loc>
-         <lastmod>2025-12-20</lastmod>
+         <lastmod>2025-12-26</lastmod>
     </url>
     <url>
          <loc>https://git-kubik.github.io/mesh/_archive/WALKTHROUGH/</loc>
-         <lastmod>2025-12-20</lastmod>
+         <lastmod>2025-12-26</lastmod>
     </url>
     <url>
          <loc>https://git-kubik.github.io/mesh/advanced/</loc>
-         <lastmod>2025-12-20</lastmod>
+         <lastmod>2025-12-26</lastmod>
     </url>
     <url>
          <loc>https://git-kubik.github.io/mesh/advanced/full-archive/</loc>
-         <lastmod>2025-12-20</lastmod>
+         <lastmod>2025-12-26</lastmod>
     </url>
     <url>
          <loc>https://git-kubik.github.io/mesh/advanced/image-builder/</loc>
-         <lastmod>2025-12-20</lastmod>
+         <lastmod>2025-12-26</lastmod>
     </url>
     <url>
          <loc>https://git-kubik.github.io/mesh/advanced/local-repository/</loc>
-         <lastmod>2025-12-20</lastmod>
+         <lastmod>2025-12-26</lastmod>
     </url>
     <url>
          <loc>https://git-kubik.github.io/mesh/advanced/monitoring-alerting/</loc>
-         <lastmod>2025-12-20</lastmod>
+         <lastmod>2025-12-26</lastmod>
     </url>
     <url>
          <loc>https://git-kubik.github.io/mesh/advanced/repo-implementation/</loc>
-         <lastmod>2025-12-20</lastmod>
+         <lastmod>2025-12-26</lastmod>
     </url>
     <url>
          <loc>https://git-kubik.github.io/mesh/architecture/</loc>
-         <lastmod>2025-12-20</lastmod>
+         <lastmod>2025-12-26</lastmod>
     </url>
     <url>
          <loc>https://git-kubik.github.io/mesh/architecture/batman-mesh/</loc>
-         <lastmod>2025-12-20</lastmod>
+         <lastmod>2025-12-26</lastmod>
     </url>
     <url>
          <loc>https://git-kubik.github.io/mesh/architecture/network-topology/</loc>
-         <lastmod>2025-12-20</lastmod>
+         <lastmod>2025-12-26</lastmod>
     </url>
     <url>
          <loc>https://git-kubik.github.io/mesh/architecture/overview/</loc>
-         <lastmod>2025-12-20</lastmod>
+         <lastmod>2025-12-26</lastmod>
     </url>
     <url>
          <loc>https://git-kubik.github.io/mesh/architecture/switch-integration/</loc>
-         <lastmod>2025-12-20</lastmod>
+         <lastmod>2025-12-26</lastmod>
     </url>
     <url>
          <loc>https://git-kubik.github.io/mesh/architecture/vlan-architecture/</loc>
-         <lastmod>2025-12-20</lastmod>
+         <lastmod>2025-12-26</lastmod>
     </url>
     <url>
          <loc>https://git-kubik.github.io/mesh/deployment/</loc>
-         <lastmod>2025-12-20</lastmod>
+         <lastmod>2025-12-26</lastmod>
     </url>
     <url>
          <loc>https://git-kubik.github.io/mesh/deployment/configuration/</loc>
-         <lastmod>2025-12-20</lastmod>
+         <lastmod>2025-12-26</lastmod>
     </url>
     <url>
          <loc>https://git-kubik.github.io/mesh/deployment/ssh-keys/</loc>
-         <lastmod>2025-12-20</lastmod>
+         <lastmod>2025-12-26</lastmod>
     </url>
     <url>
          <loc>https://git-kubik.github.io/mesh/development/</loc>
-         <lastmod>2025-12-20</lastmod>
+         <lastmod>2025-12-26</lastmod>
     </url>
     <url>
          <loc>https://git-kubik.github.io/mesh/development/GITHUB-COMPLETE-SETUP/</loc>
-         <lastmod>2025-12-20</lastmod>
+         <lastmod>2025-12-26</lastmod>
     </url>
     <url>
          <loc>https://git-kubik.github.io/mesh/development/GITHUB-SETUP/</loc>
-         <lastmod>2025-12-20</lastmod>
+         <lastmod>2025-12-26</lastmod>
     </url>
     <url>
          <loc>https://git-kubik.github.io/mesh/development/contributing/</loc>
-         <lastmod>2025-12-20</lastmod>
+         <lastmod>2025-12-26</lastmod>
     </url>
     <url>
          <loc>https://git-kubik.github.io/mesh/development/docker-mcp/</loc>
-         <lastmod>2025-12-20</lastmod>
+         <lastmod>2025-12-26</lastmod>
     </url>
     <url>
          <loc>https://git-kubik.github.io/mesh/development/docker/</loc>
-         <lastmod>2025-12-20</lastmod>
+         <lastmod>2025-12-26</lastmod>
     </url>
     <url>
          <loc>https://git-kubik.github.io/mesh/development/pre-commit/</loc>
-         <lastmod>2025-12-20</lastmod>
+         <lastmod>2025-12-26</lastmod>
     </url>
     <url>
          <loc>https://git-kubik.github.io/mesh/development/testing/</loc>
-         <lastmod>2025-12-20</lastmod>
+         <lastmod>2025-12-26</lastmod>
     </url>
     <url>
          <loc>https://git-kubik.github.io/mesh/development/tests-readme/</loc>
-         <lastmod>2025-12-20</lastmod>
+         <lastmod>2025-12-26</lastmod>
     </url>
     <url>
          <loc>https://git-kubik.github.io/mesh/getting-started/</loc>
-         <lastmod>2025-12-20</lastmod>
+         <lastmod>2025-12-26</lastmod>
     </url>
     <url>
          <loc>https://git-kubik.github.io/mesh/getting-started/ansible-basics/</loc>
-         <lastmod>2025-12-20</lastmod>
+         <lastmod>2025-12-26</lastmod>
     </url>
     <url>
          <loc>https://git-kubik.github.io/mesh/getting-started/initial-setup/</loc>
-         <lastmod>2025-12-20</lastmod>
+         <lastmod>2025-12-26</lastmod>
     </url>
     <url>
          <loc>https://git-kubik.github.io/mesh/getting-started/quickstart/</loc>
-         <lastmod>2025-12-20</lastmod>
+         <lastmod>2025-12-26</lastmod>
     </url>
     <url>
          <loc>https://git-kubik.github.io/mesh/operations/</loc>
-         <lastmod>2025-12-20</lastmod>
+         <lastmod>2025-12-26</lastmod>
     </url>
     <url>
          <loc>https://git-kubik.github.io/mesh/operations/backup-restore/</loc>
-         <lastmod>2025-12-20</lastmod>
+         <lastmod>2025-12-26</lastmod>
     </url>
     <url>
          <loc>https://git-kubik.github.io/mesh/operations/firmware/</loc>
-         <lastmod>2025-12-20</lastmod>
+         <lastmod>2025-12-26</lastmod>
     </url>
     <url>
          <loc>https://git-kubik.github.io/mesh/operations/monitoring/</loc>
-         <lastmod>2025-12-20</lastmod>
+         <lastmod>2025-12-26</lastmod>
     </url>
     <url>
          <loc>https://git-kubik.github.io/mesh/operations/recovery/</loc>
-         <lastmod>2025-12-20</lastmod>
+         <lastmod>2025-12-26</lastmod>
     </url>
     <url>
          <loc>https://git-kubik.github.io/mesh/operations/syslog/</loc>
-         <lastmod>2025-12-20</lastmod>
+         <lastmod>2025-12-26</lastmod>
     </url>
     <url>
          <loc>https://git-kubik.github.io/mesh/operations/usb-storage/</loc>
-         <lastmod>2025-12-20</lastmod>
+         <lastmod>2025-12-26</lastmod>
     </url>
     <url>
          <loc>https://git-kubik.github.io/mesh/reference/</loc>
-         <lastmod>2025-12-20</lastmod>
+         <lastmod>2025-12-26</lastmod>
     </url>
     <url>
          <loc>https://git-kubik.github.io/mesh/reference/cli-commands/</loc>
-         <lastmod>2025-12-20</lastmod>
+         <lastmod>2025-12-26</lastmod>
     </url>
     <url>
          <loc>https://git-kubik.github.io/mesh/reference/factory-reset/</loc>
-         <lastmod>2025-12-20</lastmod>
+         <lastmod>2025-12-26</lastmod>
     </url>
     <url>
          <loc>https://git-kubik.github.io/mesh/reference/makefile/</loc>
-         <lastmod>2025-12-20</lastmod>
+         <lastmod>2025-12-26</lastmod>
     </url>
     <url>
          <loc>https://git-kubik.github.io/mesh/reference/node-audit/</loc>
-         <lastmod>2025-12-20</lastmod>
+         <lastmod>2025-12-26</lastmod>
     </url>
     <url>
          <loc>https://git-kubik.github.io/mesh/reference/playbooks/</loc>
-         <lastmod>2025-12-20</lastmod>
+         <lastmod>2025-12-26</lastmod>
+    </url>
+    <url>
+         <loc>https://git-kubik.github.io/mesh/security/security-hardening/</loc>
+         <lastmod>2025-12-26</lastmod>
     </url>
     <url>
          <loc>https://git-kubik.github.io/mesh/troubleshooting/</loc>
-         <lastmod>2025-12-20</lastmod>
+         <lastmod>2025-12-26</lastmod>
     </url>
     <url>
          <loc>https://git-kubik.github.io/mesh/troubleshooting/common-issues/</loc>
-         <lastmod>2025-12-20</lastmod>
+         <lastmod>2025-12-26</lastmod>
     </url>
     <url>
          <loc>https://git-kubik.github.io/mesh/troubleshooting/debugging/</loc>
-         <lastmod>2025-12-20</lastmod>
+         <lastmod>2025-12-26</lastmod>
     </url>
 </urlset>
