@@ -230,4 +230,22 @@ def create_runner(tier: Tier) -> ValidationRunner:
             4, "infrastructure.switches", infrastructure.check_switches, Tier.COMPREHENSIVE
         )
 
+    # Phase 5: Certification (Tier 4)
+    if tier.value >= Tier.CERTIFICATION.value:
+        from validate.checks import failover, performance, wireless
+
+        runner.register_phase(5, "Certification")
+        runner.register_check(5, "failover.link", failover.check_link_failover, Tier.CERTIFICATION)
+        runner.register_check(5, "failover.wan", failover.check_wan_failover, Tier.CERTIFICATION)
+        runner.register_check(5, "failover.node", failover.check_node_failover, Tier.CERTIFICATION)
+        runner.register_check(5, "wireless.mesh", wireless.check_mesh_wireless, Tier.CERTIFICATION)
+        runner.register_check(5, "wireless.roaming", wireless.check_roaming, Tier.CERTIFICATION)
+        runner.register_check(5, "wireless.bla", wireless.check_bla, Tier.CERTIFICATION)
+        runner.register_check(
+            5, "performance.latency", performance.check_latency, Tier.CERTIFICATION
+        )
+        runner.register_check(
+            5, "performance.stress", performance.check_stress_ping, Tier.CERTIFICATION
+        )
+
     return runner

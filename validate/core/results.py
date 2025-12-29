@@ -15,6 +15,7 @@ class CheckStatus(Enum):
 
     PASS = "PASS"
     FAIL = "FAIL"
+    WARN = "WARN"  # Degraded but not failed (optional features)
     SKIP = "SKIP"
     ERROR = "ERROR"
 
@@ -52,13 +53,13 @@ class CheckResult:
 
     @property
     def passed(self) -> bool:
-        """Check if this check passed."""
-        return self.status == CheckStatus.PASS
+        """Return True if check passed or has warning status."""
+        return self.status in (CheckStatus.PASS, CheckStatus.WARN)
 
     @property
     def failed(self) -> bool:
-        """Check if this check failed."""
-        return self.status == CheckStatus.FAIL
+        """Return True if check failed or has error status."""
+        return self.status in (CheckStatus.FAIL, CheckStatus.ERROR)
 
     def add_node_result(
         self,
@@ -80,18 +81,21 @@ class CheckResult:
         if not self.nodes:
             return
 
-        # All must pass for check to pass
+        # Aggregate based on worst status (ERROR > FAIL > WARN > SKIP > PASS)
         statuses = [n.status for n in self.nodes.values()]
-        if all(s == CheckStatus.PASS for s in statuses):
-            self.status = CheckStatus.PASS
-        elif any(s == CheckStatus.ERROR for s in statuses):
+        if any(s == CheckStatus.ERROR for s in statuses):
             self.status = CheckStatus.ERROR
         elif any(s == CheckStatus.FAIL for s in statuses):
             self.status = CheckStatus.FAIL
+        elif any(s == CheckStatus.WARN for s in statuses):
+            self.status = CheckStatus.WARN
         elif all(s == CheckStatus.SKIP for s in statuses):
             self.status = CheckStatus.SKIP
+        elif all(s == CheckStatus.PASS for s in statuses):
+            self.status = CheckStatus.PASS
         else:
-            self.status = CheckStatus.FAIL
+            # Mix of PASS and SKIP
+            self.status = CheckStatus.PASS
 
 
 @dataclass

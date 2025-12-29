@@ -58,7 +58,7 @@ endif
         snapshot snapshot-all snapshot-diff \
         image-build image-build-all image-clean image-shell image-info \
         factory-reset sysupgrade \
-        validate validate-smoke validate-full validate-json validate-verbose \
+        validate validate-smoke validate-full validate-cert validate-json validate-verbose \
         test test-quick test-wireless test-full test-destructive test-infrastructure
 
 help:
@@ -1302,6 +1302,13 @@ validate-smoke:
 validate-full:
 	@echo "=== Mesh Network Validation (Comprehensive) ==="
 	@cd .. && uv run python -m validate comprehensive
+
+# Certification validation (Tier 4) - production readiness
+# Checks: all Tier 3 + failover, wireless, stress testing
+# Usage: make validate-cert
+validate-cert:
+	@echo "=== Mesh Network Validation (Certification) ==="
+	@cd .. && uv run python -m validate certification
 
 # Validation with JSON output (for monitoring/CI)
 # Usage: make validate-json
