@@ -76,9 +76,11 @@ def check_switches() -> CheckResult:  # noqa: C901
             result.add_node_result(
                 node=switch_name,
                 status=CheckStatus.PASS,
-                message=f"{description} ({ip}) - {latency:.1f}ms"
-                if latency
-                else f"{description} ({ip})",
+                message=(
+                    f"{description} ({ip}) - {latency:.1f}ms"
+                    if latency
+                    else f"{description} ({ip})"
+                ),
                 data={"ip": ip, "latency_ms": latency},
             )
         else:
