@@ -313,7 +313,7 @@ ssh root@10.11.12.1 "logread | grep -E 'authpriv|dropbear|sshd|firewall'"
 
 ## Related Documentation
 
-- [Firewall Configuration](../architecture/firewall-zones.md)
 - [Network Architecture](../architecture/network-topology.md)
-- [SSH Transition Role](../deployment/ssh-transition.md)
-- [Wireless Security](../architecture/wireless-design.md)
+- [VLAN Architecture](../architecture/vlan-architecture.md)
+- [SSH Keys Configuration](../deployment/ssh-keys.md)
+- [Batman-adv Mesh](../architecture/batman-mesh.md)

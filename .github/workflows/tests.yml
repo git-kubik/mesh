@@ -109,25 +109,31 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Create CI environment file
+        run: |
+          # Create minimal .env for CI from .env.example
+          if [ -f .env.example ]; then
+            cp .env.example .env
+            # Replace placeholder passwords with simple CI values
+            sed -i 's/CHANGE_THIS_PASSWORD/testpass/g' .env
+          fi
+
       - name: Build Docker image (ansible)
         run: |
           if [ -f docker/Dockerfile ]; then
-            cd docker
-            docker compose build ansible
+            docker build -t mesh-ansible:test -f docker/Dockerfile .
           else
             echo "No Dockerfile found, skipping Docker build"
           fi
 
       - name: Test Docker image
         run: |
-          if [ -f docker/docker-compose.yml ]; then
-            cd docker
-            docker compose up -d ansible
-            sleep 5
-            docker compose exec -T ansible ansible --version
-            docker compose down
+          if [ -f docker/Dockerfile ]; then
+            # Test standalone container (not full compose stack)
+            docker run --rm mesh-ansible:test ansible --version
+            docker run --rm mesh-ansible:test ansible-lint --version
           else
-            echo "No docker-compose.yml found, skipping Docker test"
+            echo "No Dockerfile found, skipping Docker test"
           fi
 
   test-summary:
