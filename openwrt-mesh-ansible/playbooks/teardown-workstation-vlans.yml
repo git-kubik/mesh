@@ -1,7 +1,7 @@
 ---
 # Teardown workstation VLAN interfaces
 #
-# Removes all VLAN interfaces and resets eth2 to unconfigured state.
+# Removes all VLAN interfaces and resets enp5s0 to unconfigured state.
 # Use this before switching to a different network mode.
 #
 # Usage:
@@ -15,7 +15,7 @@
   become: true
 
   vars:
-    interface: "{{ lookup('env', 'ETH_INTERFACE') | default('eth2', true) }}"
+    interface: "{{ lookup('env', 'ETH_INTERFACE') | default('enp5s0', true) }}"
     vlan_ids:
       - 10
       - 30

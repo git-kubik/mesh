@@ -1,7 +1,7 @@
 ---
 # Switch local workstation network to connect to configured switches on management VLAN
 #
-# This playbook configures the local eth2 interface to 10.11.10.100/24
+# This playbook configures the local enp5s0 interface to 10.11.10.100/24
 # allowing connection to TP-Link switches after they've been configured:
 #   - Switch A: 10.11.10.11
 #   - Switch B: 10.11.10.12
@@ -20,7 +20,7 @@
   become: true
 
   vars:
-    interface: "{{ lookup('env', 'ETH_INTERFACE') | default('eth2', true) }}"
+    interface: "{{ lookup('env', 'ETH_INTERFACE') | default('enp5s0', true) }}"
     address: "10.11.10.100/24"
     network: "10.11.10.0/24"
     switch_a_ip: "{{ lookup('env', 'SWITCH_A_IP') | default('10.11.10.11', true) }}"
@@ -70,7 +70,7 @@
           Current IP on {{ interface }}: {{ current_ip.stdout | default('none') }}
           Switching to: {{ address }}
 
-    - name: Remove VLAN sub-interfaces on eth2 if present
+    - name: Remove VLAN sub-interfaces on enp5s0 if present
       ansible.builtin.command: ip link del {{ item }}
       loop:
         - "{{ interface }}.10"

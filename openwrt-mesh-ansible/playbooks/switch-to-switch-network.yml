@@ -1,7 +1,7 @@
 ---
 # Switch local workstation network to connect to TP-Link switches
 #
-# This playbook configures the local eth2 interface to 192.168.0.2/24
+# This playbook configures the local enp5s0 interface to 192.168.0.2/24
 # allowing connection to factory-default TP-Link TL-SG108E switches at 192.168.0.1
 #
 # Usage:
@@ -15,7 +15,7 @@
   become: true
 
   vars:
-    interface: "{{ lookup('env', 'ETH_INTERFACE') | default('eth2', true) }}"
+    interface: "{{ lookup('env', 'ETH_INTERFACE') | default('enp5s0', true) }}"
     address: "192.168.0.2/24"
     gateway: "192.168.0.1"
     network: "192.168.0.0/24"
@@ -63,7 +63,7 @@
           Current IP on {{ interface }}: {{ current_ip.stdout | default('none') }}
           Switching to: {{ address }}
 
-    - name: Remove VLAN sub-interfaces on eth2 if present
+    - name: Remove VLAN sub-interfaces on enp5s0 if present
       ansible.builtin.command: ip link del {{ item }}
       loop:
         - "{{ interface }}.10"

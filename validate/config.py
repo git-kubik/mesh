@@ -61,7 +61,7 @@ NETWORK_CONFIG = {
 
 # Source interface for reaching mesh nodes (VLAN 200)
 # Set to None to use default routing, or specify interface name
-MESH_SOURCE_INTERFACE = os.environ.get("MESH_SOURCE_INTERFACE", "eth2.200")
+MESH_SOURCE_INTERFACE = os.environ.get("MESH_SOURCE_INTERFACE", "enp5s0.200")
 
 # VLAN configuration
 VLANS = {

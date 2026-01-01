@@ -552,26 +552,26 @@ Connect your management workstation to **Port 5** on Switch A. This is a **trunk
 
 ### Setup VLAN Interfaces
 
-Configure your workstation's eth2 interface with VLAN sub-interfaces.
+Configure your workstation's enp5s0 interface with VLAN sub-interfaces.
 
 #### Option 1: Temporary (until reboot)
 
 ```bash
-# Setup all VLAN interfaces on eth2 (Switch A Port 5)
+# Setup all VLAN interfaces on enp5s0 (Switch A Port 5)
 make setup-mgmt-vlans
 
 # Or manually:
-sudo ip link add link eth2 name eth2.10 type vlan id 10
-sudo ip link add link eth2 name eth2.30 type vlan id 30
-sudo ip link add link eth2 name eth2.200 type vlan id 200
+sudo ip link add link enp5s0 name enp5s0.10 type vlan id 10
+sudo ip link add link enp5s0 name enp5s0.30 type vlan id 30
+sudo ip link add link enp5s0 name enp5s0.200 type vlan id 200
 
-sudo ip addr add 10.11.10.100/24 dev eth2.10
-sudo ip addr add 10.11.30.100/24 dev eth2.30
-sudo ip addr add 10.11.12.100/24 dev eth2.200
+sudo ip addr add 10.11.10.100/24 dev enp5s0.10
+sudo ip addr add 10.11.30.100/24 dev enp5s0.30
+sudo ip addr add 10.11.12.100/24 dev enp5s0.200
 
-sudo ip link set eth2.10 up
-sudo ip link set eth2.30 up
-sudo ip link set eth2.200 up
+sudo ip link set enp5s0.10 up
+sudo ip link set enp5s0.30 up
+sudo ip link set enp5s0.200 up
 ```
 
 #### Option 2: Persistent (survives reboot)
@@ -579,38 +579,38 @@ sudo ip link set eth2.200 up
 Add to `/etc/network/interfaces`:
 
 ```
-# Management workstation VLAN interfaces on eth2
-# Requires: eth2 connected to Switch A Port 5 (trunk port)
+# Management workstation VLAN interfaces on enp5s0
+# Requires: enp5s0 connected to Switch A Port 5 (trunk port)
 
-auto eth2
-iface eth2 inet manual
+auto enp5s0
+iface enp5s0 inet manual
 
 # VLAN 10 - Management Network
-auto eth2.10
-iface eth2.10 inet static
+auto enp5s0.10
+iface enp5s0.10 inet static
     address 10.11.10.100
     netmask 255.255.255.0
-    vlan-raw-device eth2
+    vlan-raw-device enp5s0
 
 # VLAN 30 - IoT Network
-auto eth2.30
-iface eth2.30 inet static
+auto enp5s0.30
+iface enp5s0.30 inet static
     address 10.11.30.100
     netmask 255.255.255.0
-    vlan-raw-device eth2
+    vlan-raw-device enp5s0
 
 # VLAN 200 - Client/LAN Network
-auto eth2.200
-iface eth2.200 inet static
+auto enp5s0.200
+iface enp5s0.200 inet static
     address 10.11.12.100
     netmask 255.255.255.0
-    vlan-raw-device eth2
+    vlan-raw-device enp5s0
 ```
 
 Then apply with:
 
 ```bash
-sudo ifup eth2.10 eth2.30 eth2.200
+sudo ifup enp5s0.10 enp5s0.30 enp5s0.200
 ```
 
 ### Verify Access to All Networks
@@ -640,9 +640,9 @@ ping 10.11.30.3   # Node 3
 make teardown-mgmt-vlans
 
 # Or manually:
-sudo ip link del eth2.10
-sudo ip link del eth2.30
-sudo ip link del eth2.200
+sudo ip link del enp5s0.10
+sudo ip link del enp5s0.30
+sudo ip link del enp5s0.200
 ```
 
 ---

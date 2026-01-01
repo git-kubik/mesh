@@ -11,9 +11,9 @@ from validate.config import SWITCHES
 from validate.core.executor import run_local
 from validate.core.results import CheckResult, CheckStatus
 
-# Source interface for switches (via untagged eth2 with host routes)
+# Source interface for switches (via untagged enp5s0 with host routes)
 # Switches respond on untagged VLAN, not VLAN 10
-SWITCH_SOURCE_INTERFACE = os.environ.get("SWITCH_SOURCE_INTERFACE", "eth2")
+SWITCH_SOURCE_INTERFACE = os.environ.get("SWITCH_SOURCE_INTERFACE", "enp5s0")
 
 
 def check_switches() -> CheckResult:  # noqa: C901

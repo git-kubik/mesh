@@ -244,6 +244,109 @@
         "Phase 11: Monitoring (Prometheus/Grafana) - NOT STARTED (optional)",
         "Phase 12: Documentation - 40% complete"
       ]
+    },
+    {
+      "name": "docker-mcp-gateway",
+      "entityType": "infrastructure",
+      "observations": [
+        "Docker MCP Toolkit CLI for managing MCP servers",
+        "Config in ~/.claude.json under mcpServers.MCP_DOCKER",
+        "Command: docker mcp gateway run",
+        "Requires DOCKER_MCP_USE_CE=true for Docker CE (non-Desktop)",
+        "Provides 135+ tools from 15 enabled MCP servers",
+        "Claude Code connects via stdio transport",
+        "Gateway must be running for mcp__MCP_DOCKER__* tools to work"
+      ]
+    },
+    {
+      "name": "mcp-servers",
+      "entityType": "infrastructure",
+      "observations": [
+        "15 MCP servers enabled in Docker MCP gateway",
+        "github: GitHub API tools (needs personal_access_token)",
+        "github-official: Official GitHub MCP with OAuth support",
+        "brave: Web search (needs brave_api_key)",
+        "memory: Knowledge graph persistence (9 tools)",
+        "playwright: Browser automation (13 tools)",
+        "filesystem: File operations in /home/m",
+        "docker: Docker CLI operations",
+        "fetch: URL content extraction",
+        "sequentialthinking: Multi-step reasoning",
+        "kali: Security tools (aircrack, nmap)",
+        "Other: duckduckgo, dockerhub, time, context7, arxiv-mcp-server"
+      ]
+    },
+    {
+      "name": "mcp-secrets",
+      "entityType": "configuration",
+      "observations": [
+        "Secrets stored via pass password manager in CE mode",
+        "Credential helper: docker-credential-pass",
+        "Secrets prefixed with 'sm_' in credential store",
+        "Set secrets: DOCKER_MCP_USE_CE=true docker mcp secret set KEY=VALUE",
+        "List secrets: docker-credential-pass list",
+        "github.personal_access_token configured for git-kubik account",
+        "brave_api_key: not configured (brave search limited)"
+      ]
+    },
+    {
+      "name": "pass-password-store",
+      "entityType": "infrastructure",
+      "observations": [
+        "GNU pass password manager for MCP secrets",
+        "Installed: apt install pass",
+        "GPG key: B51E0BFE2C14E81A (MCP Secrets <mcp@localhost>)",
+        "Store location: ~/.password-store/",
+        "Required for Docker MCP CE mode secret storage",
+        "Works with docker-credential-pass helper"
+      ]
+    },
+    {
+      "name": "github-auth",
+      "entityType": "configuration",
+      "observations": [
+        "GitHub account: git-kubik (makka)",
+        "Token stored in gh CLI: ~/.config/gh/hosts.yml",
+        "Token scopes: admin:enterprise, repo, workflow, user, etc (full access)",
+        "MCP secret configured: github.personal_access_token",
+        "Use 'gh auth token' to retrieve current token",
+        "Both github and github-official MCP servers configured"
+      ]
+    },
+    {
+      "name": "dev-workstation",
+      "entityType": "infrastructure",
+      "observations": [
+        "Platform: Linux (Debian Trixie)",
+        "Kernel: 6.12.57+deb13-amd64",
+        "Docker: CE mode (not Docker Desktop)",
+        "Docker context: mcp-context",
+        "Python: managed via uv",
+        "Working directory: /home/m/repos/mesh",
+        "Claude Code model: claude-opus-4-5-20251101"
+      ]
+    },
+    {
+      "name": "issue:mcp-connection-loss",
+      "entityType": "issue",
+      "observations": [
+        "MCP tools return 'No such tool available' when gateway disconnects",
+        "Caused by: gateway process killed or crashed",
+        "Solution: Restart Claude Code to re-establish MCP connection",
+        "Prevention: Don't kill docker mcp gateway process during session",
+        "Diagnosis: pgrep -af 'docker mcp gateway' to check if running"
+      ]
+    },
+    {
+      "name": "decision:mcp-secret-storage",
+      "entityType": "decision",
+      "observations": [
+        "Chose pass password manager for Docker MCP CE mode",
+        "Alternative was Docker Desktop (not available on this system)",
+        "Created dedicated GPG key for MCP secrets (no passphrase)",
+        "Secrets persist across sessions in ~/.password-store/",
+        "Date: 2026-01-01"
+      ]
     }
   ],
   "relations": [
@@ -281,6 +384,17 @@
     {"from": "tp-link-switches", "to": "mesh-node1", "relationType": "connects"},
     {"from": "tp-link-switches", "to": "mesh-node2", "relationType": "connects"},
     {"from": "tp-link-switches", "to": "mesh-node3", "relationType": "connects"},
-    {"from": "mesh-project", "to": "phase-status", "relationType": "tracked_by"}
+    {"from": "mesh-project", "to": "phase-status", "relationType": "tracked_by"},
+    {"from": "mesh-project", "to": "docker-mcp-gateway", "relationType": "uses"},
+    {"from": "mesh-project", "to": "dev-workstation", "relationType": "developed_on"},
+    {"from": "docker-mcp-gateway", "to": "mcp-servers", "relationType": "manages"},
+    {"from": "docker-mcp-gateway", "to": "mcp-secrets", "relationType": "uses"},
+    {"from": "mcp-secrets", "to": "pass-password-store", "relationType": "stored_in"},
+    {"from": "mcp-secrets", "to": "github-auth", "relationType": "contains"},
+    {"from": "mcp-servers", "to": "github-auth", "relationType": "authenticates_with"},
+    {"from": "dev-workstation", "to": "docker-mcp-gateway", "relationType": "runs"},
+    {"from": "dev-workstation", "to": "pass-password-store", "relationType": "hosts"},
+    {"from": "docker-mcp-gateway", "to": "issue:mcp-connection-loss", "relationType": "affected_by"},
+    {"from": "mcp-secrets", "to": "decision:mcp-secret-storage", "relationType": "decided_by"}
   ]
 }

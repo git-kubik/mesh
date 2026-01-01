@@ -93,17 +93,17 @@ For accessing all networks simultaneously via trunk port:
 
 | Command | Description |
 |---------|-------------|
-| `make setup-workstation-vlans` | Setup VLAN interfaces on eth2 for multi-network access |
-| `make teardown-workstation-vlans` | Remove VLAN interfaces from eth2 |
+| `make setup-workstation-vlans` | Setup VLAN interfaces on enp5s0 for multi-network access |
+| `make teardown-workstation-vlans` | Remove VLAN interfaces from enp5s0 |
 
 **Interfaces created by `setup-workstation-vlans`:**
 
 | Interface | Address | Purpose |
 |-----------|---------|---------|
-| eth2 | 10.11.10.101/32 | Switch management (untagged) |
-| eth2.10 | 10.11.10.100/24 | Management VLAN 10 |
-| eth2.30 | 10.11.30.100/24 | IoT VLAN 30 |
-| eth2.200 | 10.11.12.100/24 | LAN/Client VLAN 200 |
+| enp5s0 | 10.11.10.101/32 | Switch management (untagged) |
+| enp5s0.10 | 10.11.10.100/24 | Management VLAN 10 |
+| enp5s0.30 | 10.11.30.100/24 | IoT VLAN 30 |
+| enp5s0.200 | 10.11.12.100/24 | LAN/Client VLAN 200 |
 
 !!! tip "Trunk Port Required"
     Connect workstation to Switch A Port 5 (configured as trunk with VLANs 10, 30, 200 tagged).

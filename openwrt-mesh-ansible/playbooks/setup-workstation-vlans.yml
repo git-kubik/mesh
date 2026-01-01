@@ -1,11 +1,11 @@
 ---
 # Setup workstation for multi-VLAN access via trunk port
 #
-# Configures eth2 with VLAN interfaces for all networks:
-#   - eth2 (untagged): Switch management (10.11.10.101/32)
-#   - eth2.10: Management network (10.11.10.100/24)
-#   - eth2.30: IoT network (10.11.30.100/24)
-#   - eth2.200: LAN/Client network (10.11.12.100/24)
+# Configures enp5s0 with VLAN interfaces for all networks:
+#   - enp5s0 (untagged): Switch management (10.11.10.101/32)
+#   - enp5s0.10: Management network (10.11.10.100/24)
+#   - enp5s0.30: IoT network (10.11.30.100/24)
+#   - enp5s0.200: LAN/Client network (10.11.12.100/24)
 #
 # Prerequisites:
 #   - Workstation connected to Switch A Port 5 (trunk port)
@@ -22,7 +22,7 @@
   become: true
 
   vars:
-    interface: "{{ lookup('env', 'ETH_INTERFACE') | default('eth2', true) }}"
+    interface: "{{ lookup('env', 'ETH_INTERFACE') | default('enp5s0', true) }}"
     switch_mgmt_ip: "10.11.10.101"
     switch_ips:
       - { ip: "10.11.10.11", name: "Switch A" }

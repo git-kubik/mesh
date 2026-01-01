@@ -7,7 +7,7 @@
 set -e
 
 # Configuration
-INTERFACE="${1:-eth2}"
+INTERFACE="${1:-enp5s0}"
 
 # Network Profile 1
 ADDRESS1="192.168.1.100/24"

@@ -412,7 +412,7 @@ If you have multiple Ethernet adapters (USB adapters, multiple NICs), you could 
 # This is complex and error-prone - sequential approach is recommended
 # Adapter 1 (eth0) → node1 @ 192.168.1.1
 # Adapter 2 (eth1) → node2 @ 192.168.2.1  # Requires manually changing node2's IP via web UI
-# Adapter 3 (eth2) → node3 @ 192.168.3.1  # Requires manually changing node3's IP via web UI
+# Adapter 3 (enp8s0) → node3 @ 192.168.3.1  # Requires manually changing node3's IP via web UI
 ```
 
 ### Security Considerations
