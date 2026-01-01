@@ -17,6 +17,9 @@ RUN apk add --no-cache \
 # Stage 2: Python dependencies builder
 FROM base AS builder
 
+# Install build dependencies for compiling Python packages (e.g., ruamel-yaml-clibz)
+RUN apk add --no-cache gcc musl-dev python3-dev libffi-dev
+
 # Install UV package manager
 RUN pip install --no-cache-dir uv
 
